@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Étiquettes Zebra</title>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#d1d5db;--acc:#f96302;--accd:#d65402}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 Arial,Helvetica,sans-serif}
+header{background:var(--acc);color:#fff;padding:10px 16px;font-size:18px;font-weight:bold}
+.app{display:grid;grid-template-columns:380px 1fr;gap:14px;padding:14px;max-width:1300px;margin:auto}
+@media(max-width:800px){.app{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
+.card h2{margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
+label.f{display:block;font-size:12px;color:var(--mute);margin:6px 0 2px}
+input,select,textarea,button{font:inherit}
+input[type=text],input[type=number],select,textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:#fff}
+textarea{resize:vertical}
+.row{display:flex;gap:8px;align-items:flex-end}
+.row>*{flex:1;min-width:0}
+button{padding:7px 12px;border:1px solid var(--line);background:#fff;border-radius:5px;cursor:pointer}
+button:hover{background:#f3f4f6}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:bold;font-size:16px;padding:10px;width:100%}
+button.pri:hover{background:var(--accd)}
+button.sm{padding:3px 8px}
+.line{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;background:#fafafa}
+.line .row{margin-top:6px}
+.chk{display:flex;gap:5px;align-items:center;flex:0 0 auto;font-size:13px}
+.stage{display:flex;justify-content:center;align-items:center;min-height:300px;background:#e5e7eb;border-radius:8px;overflow:auto;padding:20px}
+.lbl{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35);position:relative;overflow:hidden;color:#000;font-family:Arial,Helvetica,sans-serif}
+.rot{position:absolute;left:0;top:0;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden;transform-origin:0 0}
+.tl{width:100%;line-height:1.1;white-space:pre-wrap;word-break:break-word;font-family:Arial,Helvetica,sans-serif}
+.bc{display:block;shape-rendering:crispEdges}
+.hr{font-family:Arial,Helvetica,sans-serif;text-align:center;letter-spacing:.12em;line-height:1.1}
+.warn{color:#b91c1c;font-size:12px;margin-top:6px}
+.info{color:var(--mute);font-size:12px;margin-top:6px}
+.sw{display:inline-block;width:12px;height:12px;border:1px solid #888;border-radius:2px;vertical-align:middle}
+dialog{border:1px solid var(--line);border-radius:10px;padding:16px;width:min(560px,95vw)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+table{width:100%;border-collapse:collapse;margin-bottom:10px}
+td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+#printArea{display:none}
+@media print{
+  html,body{margin:0;padding:0;background:#fff}
+  .app,header,dialog{display:none!important}
+  #printArea{display:block}
+  #printArea .lbl{box-shadow:none;background:none;page-break-after:always;break-after:page}
+  #printArea .lbl:last-child{page-break-after:auto;break-after:auto}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<header>🏷️ Étiquettes Zebra</header>
+<div class="app">
+  <div>
+    <div class="card">
+      <h2>1. Papier (type d'étiquette)</h2>
+      <div class="row">
+        <div><select id="stockSel"></select></div>
+        <div style="flex:0 0 auto"><button id="btnManage">Gérer…</button></div>
+      </div>
+      <div class="info" id="stockInfo"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. Texte (Arial)</h2>
+      <div id="lines"></div>
+      <button id="addLine">+ Ajouter une ligne</button>
+    </div>
+
+    <div class="card">
+      <h2>3. Code-barres</h2>
+      <label class="chk"><input type="checkbox" id="bcOn"> Ajouter un code-barres</label>
+      <div id="bcBox">
+        <label class="f">Type</label>
+        <select id="bcType">
+          <option value="code128">Code 128 (le plus polyvalent)</option>
+          <option value="code39">Code 39</option>
+          <option value="ean13">EAN-13</option>
+          <option value="upca">UPC-A</option>
+        </select>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="bBatch"> Série séquentielle (plusieurs étiquettes)</label>
+        <div id="single"><label class="f">Valeur</label><input type="text" id="bcValue"></div>
+        <div id="batch" style="display:none">
+          <div class="row">
+            <div><label class="f">Préfixe (optionnel)</label><input type="text" id="bPre"></div>
+            <div><label class="f">Suffixe (optionnel)</label><input type="text" id="bSuf"></div>
+          </div>
+          <div class="row">
+            <div><label class="f">Numéro de départ</label><input type="number" id="bStart" min="0" step="1"></div>
+            <div><label class="f">Quantité</label><input type="number" id="bCount" min="1" max="1000" step="1"></div>
+            <div><label class="f">Incrément</label><input type="number" id="bStep" min="1" step="1"></div>
+            <div><label class="f">Chiffres (zéros)</label><input type="number" id="bPad" min="1" max="20" step="1"></div>
+          </div>
+          <div class="info" id="bRange"></div>
+        </div>
+        <div class="row">
+          <div><label class="f">Hauteur (mm)</label><input type="number" id="bcH" min="3" step="1"></div>
+          <div><label class="f">Largeur (% de l'étiquette)</label><input type="number" id="bcW" min="20" max="100" step="5"></div>
+        </div>
+        <label class="chk" style="margin-top:6px"><input type="checkbox" id="bcHuman"> Afficher le texte sous le code</label>
+        <div id="hBox" style="border-left:3px solid var(--line);padding-left:8px;margin-top:4px">
+          <label class="f">Texte sous le code (vide = valeur du code ; <b>{code}</b> = valeur du code)</label>
+          <input type="text" id="hText" placeholder="ex. SKU {code}">
+          <div class="row">
+            <div><label class="f">Taille (pt)</label><input type="number" id="hSize" min="4" max="40" step="0.5"></div>
+            <div><label class="f">Espacement (%)</label><input type="number" id="hSp" min="0" max="100" step="1"></div>
+            <div><label class="f">Alignement</label><select id="hAlign"><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></div>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <label class="chk"><input type="checkbox" id="hBold"> Gras</label>
+            <label class="chk"><input type="checkbox" id="hItal"> Italique</label>
+            <label class="chk"><input type="checkbox" id="hUnd"> Souligné</label>
+          </div>
+        </div>
+        <div class="warn" id="bcErr"></div>
+        <div class="info" id="bcInfo"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4. Impression</h2>
+      <div class="row">
+        <div><label class="f">Copies de chaque</label><input type="number" id="copies" min="1" max="500" value="1"></div>
+        <div><label class="f">Rotation</label>
+          <select id="rot"><option value="0">0° (normal)</option><option value="90">90°</option></select></div>
+        <div><label class="f">Marge (mm)</label><input type="number" id="margin" min="0" step="0.5"></div>
+      </div>
+      <div style="height:10px"></div>
+      <button class="pri" id="btnPrint">🖨️ Imprimer</button>
+      <div class="info">Dans la fenêtre d'impression : choisir l'imprimante Zebra, le papier de même taille que l'étiquette, marges « Aucune » et échelle 100 %.</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Aperçu <span style="float:right;text-transform:none">Zoom <input type="range" id="zoom" min="50" max="500" value="200" style="vertical-align:middle"></span></h2>
+      <div class="stage"><div id="preview"></div></div>
+      <div class="warn" id="overflow"></div>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+<style id="pageStyle"></style>
+
+<dialog id="dlg">
+  <h3 style="margin-top:0">Types d'étiquettes</h3>
+  <table><thead><tr><th>Nom</th><th>Dimensions</th><th>Couleur</th><th></th></tr></thead><tbody id="stockTbl"></tbody></table>
+  <h4 id="formTitle" style="margin:8px 0 0">Ajouter un type</h4>
+  <label class="f">Nom (ex. Prix blanc, Liquidation jaune)</label>
+  <input type="text" id="sName">
+  <div class="row">
+    <div><label class="f">Largeur</label><input type="number" id="sW" step="0.01" min="5"></div>
+    <div><label class="f">Hauteur</label><input type="number" id="sH" step="0.01" min="5"></div>
+    <div><label class="f">Unité</label><select id="sU"><option value="in">pouces</option><option value="mm">mm</option></select></div>
+    <div style="flex:0 0 70px"><label class="f">Couleur</label><input type="color" id="sC" value="#ffffff" style="width:100%;height:32px;padding:0"></div>
+  </div>
+  <div class="warn" id="sErr"></div>
+  <div class="row" style="margin-top:10px">
+    <button class="pri" id="sSave" style="font-size:14px;padding:8px">Enregistrer</button>
+    <button id="sCancel">Annuler la modification</button>
+    <button id="sClose">Fermer</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const MM = 25.4;
+
+/* ---------- Code-barres ---------- */
+const C128 = ["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+const C39 = {"0":"nnnwwnwnn","1":"wnnwnnnnw","2":"nnwwnnnnw","3":"wnwwnnnnn","4":"nnnwwnnnw","5":"wnnwwnnnn","6":"nnwwwnnnn","7":"nnnwnnwnw","8":"wnnwnnwnn","9":"nnwwnnwnn","A":"wnnnnwnnw","B":"nnwnnwnnw","C":"wnwnnwnnn","D":"nnnnwwnnw","E":"wnnnwwnnn","F":"nnwnwwnnn","G":"nnnnnwwnw","H":"wnnnnwwnn","I":"nnwnnwwnn","J":"nnnnwwwnn","K":"wnnnnnnww","L":"nnwnnnnww","M":"wnwnnnnwn","N":"nnnnwnnww","O":"wnnnwnnwn","P":"nnwnwnnwn","Q":"nnnnnnwww","R":"wnnnnnwwn","S":"nnwnnnwwn","T":"nnnnwnwwn","U":"wwnnnnnnw","V":"nwwnnnnnw","W":"wwwnnnnnn","X":"nwnnwnnnw","Y":"wwnnwnnnn","Z":"nwwnwnnnn","-":"nwnnnnwnw",".":"wwnnnnwnn"," ":"nwwnnnwnn","*":"nwnnwnwnn","$":"nwnwnwnnn","/":"nwnwnnnwn","+":"nwnnnwnwn","%":"nnnwnwnwn"};
+const EAN_L = ["0001101","0011001","0010011","0111101","0100011","0110001","0101111","0111011","0110111","0001011"];
+const EAN_R = EAN_L.map(s => s.replace(/./g, c => c === "0" ? "1" : "0"));
+const EAN_G = EAN_R.map(s => [...s].reverse().join(""));
+const EAN_P = ["LLLLLL","LLGLGG","LLGGLG","LLGGGL","LGLLGG","LGGLLG","LGGGLL","LGLGLG","LGLGGL","LGGLGL"];
+
+function widthsToBits(widths){ let b="", bar=true; for(const w of widths){ b += (bar?"1":"0").repeat(w); bar=!bar; } return b; }
+
+function enc128(text){
+  if(!text) throw "Entrez une valeur.";
+  const vals=[]; let start;
+  if(/^\d{4,}$/.test(text) && text.length%2===0){
+    start=105; for(let i=0;i<text.length;i+=2) vals.push(+text.slice(i,i+2));
+  } else {
+    start=104;
+    for(const ch of text){ const c=ch.charCodeAt(0); if(c<32||c>126) throw "Caractère non supporté : « "+ch+" » (pas d'accents en Code 128)."; vals.push(c-32); }
+  }
+  let sum=start; vals.forEach((v,i)=>sum+=v*(i+1));
+  const seq=[start,...vals,sum%103,106];
+  const w=[]; seq.forEach(v=>[...C128[v]].forEach(d=>w.push(+d)));
+  return {bits:widthsToBits(w), human:text};
+}
+function enc39(text){
+  text=text.toUpperCase(); if(!text) throw "Entrez une valeur.";
+  const full="*"+text+"*", w=[];
+  for(let i=0;i<full.length;i++){
+    const p=C39[full[i]]; if(!p) throw "Caractère non supporté en Code 39 : « "+full[i]+" ».";
+    [...p].forEach(c=>w.push(c==="w"?3:1));
+    if(i<full.length-1) w.push(1);
+  }
+  return {bits:widthsToBits(w), human:text};
+}
+function ean13bits(d){
+  const par=EAN_P[d[0]]; let b="101";
+  for(let i=1;i<=6;i++) b+=(par[i-1]==="L"?EAN_L:EAN_G)[d[i]];
+  b+="01010";
+  for(let i=7;i<=12;i++) b+=EAN_R[d[i]];
+  return b+"101";
+}
+function checkDigit(d12){ let s=0; d12.forEach((v,i)=>s+=v*(i%2?3:1)); return (10-s%10)%10; }
+function encEAN(text, upc){
+  const t=text.replace(/\s/g,"");
+  if(!/^\d+$/.test(t)) throw "Chiffres seulement.";
+  const need = upc ? [11,12] : [12,13];
+  if(!need.includes(t.length)) throw (upc?"UPC-A : 11 ou 12 chiffres.":"EAN-13 : 12 ou 13 chiffres.");
+  let digits=[...t].map(Number); if(upc) digits=[0,...digits];
+  const cd=checkDigit(digits.slice(0,12));
+  if(digits.length===13 && digits[12]!==cd) throw "Chiffre de contrôle invalide (attendu : "+cd+").";
+  digits=digits.slice(0,12).concat(cd);
+  const s=digits.join("");
+  return {bits:ean13bits(digits), human: upc ? s.slice(1) : s};
+}
+function encode(type,text){
+  return type==="code128"?enc128(text):type==="code39"?enc39(text):type==="ean13"?encEAN(text,false):encEAN(text,true);
+}
+function barcodeSVG(bits, widthMm, heightMm){
+  const Q=10, total=bits.length+2*Q; let r="";
+  for(let i=0;i<bits.length;){ if(bits[i]==="1"){ let j=i; while(bits[j]==="1") j++; r+=`<rect x="${i+Q}" y="0" width="${j-i}" height="1" fill="#000"/>`; i=j; } else i++; }
+  return `<svg class="bc" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} 1" preserveAspectRatio="none" style="width:${widthMm}mm;height:${heightMm}mm">${r}</svg>`;
+}
+
+/* ---------- État ---------- */
+const DEF_STOCKS=[
+  {id:"s1",name:'Prix 2" × 1" blanc',w:2,h:1,u:"in",color:"#ffffff"},
+  {id:"s2",name:'Tablette 3" × 2" blanc',w:3,h:2,u:"in",color:"#ffffff"},
+  {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176"}
+];
+const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1};
+let stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
+try{
+  const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
+  const d=JSON.parse(localStorage.getItem("zl_design")||"null"); if(d&&d.lines&&d.bc){ d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=d; }
+  const id=localStorage.getItem("zl_stockId"); if(id) stockId=id;
+}catch(e){}
+if(!stocks.some(s=>s.id===stockId)) stockId=stocks[0].id;
+function save(){ try{ localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId);}catch(e){} }
+const stock=()=>stocks.find(s=>s.id===stockId);
+const toMM=(v,u)=>u==="in"?v*MM:v;
+const dimTxt=s=>s.u==="in"?`${s.w}" × ${s.h}"`:`${s.w} × ${s.h} mm`;
+
+/* ---------- Rendu de l'étiquette ---------- */
+function esc(t){return t.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function codeValue(i){
+  const b=design.bc;
+  return b.batch ? b.pre+String((+b.start||0)+i*(+b.step||1)).padStart(+b.pad||1,"0")+b.suf : b.value;
+}
+const total=()=>design.bc.on&&design.bc.batch?Math.max(1,Math.min(1000,+design.bc.count||1)):1;
+function buildLabel(forPrint,idx=0){
+  const s=stock(), W=toMM(s.w,s.u), H=toMM(s.h,s.u), rot=design.rot==="90";
+  const cw=rot?H:W, ch=rot?W:H, m=+design.margin||0, B=design.bc;
+  const el=document.createElement("div"); el.className="lbl";
+  el.style.cssText=`width:${W}mm;height:${H}mm;`+(forPrint?"":`background:${s.color}`);
+  let info="", err="", e=null, code=codeValue(idx);
+  if(B.on){ try{ e=encode(B.type,code); code=e.human; }catch(x){ err=String(x); } }
+  let html=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(rot?`transform:translate(${W}mm,0) rotate(90deg);`:"")+`">`;
+  design.lines.forEach(l=>{ html+=`<div class="tl" style="font-size:${l.size}pt;font-weight:${l.bold?"bold":"normal"};text-align:${l.align}">${esc(l.text.replace(/\{code\}/g,code))||"&nbsp;"}</div>`; });
+  if(e){
+    const bw=Math.max(5,(cw-2*m)*B.w/100), mod=bw/(e.bits.length+20);
+    html+=`<div style="height:1.5mm;flex:none"></div>`+barcodeSVG(e.bits,bw.toFixed(2),B.h);
+    if(B.human){
+      const ht=B.hText?B.hText.replace(/\{code\}/g,e.human):e.human;
+      html+=`<div class="hr" style="width:${bw.toFixed(2)}mm;font-size:${B.hSize}pt;margin-top:.5mm;text-align:${B.hAlign};letter-spacing:${B.hSp/100}em;font-weight:${B.hBold?"bold":"normal"};font-style:${B.hItal?"italic":"normal"};text-decoration:${B.hUnd?"underline":"none"};white-space:pre-wrap;word-break:break-all">${esc(ht)}</div>`;
+    }
+    info=`Largeur d'une barre fine : ${mod.toFixed(2)} mm (${(mod/0.125).toFixed(1)} points à 203 dpi, ${(mod/0.0847).toFixed(1)} à 300 dpi).`;
+    if(mod<0.25) err="⚠ Barres très fines : risque de lecture difficile. Augmentez la largeur ou raccourcissez la valeur.";
+  }
+  html+="</div>"; el.innerHTML=html;
+  return {el,info,err};
+}
+function refresh(){
+  const s=stock();
+  $("stockInfo").innerHTML=`<span class="sw" style="background:${s.color}"></span> ${dimTxt(s)} (${toMM(s.w,s.u).toFixed(1)} × ${toMM(s.h,s.u).toFixed(1)} mm)`;
+  const {el,info,err}=buildLabel(false);
+  const p=$("preview"); p.innerHTML=""; p.appendChild(el); el.style.zoom=$("zoom").value/100*(96/MM*MM/96);
+  $("bcInfo").textContent=info;
+  if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
+  const rot=el.firstChild;
+  $("overflow").textContent = (rot.scrollHeight>rot.clientHeight+1||rot.scrollWidth>rot.clientWidth+1) ? "⚠ Le contenu dépasse de l'étiquette : réduisez la taille du texte ou la hauteur du code-barres." : "";
+  save();
+}
+function autoZoom(){
+  const s=stock(), px=toMM(Math.max(s.w,s.u==="in"?0:0),s.u)/MM*96;
+  const avail=Math.max(200,($("preview").parentElement.clientWidth||600)-60);
+  $("zoom").value=Math.max(50,Math.min(500,Math.floor(avail/px*100)));
+}
+
+/* ---------- Formulaire ---------- */
+function fillStockSel(){
+  $("stockSel").innerHTML=stocks.map(s=>`<option value="${s.id}">${esc(s.name)} — ${dimTxt(s)}</option>`).join("");
+  $("stockSel").value=stockId;
+}
+function renderLines(){
+  const box=$("lines"); box.innerHTML="";
+  design.lines.forEach((l,i)=>{
+    const d=document.createElement("div"); d.className="line";
+    d.innerHTML=`<textarea rows="2" placeholder="Texte de la ligne"></textarea>
+      <div class="row">
+        <div><input type="number" min="4" max="120" step="1" title="Taille (pt)"></div>
+        <label class="chk"><input type="checkbox"> Gras</label>
+        <div><select><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></div>
+        <button class="sm" title="Supprimer">✕</button>
+      </div>`;
+    const [ta,num,chk,sel,del]=[d.querySelector("textarea"),d.querySelector("input[type=number]"),d.querySelector("input[type=checkbox]"),d.querySelector("select"),d.querySelector("button")];
+    ta.value=l.text; num.value=l.size; chk.checked=l.bold; sel.value=l.align;
+    ta.oninput=()=>{l.text=ta.value;refresh();};
+    num.oninput=()=>{l.size=Math.max(4,+num.value||12);refresh();};
+    chk.onchange=()=>{l.bold=chk.checked;refresh();};
+    sel.onchange=()=>{l.align=sel.value;refresh();};
+    del.onclick=()=>{design.lines.splice(i,1);renderLines();refresh();};
+    box.appendChild(d);
+  });
+}
+function syncForm(){
+  fillStockSel(); renderLines();
+  $("bcOn").checked=design.bc.on; $("bcType").value=design.bc.type; $("bcValue").value=design.bc.value;
+  $("bcH").value=design.bc.h; $("bcW").value=design.bc.w; $("bcHuman").checked=design.bc.human;
+  const B=design.bc;
+  $("bBatch").checked=B.batch; $("bPre").value=B.pre; $("bSuf").value=B.suf; $("bStart").value=B.start; $("bCount").value=B.count; $("bStep").value=B.step; $("bPad").value=B.pad;
+  $("hText").value=B.hText; $("hSize").value=B.hSize; $("hSp").value=B.hSp; $("hAlign").value=B.hAlign; $("hBold").checked=B.hBold; $("hItal").checked=B.hItal; $("hUnd").checked=B.hUnd;
+  showBatch();
+  $("rot").value=design.rot; $("margin").value=design.margin; $("copies").value=design.copies||1;
+  $("bcBox").style.display=design.bc.on?"block":"none";
+}
+$("stockSel").onchange=()=>{stockId=$("stockSel").value;autoZoom();refresh();};
+$("addLine").onclick=()=>{design.lines.push({text:"",size:12,bold:false,align:"center"});renderLines();refresh();};
+$("bcOn").onchange=()=>{design.bc.on=$("bcOn").checked;$("bcBox").style.display=design.bc.on?"block":"none";refresh();};
+$("bcType").onchange=()=>{design.bc.type=$("bcType").value;refresh();};
+$("bcValue").oninput=()=>{design.bc.value=$("bcValue").value;refresh();};
+$("bcH").oninput=()=>{design.bc.h=Math.max(3,+$("bcH").value||10);refresh();};
+$("bcW").oninput=()=>{design.bc.w=Math.min(100,Math.max(20,+$("bcW").value||90));refresh();};
+$("bcHuman").onchange=()=>{design.bc.human=$("bcHuman").checked;refresh();};
+function showBatch(){ $("batch").style.display=design.bc.batch?"block":"none"; $("single").style.display=design.bc.batch?"none":"block"; }
+$("bBatch").onchange=()=>{design.bc.batch=$("bBatch").checked;showBatch();refresh();};
+[["bPre","pre","s"],["bSuf","suf","s"],["bStart","start","n"],["bCount","count","n"],["bStep","step","n"],["bPad","pad","n"],["hText","hText","s"],["hSize","hSize","n"],["hSp","hSp","n"]].forEach(([id,k,t])=>{
+  $(id).oninput=()=>{design.bc[k]=t==="n"?(+$(id).value||0):$(id).value;refresh();};
+});
+$("hAlign").onchange=()=>{design.bc.hAlign=$("hAlign").value;refresh();};
+[["hBold","hBold"],["hItal","hItal"],["hUnd","hUnd"]].forEach(([id,k])=>$(id).onchange=()=>{design.bc[k]=$(id).checked;refresh();});
+$("rot").onchange=()=>{design.rot=$("rot").value;refresh();};
+$("margin").oninput=()=>{design.margin=Math.max(0,+$("margin").value||0);refresh();};
+$("copies").oninput=()=>{design.copies=Math.min(500,Math.max(1,+$("copies").value||1));save();};
+$("zoom").oninput=refresh;
+
+/* ---------- Impression ---------- */
+$("btnPrint").onclick=()=>{
+  const s=stock(), W=toMM(s.w,s.u), H=toMM(s.h,s.u);
+  let err=""; for(let i=0;i<total()&&!err;i++) err=buildLabel(true,i).err;
+  if(err && design.bc.on && !confirm(err+"\n\nImprimer quand même ?")) return;
+  $("pageStyle").textContent=`@page{size:${W.toFixed(2)}mm ${H.toFixed(2)}mm;margin:0}`;
+  const pa=$("printArea"); pa.innerHTML="";
+  for(let i=0;i<total();i++) for(let c=0;c<(design.copies||1);c++) pa.appendChild(buildLabel(true,i).el);
+  setTimeout(()=>window.print(),50);
+};
+
+/* ---------- Gestion des types d'étiquettes ---------- */
+function renderStockTbl(){
+  $("stockTbl").innerHTML=stocks.map(s=>`<tr><td>${esc(s.name)}</td><td>${dimTxt(s)}</td><td><span class="sw" style="background:${s.color}"></span></td>
+    <td style="white-space:nowrap"><button class="sm" data-e="${s.id}">Modifier</button> <button class="sm" data-d="${s.id}">Supprimer</button></td></tr>`).join("");
+  $("stockTbl").querySelectorAll("[data-e]").forEach(b=>b.onclick=()=>{
+    const s=stocks.find(x=>x.id===b.dataset.e); editId=s.id; $("formTitle").textContent="Modifier : "+s.name;
+    $("sName").value=s.name;$("sW").value=s.w;$("sH").value=s.h;$("sU").value=s.u;$("sC").value=s.color;
+  });
+  $("stockTbl").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
+    if(stocks.length<2){$("sErr").textContent="Il faut garder au moins un type.";return;}
+    const s=stocks.find(x=>x.id===b.dataset.d);
+    if(!confirm("Supprimer « "+s.name+" » ?")) return;
+    stocks=stocks.filter(x=>x.id!==s.id); if(stockId===s.id) stockId=stocks[0].id;
+    fillStockSel(); renderStockTbl(); refresh();
+  });
+}
+function resetForm(){editId=null;$("formTitle").textContent="Ajouter un type";$("sName").value="";$("sW").value="";$("sH").value="";$("sU").value="in";$("sC").value="#ffffff";$("sErr").textContent="";}
+$("btnManage").onclick=()=>{resetForm();renderStockTbl();$("dlg").showModal();};
+$("sClose").onclick=()=>$("dlg").close();
+$("sCancel").onclick=resetForm;
+$("sSave").onclick=()=>{
+  const name=$("sName").value.trim(), w=+$("sW").value, h=+$("sH").value;
+  if(!name||!(w>0)||!(h>0)){$("sErr").textContent="Entrez un nom, une largeur et une hauteur.";return;}
+  const obj={name,w,h,u:$("sU").value,color:$("sC").value};
+  if(editId){ Object.assign(stocks.find(x=>x.id===editId),obj); }
+  else { const id="s"+Date.now(); stocks.push({id,...obj}); stockId=id; }
+  fillStockSel(); resetForm(); renderStockTbl(); autoZoom(); refresh();
+};
+
+syncForm(); autoZoom(); refresh();
+window.addEventListener("resize",()=>{});
+</script>
+</body>
+</html>
