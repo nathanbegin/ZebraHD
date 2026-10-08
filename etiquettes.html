@@ -10,8 +10,6 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 Arial,Helvetica,sans-serif}
 header{background:var(--acc);color:#fff;padding:8px 16px;font-size:18px;font-weight:bold;display:flex;align-items:center;gap:12px}
 header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
-header .hl{margin-left:auto;font-size:12px;font-weight:normal;color:#fff;background:transparent;border-color:rgba(255,255,255,.7);padding:3px 8px}
-header .hl:hover{background:rgba(255,255,255,.2)}
 .app{display:grid;grid-template-columns:380px 1fr;gap:14px;padding:14px;max-width:1300px;margin:auto}
 @media(max-width:800px){.app{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
@@ -63,9 +61,19 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </style>
 </head>
 <body>
-<header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span><button class="hl" id="logoBtn" title="Choisir une image de logo (PNG, JPG ou SVG)">Logo…</button><button class="hl" id="logoDel" style="margin-left:0;display:none">✕</button><input type="file" id="logoFile" accept="image/*" style="display:none"></header>
+<header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span></header>
 <div class="app">
   <div>
+    <div class="card">
+      <h2>Modèles <span id="cloud" style="float:right;text-transform:none;font-weight:normal;letter-spacing:0"></span></h2>
+      <div class="row">
+        <div><select id="tplSel"></select></div>
+        <div style="flex:0 0 auto"><button id="tplLoad">Charger</button></div>
+      </div>
+      <div class="row" style="margin-top:6px"><button id="tplSave">💾 Enregistrer le modèle actuel…</button><button id="tplDel">Supprimer</button></div>
+      <div class="info">Un modèle garde le papier, le texte, le code-barres et les réglages.</div>
+    </div>
+
     <div class="card">
       <h2>1. Papier (type d'étiquette)</h2>
       <div class="row">
@@ -265,14 +273,15 @@ const DEF_STOCKS=[
   {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
 const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10};
-let stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
+let templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
 try{
   const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
   const d=JSON.parse(localStorage.getItem("zl_design")||"null"); if(d&&d.lines&&d.bc){ d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d); }
   const id=localStorage.getItem("zl_stockId"); if(id) stockId=id;
+  const t=JSON.parse(localStorage.getItem("zl_templates")||"null"); if(Array.isArray(t)) templates=t;
 }catch(e){}
 if(!stocks.some(s=>s.id===stockId)) stockId=stocks[0].id;
-function save(){ try{ localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId);}catch(e){} }
+function save(){ cloudSchedule(); try{ localStorage.setItem("zl_templates",JSON.stringify(templates)); localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId);}catch(e){} }
 const stock=()=>stocks.find(s=>s.id===stockId);
 const toMM=(v,u)=>u==="in"?v*MM:v;
 const isAdh=s=>s.adh!==false;
@@ -546,24 +555,72 @@ $("sSave").onclick=()=>{
 };
 
 /* ---------- Logo (en-tête) ---------- */
-function setLogo(src,custom){
-  const im=$("logo");
-  im.onload=()=>{im.style.display="block";};
-  im.onerror=()=>{im.style.display="none";};
-  im.src=src; $("logoDel").style.display=custom?"":"none";
+(function(){ const im=$("logo"); im.onload=()=>{im.style.display="block";}; im.onerror=()=>{im.style.display="none";}; im.src="logo.png"; })();
+
+/* ---------- Modèles ---------- */
+function fillTplSel(sel){
+  $("tplSel").innerHTML='<option value="">— choisir un modèle —</option>'+templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
+  if(sel) $("tplSel").value=sel;
 }
-(function(){ let l=null; try{ l=localStorage.getItem("zl_logo"); }catch(e){} setLogo(l||"logo.png",!!l); })();
-$("logoBtn").onclick=()=>$("logoFile").click();
-$("logoFile").onchange=()=>{
-  const f=$("logoFile").files[0]; if(!f) return;
-  if(f.size>1500000){ alert("Image trop lourde (max 1,5 Mo)."); return; }
-  const r=new FileReader();
-  r.onload=()=>{ try{ localStorage.setItem("zl_logo",r.result); }catch(e){ alert("Impossible de mémoriser le logo."); } setLogo(r.result,true); };
-  r.readAsDataURL(f); $("logoFile").value="";
+$("tplSave").onclick=()=>{
+  const name=(prompt("Nom du modèle :")||"").trim(); if(!name) return;
+  const ex=templates.find(t=>t.name===name);
+  if(ex && !confirm("Un modèle « "+name+" » existe déjà. Le remplacer ?")) return;
+  const obj={name,stockId,design:JSON.parse(JSON.stringify(design))};
+  let id; if(ex){ Object.assign(ex,obj); id=ex.id; } else { id="t"+Date.now(); templates.push({id,...obj}); }
+  fillTplSel(id); save();
 };
-$("logoDel").onclick=()=>{ try{ localStorage.removeItem("zl_logo"); }catch(e){} setLogo("logo.png",false); };
+$("tplLoad").onclick=()=>{
+  const t=templates.find(x=>x.id===$("tplSel").value); if(!t) return;
+  const d=JSON.parse(JSON.stringify(t.design));
+  d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d);
+  if(stocks.some(x=>x.id===t.stockId)) stockId=t.stockId; else alert("Le papier de ce modèle n'existe plus : le papier actuel est conservé.");
+  syncForm(); autoZoom(); refresh();
+};
+$("tplDel").onclick=()=>{
+  const t=templates.find(x=>x.id===$("tplSel").value); if(!t||!confirm("Supprimer le modèle « "+t.name+" » ?")) return;
+  templates=templates.filter(x=>x!==t); fillTplSel(); save();
+};
+
+/* ---------- Synchronisation Vercel (optionnelle) ---------- */
+let cloudOn=false, lastSync="", pushT=null;
+const snap=()=>JSON.stringify({stocks,templates});
+function setCloud(st){
+  const m={off:["💾 Local (cet ordinateur)","Base de données Vercel non disponible : les données restent dans ce navigateur."],ok:["☁ Synchronisé",""],sync:["☁ Enregistrement…",""],err:["⚠ Erreur de synchronisation","Nouvel essai à la prochaine modification."]}[st];
+  $("cloud").textContent=m[0]; $("cloud").title=m[1]; $("cloud").style.color=st==="err"?"#b91c1c":"#6b7280";
+}
+function cloudSchedule(){
+  if(!cloudOn) return;
+  if(snap()===lastSync) return;
+  setCloud("sync"); clearTimeout(pushT); pushT=setTimeout(cloudPush,700);
+}
+async function cloudPush(){
+  const cur=snap();
+  try{
+    const r=await fetch("api/data",{method:"PUT",headers:{"Content-Type":"application/json"},body:cur});
+    if(!r.ok) throw 0;
+    lastSync=cur; setCloud(snap()===cur?"ok":"sync");
+  }catch(e){ setCloud("err"); }
+}
+async function cloudLoad(){
+  try{
+    const r=await fetch("api/data",{cache:"no-store"});
+    if(!r.ok) throw 0;
+    const d=await r.json(); if(!d||typeof d!=="object") throw 0;
+    const first=!cloudOn; cloudOn=true;
+    if(first && snap()!==lastSync && pushT) return;
+    const sv=Array.isArray(d.stocks)?d.stocks:[], tv=Array.isArray(d.templates)?d.templates:[];
+    if(sv.length){ stocks=sv; if(!stocks.some(x=>x.id===stockId)) stockId=stocks[0].id; }
+    if(tv.length||sv.length) templates=tv;
+    lastSync=JSON.stringify({stocks:sv,templates:tv});
+    fillStockSel(); fillTplSel($("tplSel").value); autoZoom(); refresh();
+    if(!sv.length){ lastSync=""; cloudSchedule(); } else setCloud("ok");
+  }catch(e){ if(!cloudOn) setCloud("off"); }
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&cloudOn&&snap()===lastSync) cloudLoad(); });
 
 syncForm(); autoZoom(); refresh();
+fillTplSel(); setCloud("off"); cloudLoad();
 window.addEventListener("resize",()=>{});
 </script>
 </body>
