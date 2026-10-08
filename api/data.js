@@ -1,20 +1,13 @@
 // Fonction Vercel : lecture / écriture des types d'étiquettes et des modèles
-// dans une base Redis (Upstash, via la Marketplace Vercel).
-const URL_ = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-const KEY = "zebrahd:data";
+// dans une base Firebase Realtime Database (gratuite, via l'API REST).
+// Variable d'environnement requise : FIREBASE_DB_URL
+//   ex. https://mon-projet-default-rtdb.firebaseio.com
+// Optionnelle : FIREBASE_DB_SECRET (secret de la base, si les règles ne sont pas publiques)
+const DB = (process.env.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
+const SECRET = process.env.FIREBASE_DB_SECRET || "";
 const MAX_BYTES = 800000;
 
-async function redis(cmd) {
-  const r = await fetch(URL_, {
-    method: "POST",
-    headers: { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" },
-    body: JSON.stringify(cmd),
-  });
-  const j = await r.json();
-  if (!r.ok || j.error) throw new Error(j.error || "HTTP " + r.status);
-  return j.result;
-}
+const dbUrl = () => DB + "/zebrahd.json" + (SECRET ? "?auth=" + encodeURIComponent(SECRET) : "");
 
 function cleanStock(x) {
   if (!x || typeof x.name !== "string" || !(+x.w > 0) || !(+x.h > 0)) return null;
@@ -31,11 +24,14 @@ function cleanStock(x) {
 
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
-  if (!URL_ || !TOKEN) return res.status(503).json({ error: "Base de données non configurée" });
+  if (!/^https:\/\//.test(DB)) return res.status(503).json({ error: "Base de données non configurée" });
   try {
     if (req.method === "GET") {
-      const v = await redis(["GET", KEY]);
-      return res.status(200).json(v ? JSON.parse(v) : { stocks: [], templates: [] });
+      const r = await fetch(dbUrl());
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      // Les données sont stockées sous forme de texte JSON (évite que Firebase déforme les tableaux vides).
+      return res.status(200).json(j && typeof j.data === "string" ? JSON.parse(j.data) : { stocks: [], templates: [] });
     }
     if (req.method === "PUT") {
       let b = req.body;
@@ -52,7 +48,12 @@ module.exports = async (req, res) => {
       };
       const str = JSON.stringify(data);
       if (str.length > MAX_BYTES) return res.status(413).json({ error: "Trop volumineux" });
-      await redis(["SET", KEY, str]);
+      const r = await fetch(dbUrl(), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: str }),
+      });
+      if (!r.ok) throw new Error("HTTP " + r.status);
       return res.status(200).json({ ok: true });
     }
     res.setHeader("Allow", "GET, PUT");
