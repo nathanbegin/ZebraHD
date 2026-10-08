@@ -92,7 +92,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div id="lines"></div>
       <button id="addLine">+ Ajouter une ligne</button>
       <label class="f" style="margin-top:10px">Rotation du contenu (texte et code-barres)</label>
-      <select id="rot"><option value="0">0° (normal)</option><option value="90">90° (vers la droite)</option><option value="180">180° (à l'envers)</option><option value="270">270° (vers la gauche)</option></select>
+      <select id="rot"><option value="0">0° (normal : texte parallèle à l'axe X)</option><option value="90">90° (vers la droite)</option><option value="180">180° (à l'envers)</option><option value="270">270° (vers la gauche)</option></select>
     </div>
 
     <div class="card">
@@ -167,7 +167,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 
   <div>
     <div class="card">
-      <h2>Aperçu <span style="float:right;text-transform:none"><label style="margin-right:12px;font-weight:normal"><input type="checkbox" id="viewUp"> Texte à l'endroit</label>Zoom <input type="range" id="zoom" min="50" max="500" value="200" style="vertical-align:middle"></span></h2>
+      <h2>Aperçu <span style="float:right;text-transform:none">Zoom <input type="range" id="zoom" min="50" max="500" value="200" style="vertical-align:middle"></span></h2>
       <div class="stage"><div id="preview"></div></div>
       <div class="warn" id="overflow"></div>
     </div>
@@ -345,7 +345,7 @@ function contentHTML(idx,cw,m,cwRef){
   return {html,info,err};
 }
 const autoActive=()=>!!design.auto;
-const rotated=()=>design.rot==="90"||design.rot==="270";
+const rotated=()=>design.rot==="0"||design.rot==="180"; // contenu dont la largeur est dans le sens d'impression
 const nominalLen=()=>{const s=stock();return toMM(s.h,s.u);};
 function autoHeight(idx){
   const s=stock(), W=toMM(s.w,s.u), m=+design.margin||0, rt=rotated();
@@ -362,7 +362,7 @@ function autoHeight(idx){
 }
 function maxAutoHeight(){ let h=0; for(let i=0;i<total();i++) h=Math.max(h,autoHeight(i)); return h; }
 function buildLabel(forPrint,idx=0,hOverride){
-  const s=stock(), W=toMM(s.w,s.u), R=design.rot;
+  const s=stock(), W=toMM(s.w,s.u), R=String((+design.rot+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
   const H=autoActive()?(hOverride||autoHeight(idx)):toMM(s.h,s.u);
   const sw=R==="90"||R==="270", cw=sw?H:W, ch=sw?W:H, m=+design.margin||0;
   const el=document.createElement("div"); el.className="lbl";
@@ -399,17 +399,8 @@ function refresh(){
   $("autoBox").style.display=design.auto?"block":"none";
   $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
   const p=$("preview"); p.innerHTML="";
-  const u=s.u, Wmm=toMM(s.w,u), z=$("zoom").value/100, up=$("viewUp").checked;
+  const u=s.u, Wmm=toMM(s.w,u), z=$("zoom").value/100;
   const cell=(html,r,c,cls)=>{const d=document.createElement("div"); if(cls) d.className=cls; d.style.gridRow=r; d.style.gridColumn=c; if(typeof html==="string") d.innerHTML=html; else d.appendChild(html); if(!cls) d.style.zoom=z; p.appendChild(d); return d;};
-  if(up){
-    p.appendChild(el);
-    const fd=document.createElement("div"); fd.className="feed";
-    fd.innerHTML="<div class='ar'><i>▲</i><b></b></div><div class='tx'>Sens d'impression (sortie de l'imprimante)</div>";
-    fd.style.gridRow="2"; fd.style.gridColumn="3"; el.style.gridRow="2"; el.style.gridColumn="2"; p.appendChild(fd);
-    cell(rulerSVG(Wmm,false,u),1,2);
-    cell(rulerSVG(H,true,u),2,1);
-    cell("X ↔<br>Y ↕",1,1,"corner"); el.style.zoom=z;
-  } else {
     // Sens d'impression horizontal : X = longueur (parallèle à la sortie), Y = largeur du ruban ; la sortie est à droite.
     const box=document.createElement("div");
     box.style.cssText=`position:relative;width:${H}mm;height:${Wmm}mm`;
@@ -422,7 +413,6 @@ function refresh(){
     cell("X ↔<br>Y ↕",1,1,"corner");
     const fh=cell("<div class='feedh'><span>Sens d'impression (sortie de l'imprimante, fente à droite)</span><b></b><i>▶</i></div>",3,2,"nz");
     fh.style.zoom="";
-  }
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
   const rot=el.firstChild;
@@ -430,8 +420,8 @@ function refresh(){
   save();
 }
 function autoZoom(){
-  const s=stock(), up=$("viewUp").checked, px=toMM(up?s.w:s.h,s.u)/MM*96;
-  const avail=Math.max(200,($("preview").parentElement.clientWidth||600)-(up?240:110));
+  const s=stock(), px=toMM(s.h,s.u)/MM*96;
+  const avail=Math.max(200,($("preview").parentElement.clientWidth||600)-110);
   $("zoom").value=Math.max(50,Math.min(500,Math.floor(avail/px*100)));
 }
 
@@ -494,8 +484,6 @@ $("rot").onchange=()=>{design.rot=$("rot").value;refresh();};
 $("margin").oninput=()=>{design.margin=Math.max(0,+$("margin").value||0);refresh();};
 $("copies").oninput=()=>{design.copies=Math.min(500,Math.max(1,+$("copies").value||1));save();};
 $("zoom").oninput=refresh;
-try{ $("viewUp").checked=localStorage.getItem("zl_viewUp")==="1"; }catch(e){}
-$("viewUp").onchange=()=>{ try{localStorage.setItem("zl_viewUp",$("viewUp").checked?"1":"0");}catch(e){} autoZoom(); refresh(); };
 
 /* ---------- Impression ---------- */
 $("btnPrint").onclick=()=>{
