@@ -153,6 +153,14 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
         <div><label class="f">Copies de chaque</label><input type="number" id="copies" min="1" max="500" value="1"></div>
         <div><label class="f">Marge (mm)</label><input type="number" id="margin" min="0" step="0.5"></div>
       </div>
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="offOn"> Décalage manuel du contenu (centrage)</label>
+      <div id="offBox" style="display:none">
+        <div class="row">
+          <div><label class="f">Horizontal X (mm) : + vers la sortie</label><input type="number" id="offX" step="0.1"></div>
+          <div><label class="f">Vertical Y (mm) : + vers le bas</label><input type="number" id="offY" step="0.1"></div>
+        </div>
+        <div class="info">Mêmes axes que l'aperçu (X = sens d'impression, Y = largeur du ruban). Sert à corriger un décalage de l'imprimante sans toucher au pilote.</div>
+      </div>
       <label class="chk" style="margin-top:10px"><input type="checkbox" id="autoLen"> Longueur automatique (rouleau avec couteau)</label>
       <div id="autoBox" style="display:none">
         <div class="row"><div><label class="f">Longueur minimale (mm)</label><input type="number" id="minLen" min="0" step="1"></div></div>
@@ -276,7 +284,7 @@ const DEF_STOCKS=[
   {id:"s2",name:'Tablette 3" × 2" blanc',w:3,h:2,u:"in",color:"#ffffff",adh:true},
   {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
-const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10};
+const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0};
 let templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
 try{
   const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
@@ -368,8 +376,10 @@ function buildLabel(forPrint,idx=0,hOverride){
   const el=document.createElement("div"); el.className="lbl";
   el.style.cssText=`width:${W}mm;height:${H}mm;`+(forPrint?"":`background:${s.color}`);
   const tf={"90":`translate(${W}mm,0) rotate(90deg)`,"180":`translate(${W}mm,${H}mm) rotate(180deg)`,"270":`translate(0,${H}mm) rotate(-90deg)`}[R];
+  const dxp=design.off?(+design.oy||0):0, dyp=design.off?-(+design.ox||0):0; // axes de l'aperçu -> axes de la page
+  const tr=(dxp||dyp?`translate(${dxp}mm,${dyp}mm)`+(tf?" ":""):"")+(tf||"");
   const c=contentHTML(idx,cw,m,(autoActive()&&sw)?nominalLen():undefined);
-  el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tf?`transform:${tf};`:"")+`">${c.html}</div>`;
+  el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tr?`transform:${tr};`:"")+`">${c.html}</div>`;
   return {el,info:c.info,err:c.err,H};
 }
 function rulerSVG(len,vertical,unit,ttl){
@@ -459,7 +469,7 @@ function syncForm(){
   $("bBatch").checked=B.batch; $("bPre").value=B.pre; $("bSuf").value=B.suf; $("bStart").value=B.start; $("bCount").value=B.count; $("bStep").value=B.step; $("bPad").value=B.pad;
   $("hText").value=B.hText; $("hSize").value=B.hSize; $("hSp").value=B.hSp; $("hAlign").value=B.hAlign; $("hBold").checked=B.hBold; $("hItal").checked=B.hItal; $("hUnd").checked=B.hUnd;
   showBatch(); showHint();
-  $("rot").value=design.rot; $("autoLen").checked=design.auto; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
+  $("rot").value=design.rot; $("autoLen").checked=design.auto; $("offOn").checked=design.off; $("offX").value=design.ox; $("offY").value=design.oy; $("offBox").style.display=design.off?"block":"none"; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
   $("bcBox").style.display=design.bc.on?"block":"none";
 }
 $("stockSel").onchange=()=>{stockId=$("stockSel").value;autoZoom();refresh();};
@@ -478,6 +488,9 @@ $("bBatch").onchange=()=>{design.bc.batch=$("bBatch").checked;showBatch();refres
 });
 $("hAlign").onchange=()=>{design.bc.hAlign=$("hAlign").value;refresh();};
 [["hBold","hBold"],["hItal","hItal"],["hUnd","hUnd"]].forEach(([id,k])=>$(id).onchange=()=>{design.bc[k]=$(id).checked;refresh();});
+$("offOn").onchange=()=>{design.off=$("offOn").checked;$("offBox").style.display=design.off?"block":"none";refresh();};
+$("offX").oninput=()=>{design.ox=+$("offX").value||0;refresh();};
+$("offY").oninput=()=>{design.oy=+$("offY").value||0;refresh();};
 $("autoLen").onchange=()=>{design.auto=$("autoLen").checked;refresh();};
 $("minLen").oninput=()=>{design.minLen=Math.max(0,+$("minLen").value||0);refresh();};
 $("rot").onchange=()=>{design.rot=$("rot").value;refresh();};
