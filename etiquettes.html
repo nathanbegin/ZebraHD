@@ -91,6 +91,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <option value="ean13">EAN-13</option>
           <option value="upca">UPC-A</option>
         </select>
+        <div class="info" id="bcHint"></div>
         <label class="chk" style="margin-top:6px"><input type="checkbox" id="bBatch"> Série séquentielle (plusieurs étiquettes)</label>
         <div id="single"><label class="f">Valeur</label><input type="text" id="bcValue"></div>
         <div id="batch" style="display:none">
@@ -105,6 +106,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
             <div><label class="f">Chiffres (zéros)</label><input type="number" id="bPad" min="1" max="20" step="1"></div>
           </div>
           <div class="info" id="bRange"></div>
+          <div class="info">EAN-13 / UPC-A : les zéros devant sont ajoutés automatiquement pour compléter 12 (ou 11) chiffres ; « Chiffres (zéros) » est alors ignoré.</div>
         </div>
         <div class="row">
           <div><label class="f">Hauteur (mm)</label><input type="number" id="bcH" min="3" step="1"></div>
@@ -272,15 +274,43 @@ const dimTxt=s=>s.u==="in"?`${s.w}" × ${s.h}"`:`${s.w} × ${s.h} mm`;
 
 /* ---------- Rendu de l'étiquette ---------- */
 function esc(t){return t.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+const BC_TARGET={ean13:12,upca:11};
+const BC_HINT={
+  code128:"Texte libre (lettres, chiffres, symboles). Les accents sont remplacés et les caractères non supportés retirés.",
+  code39:"Majuscules, chiffres et - . espace $ / + %. Mis en majuscules automatiquement ; le reste est retiré.",
+  ean13:"12 chiffres : le 13e (contrôle) est calculé. Les lettres sont retirées et des zéros sont ajoutés à gauche si c'est trop court.",
+  upca:"11 chiffres : le 12e (contrôle) est calculé. Les lettres sont retirées et des zéros sont ajoutés à gauche si c'est trop court."
+};
+function normalizeBC(type,text){
+  const notes=[]; let v=String(text||"");
+  if(type==="code128"){
+    const o=v; v=v.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^ -~]/g,"");
+    if(v!==o) notes.push("accents/caractères non supportés ajustés");
+  } else if(type==="code39"){
+    const o=v; v=v.toUpperCase().replace(/[^0-9A-Z\-. $\/+%]/g,"");
+    if(v!==o.toUpperCase()) notes.push("caractères non supportés retirés"); else if(v!==o) notes.push("mis en majuscules");
+  } else {
+    const n=BC_TARGET[type], d=v.replace(/\D/g,"");
+    if(d!==v.trim()&&d) notes.push("caractères non numériques retirés");
+    v=d;
+    if(v.length>n){ v=v.slice(0,n); notes.push("tronqué à "+n+" chiffres (+ contrôle calculé)"); }
+    else if(v.length&&v.length<n){ v=v.padStart(n,"0"); notes.push("complété avec des zéros à gauche ("+n+" chiffres)"); }
+  }
+  return {value:v,note:notes.join(", ")};
+}
 function codeValue(i){
   const b=design.bc;
-  return b.batch ? b.pre+String((+b.start||0)+i*(+b.step||1)).padStart(+b.pad||1,"0")+b.suf : b.value;
+  if(!b.batch) return b.value;
+  let pre=b.pre, suf=b.suf, pad=+b.pad||1;
+  const n=BC_TARGET[b.type];
+  if(n){ pre=pre.replace(/\D/g,""); suf=suf.replace(/\D/g,""); pad=Math.max(1,n-pre.length-suf.length); }
+  return pre+String((+b.start||0)+i*(+b.step||1)).padStart(pad,"0")+suf;
 }
 const total=()=>design.bc.on&&design.bc.batch?Math.max(1,Math.min(1000,+design.bc.count||1)):1;
 function contentHTML(idx,cw,m,cwRef){
   const B=design.bc;
-  let info="", err="", e=null, code=codeValue(idx), html="";
-  if(B.on){ try{ e=encode(B.type,code); code=e.human; }catch(x){ err=String(x); } }
+  let info="", err="", e=null, code="", html="", note="";
+  if(B.on){ const nb=normalizeBC(B.type,codeValue(idx)); code=nb.value; note=nb.note; try{ e=encode(B.type,code); code=e.human; }catch(x){ err=String(x); } }
   design.lines.forEach(l=>{ html+=`<div class="tl" style="font-size:${l.size}pt;font-weight:${l.bold?"bold":"normal"};text-align:${l.align}">${esc(l.text.replace(/\{code\}/g,code))||"&nbsp;"}</div>`; });
   if(e){
     const bw=Math.max(5,((cwRef||cw)-2*m)*B.w/100), mod=bw/(e.bits.length+20);
@@ -289,7 +319,7 @@ function contentHTML(idx,cw,m,cwRef){
       const ht=B.hText?B.hText.replace(/\{code\}/g,e.human):e.human;
       html+=`<div class="hr" style="width:${bw.toFixed(2)}mm;font-size:${B.hSize}pt;margin-top:.5mm;text-align:${B.hAlign};letter-spacing:${B.hSp/100}em;font-weight:${B.hBold?"bold":"normal"};font-style:${B.hItal?"italic":"normal"};text-decoration:${B.hUnd?"underline":"none"};white-space:pre-wrap;word-break:break-all">${esc(ht)}</div>`;
     }
-    info=`Largeur d'une barre fine : ${mod.toFixed(2)} mm (${(mod/0.125).toFixed(1)} points à 203 dpi, ${(mod/0.0847).toFixed(1)} à 300 dpi).`;
+    info=(note?"ℹ Valeur ajustée : "+note+" → "+e.human+". ":"")+`Largeur d'une barre fine : ${mod.toFixed(2)} mm (${(mod/0.125).toFixed(1)} points à 203 dpi, ${(mod/0.0847).toFixed(1)} à 300 dpi).`;
     if(mod<0.25) err="⚠ Barres très fines : risque de lecture difficile. Augmentez la largeur ou raccourcissez la valeur.";
   }
   return {html,info,err};
@@ -402,14 +432,15 @@ function syncForm(){
   const B=design.bc;
   $("bBatch").checked=B.batch; $("bPre").value=B.pre; $("bSuf").value=B.suf; $("bStart").value=B.start; $("bCount").value=B.count; $("bStep").value=B.step; $("bPad").value=B.pad;
   $("hText").value=B.hText; $("hSize").value=B.hSize; $("hSp").value=B.hSp; $("hAlign").value=B.hAlign; $("hBold").checked=B.hBold; $("hItal").checked=B.hItal; $("hUnd").checked=B.hUnd;
-  showBatch();
+  showBatch(); showHint();
   $("rot").value=design.rot; $("autoLen").checked=design.auto; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
   $("bcBox").style.display=design.bc.on?"block":"none";
 }
 $("stockSel").onchange=()=>{stockId=$("stockSel").value;autoZoom();refresh();};
 $("addLine").onclick=()=>{design.lines.push({text:"",size:12,bold:false,align:"center"});renderLines();refresh();};
 $("bcOn").onchange=()=>{design.bc.on=$("bcOn").checked;$("bcBox").style.display=design.bc.on?"block":"none";refresh();};
-$("bcType").onchange=()=>{design.bc.type=$("bcType").value;refresh();};
+$("bcType").onchange=()=>{design.bc.type=$("bcType").value;showHint();refresh();};
+function showHint(){ $("bcHint").textContent=BC_HINT[design.bc.type]; }
 $("bcValue").oninput=()=>{design.bc.value=$("bcValue").value;refresh();};
 $("bcH").oninput=()=>{design.bc.h=Math.max(3,+$("bcH").value||10);refresh();};
 $("bcW").oninput=()=>{design.bc.w=Math.min(100,Math.max(20,+$("bcW").value||90));refresh();};
