@@ -8,7 +8,10 @@
 :root{--bg:#f3f4f6;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#d1d5db;--acc:#f96302;--accd:#d65402}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 Arial,Helvetica,sans-serif}
-header{background:var(--acc);color:#fff;padding:10px 16px;font-size:18px;font-weight:bold}
+header{background:var(--acc);color:#fff;padding:8px 16px;font-size:18px;font-weight:bold;display:flex;align-items:center;gap:12px}
+header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
+header .hl{margin-left:auto;font-size:12px;font-weight:normal;color:#fff;background:transparent;border-color:rgba(255,255,255,.7);padding:3px 8px}
+header .hl:hover{background:rgba(255,255,255,.2)}
 .app{display:grid;grid-template-columns:380px 1fr;gap:14px;padding:14px;max-width:1300px;margin:auto}
 @media(max-width:800px){.app{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
@@ -60,7 +63,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </style>
 </head>
 <body>
-<header>🏷️ Étiquettes Zebra</header>
+<header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span><button class="hl" id="logoBtn" title="Choisir une image de logo (PNG, JPG ou SVG)">Logo…</button><button class="hl" id="logoDel" style="margin-left:0;display:none">✕</button><input type="file" id="logoFile" accept="image/*" style="display:none"></header>
 <div class="app">
   <div>
     <div class="card">
@@ -541,6 +544,24 @@ $("sSave").onclick=()=>{
   else { const id="s"+Date.now(); stocks.push({id,...obj}); stockId=id; }
   fillStockSel(); resetForm(); renderStockTbl(); autoZoom(); refresh();
 };
+
+/* ---------- Logo (en-tête) ---------- */
+function setLogo(src,custom){
+  const im=$("logo");
+  im.onload=()=>{im.style.display="block";};
+  im.onerror=()=>{im.style.display="none";};
+  im.src=src; $("logoDel").style.display=custom?"":"none";
+}
+(function(){ let l=null; try{ l=localStorage.getItem("zl_logo"); }catch(e){} setLogo(l||"logo.png",!!l); })();
+$("logoBtn").onclick=()=>$("logoFile").click();
+$("logoFile").onchange=()=>{
+  const f=$("logoFile").files[0]; if(!f) return;
+  if(f.size>1500000){ alert("Image trop lourde (max 1,5 Mo)."); return; }
+  const r=new FileReader();
+  r.onload=()=>{ try{ localStorage.setItem("zl_logo",r.result); }catch(e){ alert("Impossible de mémoriser le logo."); } setLogo(r.result,true); };
+  r.readAsDataURL(f); $("logoFile").value="";
+};
+$("logoDel").onclick=()=>{ try{ localStorage.removeItem("zl_logo"); }catch(e){} setLogo("logo.png",false); };
 
 syncForm(); autoZoom(); refresh();
 window.addEventListener("resize",()=>{});
