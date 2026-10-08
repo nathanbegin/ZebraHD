@@ -46,6 +46,10 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 .feed .ar i{font-style:normal;font-size:20px;line-height:14px}
 .feed .ar b{flex:1;width:3px;background:currentColor}
 .feed .tx{writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:bold;white-space:nowrap;align-self:center}
+.feedh{display:flex;align-items:center;gap:6px;color:var(--acc);font-size:12px;font-weight:bold;margin-top:6px;white-space:nowrap}
+.feedh b{flex:1;height:3px;background:currentColor;min-width:20px}
+.feedh i{font-style:normal;font-size:18px;line-height:1}
+.slot{border-right:3px dashed var(--acc)}
 #preview{display:grid;grid-template-columns:auto auto auto;align-items:stretch}
 .rl{overflow:visible;display:block;color:#374151}
 .corner{font-size:10px;line-height:1.2;color:#374151;font-weight:bold;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 4px 2px 0;white-space:nowrap}
@@ -163,7 +167,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 
   <div>
     <div class="card">
-      <h2>Aperçu <span style="float:right;text-transform:none">Zoom <input type="range" id="zoom" min="50" max="500" value="200" style="vertical-align:middle"></span></h2>
+      <h2>Aperçu <span style="float:right;text-transform:none"><label style="margin-right:12px;font-weight:normal"><input type="checkbox" id="viewUp"> Texte à l'endroit</label>Zoom <input type="range" id="zoom" min="50" max="500" value="200" style="vertical-align:middle"></span></h2>
       <div class="stage"><div id="preview"></div></div>
       <div class="warn" id="overflow"></div>
     </div>
@@ -368,7 +372,7 @@ function buildLabel(forPrint,idx=0,hOverride){
   el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tf?`transform:${tf};`:"")+`">${c.html}</div>`;
   return {el,info:c.info,err:c.err,H};
 }
-function rulerSVG(len,vertical,unit){
+function rulerSVG(len,vertical,unit,ttl){
   const T=7, step=unit==="in"?MM/8:1, mid=unit==="in"?4:5, major=unit==="in"?8:10, div=unit==="in"?MM:1;
   let g="";
   const n=Math.floor(len/step+1e-6);
@@ -386,7 +390,7 @@ function rulerSVG(len,vertical,unit){
   g+=vertical?`<line x1="${T-3.5}" y1="${len}" x2="${T}" y2="${len}" stroke="#f96302"/>`:`<line x1="${len}" y1="${T-3.5}" x2="${len}" y2="${T}" stroke="#f96302"/>`;
   const vb=vertical?`0 0 ${T} ${len}`:`0 0 ${len} ${T}`;
   const sz=vertical?`width:${T}mm;height:${len}mm`:`width:${len}mm;height:${T}mm`;
-  return `<svg class="rl" xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" style="${sz}" stroke="#374151" stroke-width=".15" fill="#374151" font-family="Arial,sans-serif" font-size="2.3"><title>${vertical?"Y : longueur (sens d'impression)":"X : largeur"}</title>${g}</svg>`;
+  return `<svg class="rl" xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" style="${sz}" stroke="#374151" stroke-width=".15" fill="#374151" font-family="Arial,sans-serif" font-size="2.3"><title>${ttl||(vertical?"Y : longueur (sens d'impression)":"X : largeur")}</title>${g}</svg>`;
 }
 function refresh(){
   const s=stock();
@@ -394,15 +398,31 @@ function refresh(){
   const {el,info,err,H}=buildLabel(false,0,autoActive()?maxAutoHeight():0);
   $("autoBox").style.display=design.auto?"block":"none";
   $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
-  const p=$("preview"); p.innerHTML=""; p.appendChild(el);
-  const fd=document.createElement("div"); fd.className="feed";
-  fd.innerHTML='<div class="ar"><i>▲</i><b></b></div><div class="tx">Sens d\'impression (sortie de l\'imprimante)</div>';
-  fd.style.gridRow="2"; fd.style.gridColumn="3"; el.style.gridRow="2"; el.style.gridColumn="2";
-  const u=s.u, Wmm=toMM(s.w,u), z=$("zoom").value/100;
-  const cell=(html,r,c,cls)=>{const d=document.createElement("div"); if(cls) d.className=cls; d.style.gridRow=r; d.style.gridColumn=c; d.innerHTML=html; if(!cls) d.style.zoom=z; p.appendChild(d); return d;};
-  cell(rulerSVG(Wmm,false,u),1,2);
-  cell(rulerSVG(H,true,u),2,1);
-  cell("X ↔<br>Y ↕",1,1,"corner"); el.style.zoom=$("zoom").value/100*(96/MM*MM/96);
+  const p=$("preview"); p.innerHTML="";
+  const u=s.u, Wmm=toMM(s.w,u), z=$("zoom").value/100, up=$("viewUp").checked;
+  const cell=(html,r,c,cls)=>{const d=document.createElement("div"); if(cls) d.className=cls; d.style.gridRow=r; d.style.gridColumn=c; if(typeof html==="string") d.innerHTML=html; else d.appendChild(html); if(!cls) d.style.zoom=z; p.appendChild(d); return d;};
+  if(up){
+    p.appendChild(el);
+    const fd=document.createElement("div"); fd.className="feed";
+    fd.innerHTML="<div class='ar'><i>▲</i><b></b></div><div class='tx'>Sens d'impression (sortie de l'imprimante)</div>";
+    fd.style.gridRow="2"; fd.style.gridColumn="3"; el.style.gridRow="2"; el.style.gridColumn="2"; p.appendChild(fd);
+    cell(rulerSVG(Wmm,false,u),1,2);
+    cell(rulerSVG(H,true,u),2,1);
+    cell("X ↔<br>Y ↕",1,1,"corner"); el.style.zoom=z;
+  } else {
+    // Sens d'impression horizontal : X = longueur (parallèle à la sortie), Y = largeur du ruban ; la sortie est à droite.
+    const box=document.createElement("div");
+    box.style.cssText=`position:relative;width:${H}mm;height:${Wmm}mm`;
+    el.style.cssText+=`;position:absolute;left:0;top:0;transform-origin:0 0;transform:translate(${H}mm,0) rotate(90deg)`;
+    box.appendChild(el);
+    const slot=document.createElement("div"); slot.className="slot"; slot.style.cssText=`position:absolute;right:-2px;top:0;bottom:0;width:0`; box.appendChild(slot);
+    cell(box,2,2);
+    cell(rulerSVG(H,false,u,"X : longueur (sens d'impression)"),1,2);
+    cell(rulerSVG(Wmm,true,u,"Y : largeur du ruban"),2,1);
+    cell("X ↔<br>Y ↕",1,1,"corner");
+    const fh=cell("<div class='feedh'><span>Sens d'impression (sortie de l'imprimante, fente à droite)</span><b></b><i>▶</i></div>",3,2,"nz");
+    fh.style.zoom="";
+  }
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
   const rot=el.firstChild;
@@ -410,8 +430,8 @@ function refresh(){
   save();
 }
 function autoZoom(){
-  const s=stock(), px=toMM(Math.max(s.w,s.u==="in"?0:0),s.u)/MM*96;
-  const avail=Math.max(200,($("preview").parentElement.clientWidth||600)-240);
+  const s=stock(), up=$("viewUp").checked, px=toMM(up?s.w:s.h,s.u)/MM*96;
+  const avail=Math.max(200,($("preview").parentElement.clientWidth||600)-(up?240:110));
   $("zoom").value=Math.max(50,Math.min(500,Math.floor(avail/px*100)));
 }
 
@@ -474,6 +494,8 @@ $("rot").onchange=()=>{design.rot=$("rot").value;refresh();};
 $("margin").oninput=()=>{design.margin=Math.max(0,+$("margin").value||0);refresh();};
 $("copies").oninput=()=>{design.copies=Math.min(500,Math.max(1,+$("copies").value||1));save();};
 $("zoom").oninput=refresh;
+try{ $("viewUp").checked=localStorage.getItem("zl_viewUp")==="1"; }catch(e){}
+$("viewUp").onchange=()=>{ try{localStorage.setItem("zl_viewUp",$("viewUp").checked?"1":"0");}catch(e){} autoZoom(); refresh(); };
 
 /* ---------- Impression ---------- */
 $("btnPrint").onclick=()=>{
