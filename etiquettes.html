@@ -45,7 +45,9 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 .feed .ar i{font-style:normal;font-size:20px;line-height:14px}
 .feed .ar b{flex:1;width:3px;background:currentColor}
 .feed .tx{writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:bold;white-space:nowrap;align-self:center}
-#preview{display:flex;align-items:stretch}
+#preview{display:grid;grid-template-columns:auto auto auto;align-items:stretch}
+.rl{overflow:visible;display:block;color:#374151}
+.corner{font-size:10px;line-height:1.2;color:#374151;font-weight:bold;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 4px 2px 0;white-space:nowrap}
 #printArea{display:none}
 @media print{
   html,body{margin:0;padding:0;background:#fff}
@@ -320,16 +322,41 @@ function buildLabel(forPrint,idx=0,hOverride){
   el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tf?`transform:${tf};`:"")+`">${c.html}</div>`;
   return {el,info:c.info,err:c.err,H};
 }
+function rulerSVG(len,vertical,unit){
+  const T=7, step=unit==="in"?MM/8:1, mid=unit==="in"?4:5, major=unit==="in"?8:10, div=unit==="in"?MM:1;
+  let g="";
+  const n=Math.floor(len/step+1e-6);
+  for(let i=0;i<=n;i++){
+    const v=i*step, L=i%major===0?3.5:i%mid===0?2.4:1.4, lab=i%major===0?String(i/major*(unit==="in"?1:10)):"";
+    if(vertical){
+      g+=`<line x1="${T-L}" y1="${v}" x2="${T}" y2="${v}"/>`;
+      if(lab) g+=`<text x="${T-3.5-.6}" y="${v+.8}" text-anchor="end">${lab}</text>`;
+    } else {
+      g+=`<line x1="${v}" y1="${T-L}" x2="${v}" y2="${T}"/>`;
+      if(lab) g+=`<text x="${v}" y="${T-3.5-.6}" text-anchor="${i===0?"start":"middle"}">${lab}</text>`;
+    }
+  }
+  // arête de fin (dimension exacte)
+  g+=vertical?`<line x1="${T-3.5}" y1="${len}" x2="${T}" y2="${len}" stroke="#f96302"/>`:`<line x1="${len}" y1="${T-3.5}" x2="${len}" y2="${T}" stroke="#f96302"/>`;
+  const vb=vertical?`0 0 ${T} ${len}`:`0 0 ${len} ${T}`;
+  const sz=vertical?`width:${T}mm;height:${len}mm`:`width:${len}mm;height:${T}mm`;
+  return `<svg class="rl" xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" style="${sz}" stroke="#374151" stroke-width=".15" fill="#374151" font-family="Arial,sans-serif" font-size="2.3"><title>${vertical?"Y : longueur (sens d'impression)":"X : largeur"}</title>${g}</svg>`;
+}
 function refresh(){
   const s=stock();
-  $("stockInfo").innerHTML=`<span class="sw" style="background:${s.color}"></span> ${dimTxt(s)} (${toMM(s.w,s.u).toFixed(1)} × ${toMM(s.h,s.u).toFixed(1)} mm)`;
+  $("stockInfo").innerHTML=`<span class="sw" style="background:${s.color}"></span> ${dimTxt(s)} (${toMM(s.w,s.u).toFixed(1)} × ${toMM(s.h,s.u).toFixed(1)} mm) · règles en ${s.u==="in"?"pouces":"mm"}`;
   const {el,info,err,H}=buildLabel(false,0,autoActive()?maxAutoHeight():0);
   $("autoBox").style.display=design.auto?"block":"none";
   $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
   const p=$("preview"); p.innerHTML=""; p.appendChild(el);
   const fd=document.createElement("div"); fd.className="feed";
   fd.innerHTML='<div class="ar"><i>▲</i><b></b></div><div class="tx">Sens d\'impression (sortie de l\'imprimante)</div>';
-  p.appendChild(fd); el.style.zoom=$("zoom").value/100*(96/MM*MM/96);
+  fd.style.gridRow="2"; fd.style.gridColumn="3"; el.style.gridRow="2"; el.style.gridColumn="2";
+  const u=s.u, Wmm=toMM(s.w,u), z=$("zoom").value/100;
+  const cell=(html,r,c,cls)=>{const d=document.createElement("div"); if(cls) d.className=cls; d.style.gridRow=r; d.style.gridColumn=c; d.innerHTML=html; if(!cls) d.style.zoom=z; p.appendChild(d); return d;};
+  cell(rulerSVG(Wmm,false,u),1,2);
+  cell(rulerSVG(H,true,u),2,1);
+  cell("X ↔<br>Y ↕",1,1,"corner"); el.style.zoom=$("zoom").value/100*(96/MM*MM/96);
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
   const rot=el.firstChild;
@@ -338,7 +365,7 @@ function refresh(){
 }
 function autoZoom(){
   const s=stock(), px=toMM(Math.max(s.w,s.u==="in"?0:0),s.u)/MM*96;
-  const avail=Math.max(200,($("preview").parentElement.clientWidth||600)-60);
+  const avail=Math.max(200,($("preview").parentElement.clientWidth||600)-240);
   $("zoom").value=Math.max(50,Math.min(500,Math.floor(avail/px*100)));
 }
 
