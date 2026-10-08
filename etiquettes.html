@@ -164,11 +164,13 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 
 <dialog id="dlg">
   <h3 style="margin-top:0">Types d'étiquettes</h3>
-  <table><thead><tr><th>Nom</th><th>Dimensions</th><th>Couleur</th><th></th></tr></thead><tbody id="stockTbl"></tbody></table>
+  <table><thead><tr><th>Nom</th><th>Dimensions</th><th>Couleur</th><th>Support</th><th></th></tr></thead><tbody id="stockTbl"></tbody></table>
   <div style="display:flex;gap:14px;flex-wrap:wrap"><div style="flex:1 1 260px">
+  <div class="row" style="margin:6px 0 10px"><button id="sExport">⬇ Exporter la liste</button><button id="sImport">⬆ Importer une liste</button><input type="file" id="sFile" accept=".json,application/json" style="display:none"></div>
   <h4 id="formTitle" style="margin:8px 0 0">Ajouter un type</h4>
   <label class="f">Nom (ex. Prix blanc, Liquidation jaune)</label>
   <input type="text" id="sName">
+  <label class="chk" style="margin-top:8px"><input type="checkbox" id="sAdh" checked> Autocollant (étiquette) — décocher pour du papier non autocollant (impression au ruban)</label>
   <div class="row">
     <div><label class="f">Largeur (↔ ruban)</label><input type="number" id="sW" step="0.01" min="5"></div>
     <div><label class="f">Hauteur (↕ sens d'impression)</label><input type="number" id="sH" step="0.01" min="5"></div>
@@ -255,9 +257,9 @@ function barcodeSVG(bits, widthMm, heightMm){
 
 /* ---------- État ---------- */
 const DEF_STOCKS=[
-  {id:"s1",name:'Prix 2" × 1" blanc',w:2,h:1,u:"in",color:"#ffffff"},
-  {id:"s2",name:'Tablette 3" × 2" blanc',w:3,h:2,u:"in",color:"#ffffff"},
-  {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176"}
+  {id:"s1",name:'Prix 2" × 1" blanc',w:2,h:1,u:"in",color:"#ffffff",adh:true},
+  {id:"s2",name:'Tablette 3" × 2" blanc',w:3,h:2,u:"in",color:"#ffffff",adh:true},
+  {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
 const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10};
 let stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
@@ -270,6 +272,8 @@ if(!stocks.some(s=>s.id===stockId)) stockId=stocks[0].id;
 function save(){ try{ localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId);}catch(e){} }
 const stock=()=>stocks.find(s=>s.id===stockId);
 const toMM=(v,u)=>u==="in"?v*MM:v;
+const isAdh=s=>s.adh!==false;
+const supTxt=s=>isAdh(s)?"autocollant":"papier (non autocollant)";
 const dimTxt=s=>s.u==="in"?`${s.w}" × ${s.h}"`:`${s.w} × ${s.h} mm`;
 
 /* ---------- Rendu de l'étiquette ---------- */
@@ -374,7 +378,7 @@ function rulerSVG(len,vertical,unit){
 }
 function refresh(){
   const s=stock();
-  $("stockInfo").innerHTML=`<span class="sw" style="background:${s.color}"></span> ${dimTxt(s)} (${toMM(s.w,s.u).toFixed(1)} × ${toMM(s.h,s.u).toFixed(1)} mm) · règles en ${s.u==="in"?"pouces":"mm"}`;
+  $("stockInfo").innerHTML=`<span class="sw" style="background:${s.color}"></span> ${dimTxt(s)} (${toMM(s.w,s.u).toFixed(1)} × ${toMM(s.h,s.u).toFixed(1)} mm) · ${supTxt(s)} · règles en ${s.u==="in"?"pouces":"mm"}`;
   const {el,info,err,H}=buildLabel(false,0,autoActive()?maxAutoHeight():0);
   $("autoBox").style.display=design.auto?"block":"none";
   $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
@@ -401,7 +405,7 @@ function autoZoom(){
 
 /* ---------- Formulaire ---------- */
 function fillStockSel(){
-  $("stockSel").innerHTML=stocks.map(s=>`<option value="${s.id}">${esc(s.name)} — ${dimTxt(s)}</option>`).join("");
+  $("stockSel").innerHTML=stocks.map(s=>`<option value="${s.id}">${esc(s.name)} — ${dimTxt(s)} · ${isAdh(s)?"autocollant":"papier"}</option>`).join("");
   $("stockSel").value=stockId;
 }
 function renderLines(){
@@ -472,11 +476,11 @@ $("btnPrint").onclick=()=>{
 
 /* ---------- Gestion des types d'étiquettes ---------- */
 function renderStockTbl(){
-  $("stockTbl").innerHTML=stocks.map(s=>`<tr><td>${esc(s.name)}</td><td>${dimTxt(s)}</td><td><span class="sw" style="background:${s.color}"></span></td>
+  $("stockTbl").innerHTML=stocks.map(s=>`<tr><td>${esc(s.name)}</td><td>${dimTxt(s)}</td><td><span class="sw" style="background:${s.color}"></span></td><td>${isAdh(s)?"🏷 Autocollant":"📄 Papier"}</td>
     <td style="white-space:nowrap"><button class="sm" data-e="${s.id}">Modifier</button> <button class="sm" data-d="${s.id}">Supprimer</button></td></tr>`).join("");
   $("stockTbl").querySelectorAll("[data-e]").forEach(b=>b.onclick=()=>{
     const s=stocks.find(x=>x.id===b.dataset.e); editId=s.id; $("formTitle").textContent="Modifier : "+s.name;
-    $("sName").value=s.name;$("sW").value=s.w;$("sH").value=s.h;$("sU").value=s.u;$("sC").value=s.color;drawStockPrev();
+    $("sName").value=s.name;$("sW").value=s.w;$("sH").value=s.h;$("sU").value=s.u;$("sC").value=s.color;$("sAdh").checked=isAdh(s);drawStockPrev();
   });
   $("stockTbl").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
     if(stocks.length<2){$("sErr").textContent="Il faut garder au moins un type.";return;}
@@ -499,18 +503,40 @@ function drawStockPrev(){
     <text transform="translate(${x-8},${y+rh/2}) rotate(-90)" text-anchor="middle" fill="#333">Hauteur ${ht} ↕</text>
     <line x1="${ax}" y1="${y+rh}" x2="${ax}" y2="${y+4}" stroke="#f96302" stroke-width="3"/>
     <polygon points="${ax-7},${y+10} ${ax+7},${y+10} ${ax},${y-4}" fill="#f96302"/>
+    <text x="${x}" y="${y+rh+32}" fill="#333" font-weight="bold">${$("sAdh").checked?"🏷 Autocollant":"📄 Papier non autocollant"}</text>
     <text transform="translate(${ax+16},${y+rh/2}) rotate(90)" text-anchor="middle" fill="#f96302" font-weight="bold">Sens d'impression</text>
   </svg>`;
 }
-function resetForm(){editId=null;$("formTitle").textContent="Ajouter un type";$("sName").value="";$("sW").value="";$("sH").value="";$("sU").value="in";$("sC").value="#ffffff";$("sErr").textContent="";drawStockPrev();}
+function resetForm(){editId=null;$("formTitle").textContent="Ajouter un type";$("sName").value="";$("sW").value="";$("sH").value="";$("sU").value="in";$("sC").value="#ffffff";$("sAdh").checked=true;$("sErr").textContent="";drawStockPrev();}
 $("btnManage").onclick=()=>{resetForm();renderStockTbl();$("dlg").showModal();};
-["sW","sH","sU","sC"].forEach(id=>$(id).addEventListener("input",drawStockPrev));
+["sW","sH","sU","sC","sAdh"].forEach(id=>$(id).addEventListener("input",drawStockPrev));
+$("sAdh").addEventListener("change",drawStockPrev);
+$("sExport").onclick=()=>{
+  const blob=new Blob([JSON.stringify({zebraTypes:1,stocks},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="types-etiquettes.json"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+$("sImport").onclick=()=>$("sFile").click();
+$("sFile").onchange=()=>{
+  const f=$("sFile").files[0]; if(!f) return;
+  f.text().then(t=>{
+    const d=JSON.parse(t), list=Array.isArray(d)?d:d.stocks; if(!Array.isArray(list)) throw 0;
+    let n=0;
+    list.forEach(x=>{
+      if(!x||!x.name||!(+x.w>0)||!(+x.h>0)) return;
+      const o={name:String(x.name),w:+x.w,h:+x.h,u:x.u==="mm"?"mm":"in",color:/^#[0-9a-f]{6}$/i.test(x.color)?x.color:"#ffffff",adh:x.adh!==false};
+      const dup=stocks.find(y=>y.name===o.name&&y.w===o.w&&y.h===o.h&&y.u===o.u&&isAdh(y)===o.adh);
+      if(!dup){ stocks.push({id:"s"+Date.now()+"_"+n,...o}); n++; }
+    });
+    fillStockSel(); renderStockTbl(); refresh();
+    $("sErr").textContent=n+" type(s) importé(s).";
+  }).catch(()=>{$("sErr").textContent="Fichier invalide.";}).finally(()=>{$("sFile").value="";});
+};
 $("sClose").onclick=()=>$("dlg").close();
 $("sCancel").onclick=resetForm;
 $("sSave").onclick=()=>{
   const name=$("sName").value.trim(), w=+$("sW").value, h=+$("sH").value;
   if(!name||!(w>0)||!(h>0)){$("sErr").textContent="Entrez un nom, une largeur et une hauteur.";return;}
-  const obj={name,w,h,u:$("sU").value,color:$("sC").value};
+  const obj={name,w,h,u:$("sU").value,color:$("sC").value,adh:$("sAdh").checked};
   if(editId){ Object.assign(stocks.find(x=>x.id===editId),obj); }
   else { const id="s"+Date.now(); stocks.push({id,...obj}); stockId=id; }
   fillStockSel(); resetForm(); renderStockTbl(); autoZoom(); refresh();
