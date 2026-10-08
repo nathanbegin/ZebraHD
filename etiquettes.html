@@ -5,13 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Étiquettes Zebra</title>
 <style>
-:root{--bg:#f3f4f6;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#d1d5db;--acc:#f96302;--accd:#d65402}
+:root{--hh:56px;--bg:#f3f4f6;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#d1d5db;--acc:#f96302;--accd:#d65402}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 Arial,Helvetica,sans-serif}
 header{background:var(--acc);color:#fff;padding:8px 16px;font-size:18px;font-weight:bold;display:flex;align-items:center;gap:12px}
 header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
 .app{display:grid;grid-template-columns:380px 1fr;gap:14px;padding:14px;max-width:1300px;margin:auto}
-@media(max-width:800px){.app{grid-template-columns:1fr}}
+.side{position:sticky;top:14px;align-self:start;height:calc(100vh - var(--hh) - 28px);min-height:340px}
+.pv{height:100%;display:flex;flex-direction:column;margin:0}
+.pv .stage{flex:1;min-height:0}
+.mbar{display:none}
+@media(max-width:800px){
+  body{padding-bottom:76px}
+  header{font-size:16px;padding:6px 12px}
+  header #logo{height:34px}
+  .app{display:flex;flex-direction:column;gap:8px;padding:0 8px 8px}
+  .side{align-self:stretch;min-width:0;order:-1;position:sticky;top:0;z-index:20;height:46vh;min-height:230px;padding:8px 0 4px;background:var(--bg)}
+  .pv{padding:8px}
+  .feedh{font-size:11px}
+  .feedh .lg{display:none}
+  .pv h2 button{min-height:0}
+  .pv h2{margin-bottom:4px}
+  .row{flex-wrap:wrap}
+  .row>*{min-width:110px}
+  input[type=text],input[type=number],select,textarea{font-size:16px;padding:9px 10px}
+  button{min-height:42px}
+  .card{margin-bottom:10px}
+  dialog{width:96vw;max-height:92vh;overflow:auto;padding:12px}
+  .mbar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+  .mbar button{width:100%}
+}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
 .card h2{margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
 label.f{display:block;font-size:12px;color:var(--mute);margin:6px 0 2px}
@@ -28,7 +51,7 @@ button.sm{padding:3px 8px}
 .line{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;background:#fafafa}
 .line .row{margin-top:6px}
 .chk{display:flex;gap:5px;align-items:center;flex:0 0 auto;font-size:13px}
-.stage{display:flex;justify-content:center;align-items:center;min-height:300px;background:#e5e7eb;border-radius:8px;overflow:auto;padding:20px}
+.stage{display:flex;background:#e5e7eb;border-radius:8px;overflow:auto;padding:12px}
 .lbl{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35);position:relative;overflow:hidden;color:#000;font-family:Arial,Helvetica,sans-serif}
 .rot{position:absolute;left:0;top:0;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden;transform-origin:0 0}
 .tl{width:100%;line-height:1.1;white-space:pre-wrap;word-break:break-word;font-family:Arial,Helvetica,sans-serif}
@@ -50,7 +73,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 .feedh b{flex:1;height:3px;background:currentColor;min-width:20px}
 .feedh i{font-style:normal;font-size:18px;line-height:1}
 .slot{border-right:3px dashed var(--acc)}
-#preview{display:grid;grid-template-columns:auto auto auto;align-items:stretch}
+#preview{margin:auto;display:grid;grid-template-columns:auto auto auto;align-items:stretch}
 .rl{overflow:visible;display:block;color:#374151}
 .corner{font-size:10px;line-height:1.2;color:#374151;font-weight:bold;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 4px 2px 0;white-space:nowrap}
 #printArea{display:none}
@@ -173,14 +196,15 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
     </div>
   </div>
 
-  <div>
-    <div class="card">
-      <h2>Aperçu <span style="float:right;text-transform:none">Zoom <input type="range" id="zoom" min="50" max="500" value="200" style="vertical-align:middle"></span></h2>
+  <div class="side">
+    <div class="card pv">
+      <h2>Aperçu <span style="float:right;text-transform:none;font-weight:normal"><button class="sm" id="zoomFit" style="min-height:0;padding:2px 8px">Ajuster</button> <input type="range" id="zoom" min="20" max="800" value="200" style="vertical-align:middle;width:110px"></span></h2>
       <div class="stage"><div id="preview"></div></div>
       <div class="warn" id="overflow"></div>
     </div>
   </div>
 </div>
+<div class="mbar"><button class="pri" id="btnPrint2">🖨️ Imprimer</button></div>
 
 <div id="printArea"></div>
 <style id="pageStyle"></style>
@@ -409,7 +433,9 @@ function refresh(){
   $("autoBox").style.display=design.auto?"block":"none";
   $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
   const p=$("preview"); p.innerHTML="";
-  const u=s.u, Wmm=toMM(s.w,u), z=$("zoom").value/100;
+  const u=s.u, Wmm=toMM(s.w,u);
+  if(!zoomManual) fitZoom(H,Wmm);
+  const z=$("zoom").value/100;
   const cell=(html,r,c,cls)=>{const d=document.createElement("div"); if(cls) d.className=cls; d.style.gridRow=r; d.style.gridColumn=c; if(typeof html==="string") d.innerHTML=html; else d.appendChild(html); if(!cls) d.style.zoom=z; p.appendChild(d); return d;};
     // Sens d'impression horizontal : X = longueur (parallèle à la sortie), Y = largeur du ruban ; la sortie est à droite.
     const box=document.createElement("div");
@@ -421,7 +447,7 @@ function refresh(){
     cell(rulerSVG(H,false,u,"X : longueur (sens d'impression)"),1,2);
     cell(rulerSVG(Wmm,true,u,"Y : largeur du ruban"),2,1);
     cell("X ↔<br>Y ↕",1,1,"corner");
-    const fh=cell("<div class='feedh'><span>Sens d'impression (sortie de l'imprimante, fente à droite)</span><b></b><i>▶</i></div>",3,2,"nz");
+    const fh=cell("<div class='feedh'><span>Sens d'impression<span class='lg'> (sortie de l'imprimante, fente à droite)</span></span><b></b><i>▶</i></div>",3,2,"nz");
     fh.style.zoom="";
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
@@ -429,11 +455,16 @@ function refresh(){
   $("overflow").textContent = (rot.scrollHeight>rot.clientHeight+1||rot.scrollWidth>rot.clientWidth+1) ? "⚠ Le contenu dépasse de l'étiquette : réduisez la taille du texte ou la hauteur du code-barres." : "";
   save();
 }
-function autoZoom(){
-  const s=stock(), px=toMM(s.h,s.u)/MM*96;
-  const avail=Math.max(200,($("preview").parentElement.clientWidth||600)-110);
-  $("zoom").value=Math.max(50,Math.min(500,Math.floor(avail/px*100)));
+let zoomManual=false;
+function fitZoom(Hmm,Wmm){
+  const st=document.querySelector(".stage"); if(!st) return;
+  const aw=st.clientWidth-24, ah=st.clientHeight-24-34;
+  if(aw<60||ah<60) return;
+  const k=96/MM;
+  const z=Math.min(aw/((Hmm+8)*k), ah/((Wmm+8)*k));
+  $("zoom").value=Math.max(20,Math.min(800,Math.floor(z*100)));
 }
+function autoZoom(){ zoomManual=false; }
 
 /* ---------- Formulaire ---------- */
 function fillStockSel(){
@@ -496,7 +527,9 @@ $("minLen").oninput=()=>{design.minLen=Math.max(0,+$("minLen").value||0);refresh
 $("rot").onchange=()=>{design.rot=$("rot").value;refresh();};
 $("margin").oninput=()=>{design.margin=Math.max(0,+$("margin").value||0);refresh();};
 $("copies").oninput=()=>{design.copies=Math.min(500,Math.max(1,+$("copies").value||1));save();};
-$("zoom").oninput=refresh;
+$("zoom").oninput=()=>{zoomManual=true;refresh();};
+$("zoomFit").onclick=()=>{zoomManual=false;refresh();};
+$("btnPrint2").onclick=()=>$("btnPrint").click();
 
 /* ---------- Impression ---------- */
 $("btnPrint").onclick=()=>{
@@ -644,7 +677,7 @@ document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&cloudOn&
 
 syncForm(); autoZoom(); refresh();
 fillTplSel(); setCloud("off"); cloudLoad();
-window.addEventListener("resize",()=>{});
+let rzT; window.addEventListener("resize",()=>{ clearTimeout(rzT); rzT=setTimeout(()=>{ if(!zoomManual) refresh(); },120); });
 </script>
 </body>
 </html>
