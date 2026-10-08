@@ -36,10 +36,16 @@ button.sm{padding:3px 8px}
 .warn{color:#b91c1c;font-size:12px;margin-top:6px}
 .info{color:var(--mute);font-size:12px;margin-top:6px}
 .sw{display:inline-block;width:12px;height:12px;border:1px solid #888;border-radius:2px;vertical-align:middle}
-dialog{border:1px solid var(--line);border-radius:10px;padding:16px;width:min(560px,95vw)}
+dialog{border:1px solid var(--line);border-radius:10px;padding:16px;width:min(760px,95vw)}
 dialog::backdrop{background:rgba(0,0,0,.4)}
 table{width:100%;border-collapse:collapse;margin-bottom:10px}
 td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+.feed{display:flex;gap:4px;margin-left:16px;color:var(--acc);align-self:stretch}
+.feed .ar{display:flex;flex-direction:column;align-items:center;width:18px}
+.feed .ar i{font-style:normal;font-size:20px;line-height:14px}
+.feed .ar b{flex:1;width:3px;background:currentColor}
+.feed .tx{writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:bold;white-space:nowrap;align-self:center}
+#preview{display:flex;align-items:stretch}
 #printArea{display:none}
 @media print{
   html,body{margin:0;padding:0;background:#fff}
@@ -131,7 +137,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <label class="chk" style="margin-top:10px"><input type="checkbox" id="autoLen"> Longueur automatique (rouleau avec couteau)</label>
       <div id="autoBox" style="display:none">
         <div class="row"><div><label class="f">Longueur minimale (mm)</label><input type="number" id="minLen" min="0" step="1"></div></div>
-        <div class="info">La largeur du papier choisi reste fixe. La longueur est ajustée au contenu + marges, puis le couteau coupe.</div>
+        <div class="info">La largeur du papier (perpendiculaire au sens d'impression) reste fixe. Seule la longueur, <b>parallèle à la sortie de l'imprimante</b>, est ajustée au contenu + marges, puis le couteau coupe.</div>
       </div>
       <div class="info" id="autoInfo"></div>
       <div style="height:10px"></div>
@@ -155,17 +161,19 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 <dialog id="dlg">
   <h3 style="margin-top:0">Types d'étiquettes</h3>
   <table><thead><tr><th>Nom</th><th>Dimensions</th><th>Couleur</th><th></th></tr></thead><tbody id="stockTbl"></tbody></table>
-  <div class="info">Largeur = largeur du ruban. Si « Longueur automatique » est cochée à l'impression, la hauteur ci-dessous est ignorée.</div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap"><div style="flex:1 1 260px">
   <h4 id="formTitle" style="margin:8px 0 0">Ajouter un type</h4>
   <label class="f">Nom (ex. Prix blanc, Liquidation jaune)</label>
   <input type="text" id="sName">
   <div class="row">
-    <div><label class="f">Largeur</label><input type="number" id="sW" step="0.01" min="5"></div>
-    <div><label class="f">Hauteur</label><input type="number" id="sH" step="0.01" min="5"></div>
+    <div><label class="f">Largeur (↔ ruban)</label><input type="number" id="sW" step="0.01" min="5"></div>
+    <div><label class="f">Hauteur (↕ sens d'impression)</label><input type="number" id="sH" step="0.01" min="5"></div>
     <div><label class="f">Unité</label><select id="sU"><option value="in">pouces</option><option value="mm">mm</option></select></div>
     <div style="flex:0 0 70px"><label class="f">Couleur</label><input type="color" id="sC" value="#ffffff" style="width:100%;height:32px;padding:0"></div>
   </div>
+  <div class="info">Largeur = travers du ruban (perpendiculaire à la sortie). Hauteur = longueur dans le sens d'impression (parallèle à la sortie) ; elle est ignorée si « Longueur automatique » est cochée à l'impression.</div>
   <div class="warn" id="sErr"></div>
+  </div><div id="stockPrev" style="flex:0 0 250px"></div></div>
   <div class="row" style="margin-top:10px">
     <button class="pri" id="sSave" style="font-size:14px;padding:8px">Enregistrer</button>
     <button id="sCancel">Annuler la modification</button>
@@ -267,13 +275,13 @@ function codeValue(i){
   return b.batch ? b.pre+String((+b.start||0)+i*(+b.step||1)).padStart(+b.pad||1,"0")+b.suf : b.value;
 }
 const total=()=>design.bc.on&&design.bc.batch?Math.max(1,Math.min(1000,+design.bc.count||1)):1;
-function contentHTML(idx,cw,m){
+function contentHTML(idx,cw,m,cwRef){
   const B=design.bc;
   let info="", err="", e=null, code=codeValue(idx), html="";
   if(B.on){ try{ e=encode(B.type,code); code=e.human; }catch(x){ err=String(x); } }
   design.lines.forEach(l=>{ html+=`<div class="tl" style="font-size:${l.size}pt;font-weight:${l.bold?"bold":"normal"};text-align:${l.align}">${esc(l.text.replace(/\{code\}/g,code))||"&nbsp;"}</div>`; });
   if(e){
-    const bw=Math.max(5,(cw-2*m)*B.w/100), mod=bw/(e.bits.length+20);
+    const bw=Math.max(5,((cwRef||cw)-2*m)*B.w/100), mod=bw/(e.bits.length+20);
     html+=`<div style="height:1.5mm;flex:none"></div>`+barcodeSVG(e.bits,bw.toFixed(2),B.h);
     if(B.human){
       const ht=B.hText?B.hText.replace(/\{code\}/g,e.human):e.human;
@@ -284,18 +292,21 @@ function contentHTML(idx,cw,m){
   }
   return {html,info,err};
 }
-const autoActive=()=>design.auto&&(design.rot==="0"||design.rot==="180");
+const autoActive=()=>!!design.auto;
+const rotated=()=>design.rot==="90"||design.rot==="270";
+const nominalLen=()=>{const s=stock();return toMM(s.h,s.u);};
 function autoHeight(idx){
-  const s=stock(), W=toMM(s.w,s.u), m=+design.margin||0;
+  const s=stock(), W=toMM(s.w,s.u), m=+design.margin||0, rt=rotated();
   const probe=document.createElement("div");
   probe.className="rot";
-  probe.style.cssText=`position:static;visibility:hidden;width:${W}mm;padding:${m}mm;`;
-  probe.innerHTML=contentHTML(idx,W,m).html;
+  probe.style.cssText="position:static;visibility:hidden;padding:"+m+"mm;"+(rt?"width:max-content;height:"+W+"mm;":"width:"+W+"mm;");
+  probe.innerHTML=contentHTML(idx,rt?nominalLen():W,m,rt?nominalLen():W).html;
   const wrap=document.createElement("div"); wrap.style.cssText="position:absolute;left:-9999px;top:0";
   wrap.appendChild(probe); document.body.appendChild(wrap);
-  const h=probe.getBoundingClientRect().height/96*MM;
+  const r=probe.getBoundingClientRect();
   wrap.remove();
-  return Math.max(Math.ceil(h*10)/10, +design.minLen||0);
+  const px=rt?r.width+1:r.height;
+  return Math.max(Math.ceil(px/96*MM*10)/10, +design.minLen||0);
 }
 function maxAutoHeight(){ let h=0; for(let i=0;i<total();i++) h=Math.max(h,autoHeight(i)); return h; }
 function buildLabel(forPrint,idx=0,hOverride){
@@ -305,7 +316,7 @@ function buildLabel(forPrint,idx=0,hOverride){
   const el=document.createElement("div"); el.className="lbl";
   el.style.cssText=`width:${W}mm;height:${H}mm;`+(forPrint?"":`background:${s.color}`);
   const tf={"90":`translate(${W}mm,0) rotate(90deg)`,"180":`translate(${W}mm,${H}mm) rotate(180deg)`,"270":`translate(0,${H}mm) rotate(-90deg)`}[R];
-  const c=contentHTML(idx,cw,m);
+  const c=contentHTML(idx,cw,m,(autoActive()&&sw)?nominalLen():undefined);
   el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tf?`transform:${tf};`:"")+`">${c.html}</div>`;
   return {el,info:c.info,err:c.err,H};
 }
@@ -314,8 +325,11 @@ function refresh(){
   $("stockInfo").innerHTML=`<span class="sw" style="background:${s.color}"></span> ${dimTxt(s)} (${toMM(s.w,s.u).toFixed(1)} × ${toMM(s.h,s.u).toFixed(1)} mm)`;
   const {el,info,err,H}=buildLabel(false,0,autoActive()?maxAutoHeight():0);
   $("autoBox").style.display=design.auto?"block":"none";
-  $("autoInfo").textContent = !design.auto ? "" : autoActive() ? `Longueur calculée : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "Longueur automatique non disponible avec une rotation de 90° ou 270° (la taille du papier choisi est utilisée).";
-  const p=$("preview"); p.innerHTML=""; p.appendChild(el); el.style.zoom=$("zoom").value/100*(96/MM*MM/96);
+  $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
+  const p=$("preview"); p.innerHTML=""; p.appendChild(el);
+  const fd=document.createElement("div"); fd.className="feed";
+  fd.innerHTML='<div class="ar"><i>▲</i><b></b></div><div class="tx">Sens d\'impression (sortie de l\'imprimante)</div>';
+  p.appendChild(fd); el.style.zoom=$("zoom").value/100*(96/MM*MM/96);
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
   const rot=el.firstChild;
@@ -404,7 +418,7 @@ function renderStockTbl(){
     <td style="white-space:nowrap"><button class="sm" data-e="${s.id}">Modifier</button> <button class="sm" data-d="${s.id}">Supprimer</button></td></tr>`).join("");
   $("stockTbl").querySelectorAll("[data-e]").forEach(b=>b.onclick=()=>{
     const s=stocks.find(x=>x.id===b.dataset.e); editId=s.id; $("formTitle").textContent="Modifier : "+s.name;
-    $("sName").value=s.name;$("sW").value=s.w;$("sH").value=s.h;$("sU").value=s.u;$("sC").value=s.color;
+    $("sName").value=s.name;$("sW").value=s.w;$("sH").value=s.h;$("sU").value=s.u;$("sC").value=s.color;drawStockPrev();
   });
   $("stockTbl").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
     if(stocks.length<2){$("sErr").textContent="Il faut garder au moins un type.";return;}
@@ -414,8 +428,25 @@ function renderStockTbl(){
     fillStockSel(); renderStockTbl(); refresh();
   });
 }
-function resetForm(){editId=null;$("formTitle").textContent="Ajouter un type";$("sName").value="";$("sW").value="";$("sH").value="";$("sU").value="in";$("sC").value="#ffffff";$("sErr").textContent="";}
+function drawStockPrev(){
+  const u=$("sU").value, w=toMM(+$("sW").value||2,u), h=toMM(+$("sH").value||1,u);
+  const sc=Math.min(130/w,130/h), rw=w*sc, rh=h*sc, x=44, y=40, col=$("sC").value;
+  const wt=($("sW").value||"?")+(u==="in"?'"':" mm"), ht=($("sH").value||"?")+(u==="in"?'"':" mm");
+  const ax=x+rw+26;
+  $("stockPrev").innerHTML=`<svg viewBox="0 0 250 220" width="250" height="220" style="font-family:Arial,sans-serif;font-size:11px">
+    <line x1="${x-14}" y1="${y}" x2="${ax+10}" y2="${y}" stroke="#555" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="${x-14}" y="${y-18}" fill="#555">Fente de sortie de l'imprimante</text>
+    <rect x="${x}" y="${y}" width="${rw}" height="${rh}" fill="${col}" stroke="#333" stroke-width="1.5"/>
+    <text x="${x+rw/2}" y="${y+rh+15}" text-anchor="middle" fill="#333">Largeur ${wt} ↔</text>
+    <text transform="translate(${x-8},${y+rh/2}) rotate(-90)" text-anchor="middle" fill="#333">Hauteur ${ht} ↕</text>
+    <line x1="${ax}" y1="${y+rh}" x2="${ax}" y2="${y+4}" stroke="#f96302" stroke-width="3"/>
+    <polygon points="${ax-7},${y+10} ${ax+7},${y+10} ${ax},${y-4}" fill="#f96302"/>
+    <text transform="translate(${ax+16},${y+rh/2}) rotate(90)" text-anchor="middle" fill="#f96302" font-weight="bold">Sens d'impression</text>
+  </svg>`;
+}
+function resetForm(){editId=null;$("formTitle").textContent="Ajouter un type";$("sName").value="";$("sW").value="";$("sH").value="";$("sU").value="in";$("sC").value="#ffffff";$("sErr").textContent="";drawStockPrev();}
 $("btnManage").onclick=()=>{resetForm();renderStockTbl();$("dlg").showModal();};
+["sW","sH","sU","sC"].forEach(id=>$(id).addEventListener("input",drawStockPrev));
 $("sClose").onclick=()=>$("dlg").close();
 $("sCancel").onclick=resetForm;
 $("sSave").onclick=()=>{
