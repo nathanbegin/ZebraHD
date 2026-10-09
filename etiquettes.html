@@ -409,8 +409,17 @@ function buildLabel(forPrint,idx=0,hOverride){
   const dxp=design.off?(+design.oy||0):0, dyp=design.off?-(+design.ox||0):0; // axes de l'aperçu -> axes de la page
   const tr=(dxp||dyp?`translate(${dxp}mm,${dyp}mm)`+(tf?" ":""):"")+(tf||"");
   const c=contentHTML(idx,cw,m,(autoActive()&&sw)?nominalLen():undefined);
-  el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tr?`transform:${tr};`:"")+`">${c.html}</div>`;
-  return {el,info:c.info,err:c.err,H};
+  el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tr?`transform:${tr};`:"")+`"><div class="fit" style="width:100%;display:flex;flex-direction:column;align-items:center;transform-origin:50% 50%">${c.html}</div></div>`;
+  // Réduction automatique si le contenu dépasse la zone délimitée par les marges.
+  let k=1;
+  const wrap=document.createElement("div"); wrap.style.cssText="position:absolute;left:-9999px;top:0;visibility:hidden";
+  document.body.appendChild(wrap); wrap.appendChild(el);
+  const fit=el.firstChild.firstChild, pxmm=96/MM;
+  const kh=((ch-2*m)*pxmm)/Math.max(1,fit.offsetHeight), kw=((cw-2*m)*pxmm)/Math.max(1,fit.scrollWidth);
+  k=Math.min(1,kh,kw); if(k>0.985) k=1;
+  if(k<1) fit.style.transform=`scale(${k.toFixed(4)})`;
+  wrap.remove();
+  return {el,info:c.info,err:c.err,H,k};
 }
 function rulerSVG(len,vertical,unit,ttl){
   const T=7, step=unit==="in"?MM/8:1, mid=unit==="in"?4:5, major=unit==="in"?8:10, div=unit==="in"?MM:1;
@@ -435,7 +444,7 @@ function rulerSVG(len,vertical,unit,ttl){
 function refresh(){
   const s=stock();
   $("stockInfo").innerHTML=`<span class="sw" style="background:${s.color}"></span> ${dimTxt(s)} (${toMM(s.w,s.u).toFixed(1)} × ${toMM(s.h,s.u).toFixed(1)} mm) · ${supTxt(s)} · règles en ${s.u==="in"?"pouces":"mm"}`;
-  const {el,info,err,H}=buildLabel(false,0,autoActive()?maxAutoHeight():0);
+  const {el,info,err,H,k}=buildLabel(false,0,autoActive()?maxAutoHeight():0);
   $("autoBox").style.display=design.auto?"block":"none";
   $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
   const p=$("preview"); p.innerHTML="";
@@ -457,8 +466,7 @@ function refresh(){
     fh.style.zoom="";
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
-  const rot=el.firstChild;
-  $("overflow").textContent = (rot.scrollHeight>rot.clientHeight+1||rot.scrollWidth>rot.clientWidth+1) ? "⚠ Le contenu dépasse de l'étiquette : réduisez la taille du texte ou la hauteur du code-barres." : "";
+  $("overflow").textContent = k<1 ? `ℹ Contenu réduit à ${Math.round(k*100)} % pour respecter la marge de ${design.margin||0} mm.` : "";
   save();
 }
 let zoomManual=false;
