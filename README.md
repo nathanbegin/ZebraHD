@@ -19,3 +19,10 @@ Les types d'étiquettes et les modèles sont partagés entre les ordinateurs via
 5. L'indicateur « ☁ Synchronisé » apparaît dans la carte Modèles. Sans base, l'application reste en mode local.
 
 La fonction serveur est dans `api/data.js`. Aucune protection d'accès : toute personne ayant le lien peut modifier la liste.
+
+## Configuration de l'imprimante (ZDesigner ZD420 300 dpi ZPL)
+
+- **Options** : portrait, largeur/hauteur = taille du type d'étiquette, zones non imprimables à 0.
+- **Réglages avancés** : mode opératoire *Massicot* ; support *Transfert thermique* (papier + ruban) ou *Thermique direct* ; détection *Continu* (longueur automatique), *Détection Web* (étiquettes à espaces) ou *Marque* ; ajustements à 0 ; *Calibrer*.
+- **Tramage** : essayer « Aucun ».
+- **Chrome** : même papier, marges « Aucune », échelle 100 %.

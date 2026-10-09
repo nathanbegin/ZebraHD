@@ -15,6 +15,11 @@ header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
 .pv{height:100%;display:flex;flex-direction:column;margin:0}
 .pv .stage{flex:1;min-height:0}
 .mbar{display:none}
+.help{margin-top:8px;font-size:13px}
+.help summary{cursor:pointer;color:var(--acc);font-weight:bold}
+.help ol{padding-left:18px;margin:6px 0}
+.help li{margin-bottom:4px}
+@media print{.help{display:none}}
 @media(max-width:800px){
   body{padding-bottom:76px}
   header{font-size:16px;padding:6px 12px}
@@ -199,6 +204,19 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div style="height:10px"></div>
       <button class="pri" id="btnPrint">🖨️ Imprimer</button>
       <div class="info">Dans la fenêtre d'impression : choisir l'imprimante Zebra, le papier de même taille que l'étiquette, marges « Aucune » et échelle 100 %.</div>
+      <details class="help">
+        <summary>Configuration de l'imprimante (pilote ZDesigner ZD420 300 dpi)</summary>
+        <ol>
+          <li><b>Options</b> : unité cm, <b>portrait</b>, Largeur et Hauteur = taille du type d'étiquette (ex. 7,62 × 5,08 cm = 3" × 2"), zones non imprimables à 0.</li>
+          <li><b>Réglages avancés → Mode opératoire</b> : <b>Massicot</b> (coupé par lot de 1) pour couper après chaque étiquette.</li>
+          <li><b>Type de support</b> : <b>Transfert thermique</b> pour le papier non autocollant avec ruban ; <b>Thermique direct</b> pour des étiquettes thermiques sans ruban.</li>
+          <li><b>Mode de détection</b> : <b>Continu</b> pour un rouleau coupé au couteau (obligatoire avec la longueur automatique) ; <b>Détection Web</b> pour des étiquettes à espaces ; <b>Marque</b> pour des repères noirs. Puis <b>Calibrer</b>.</li>
+          <li><b>Ajustement</b> (En haut / À gauche) : laisser à 0 ; le décalage de l'application suffit pour centrer.</li>
+          <li><b>Tramage</b> : essayer « Aucun » pour des barres et du texte bien nets.</li>
+          <li><b>Dans Chrome</b> : même papier que le pilote, marges « Aucune », échelle 100 %, sans en-têtes ni pieds de page.</li>
+        </ol>
+        <div class="info">Les « polices de code à barres » du pilote (Code 128, Code 39, EAN) ne sont pas utilisées : l'application dessine elle-même les barres.</div>
+      </details>
     </div>
   </div>
 
