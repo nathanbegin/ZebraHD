@@ -108,8 +108,21 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
         <div><select id="tplSel"></select></div>
         <div style="flex:0 0 auto"><button id="tplLoad">Charger</button></div>
       </div>
-      <div class="row" style="margin-top:6px"><button id="tplSave">💾 Enregistrer le modèle actuel…</button><button id="tplDel">Supprimer</button></div>
+      <div class="row" style="margin-top:6px"><button id="tplSave">💾 Enregistrer sous…</button><button id="tplUpd" title="Remplace le modèle choisi par les réglages actuels">↻ Mettre à jour</button><button id="tplDel">Supprimer</button></div>
       <div class="info">Un modèle garde le papier, le texte, le code-barres et les réglages.</div>
+    </div>
+
+    <div class="card">
+      <h2>Liste d'impression</h2>
+      <div class="row">
+        <div><select id="lstSel"></select></div>
+        <div style="flex:0 0 auto"><button id="lstLoad">Charger</button></div>
+      </div>
+      <div id="lstItems" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:6px"><button id="lstAddTpl">+ Modèle choisi</button><button id="lstAddCur">+ Aperçu actuel</button></div>
+      <div class="row" style="margin-top:6px"><button id="lstSave">💾 Enregistrer</button><button id="lstSaveAs">Enregistrer sous…</button><button id="lstDel">Supprimer</button></div>
+      <button class="pri" id="lstPrint" style="margin-top:8px;font-size:15px">🖨️ Imprimer la liste</button>
+      <div class="info" id="lstInfo">Chaque ligne garde son modèle, son papier et son nombre de copies. Les tailles différentes sont imprimées l'une après l'autre.</div>
     </div>
 
     <div class="card">
@@ -333,15 +346,17 @@ const DEF_STOCKS=[
   {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
 const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0};
-let templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
+let lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
 try{
   const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
   const d=JSON.parse(localStorage.getItem("zl_design")||"null"); if(d&&d.lines&&d.bc){ d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d); }
   const id=localStorage.getItem("zl_stockId"); if(id) stockId=id;
   const t=JSON.parse(localStorage.getItem("zl_templates")||"null"); if(Array.isArray(t)) templates=t;
+  const l=JSON.parse(localStorage.getItem("zl_lists")||"null"); if(Array.isArray(l)) lists=l;
+  const w=JSON.parse(localStorage.getItem("zl_work")||"null"); if(w&&Array.isArray(w.items)){ workItems=w.items; workListId=w.id||""; }
 }catch(e){}
 if(!stocks.some(s=>s.id===stockId)) stockId=stocks[0].id;
-function save(){ cloudSchedule(); try{ localStorage.setItem("zl_templates",JSON.stringify(templates)); localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId);}catch(e){} }
+function save(){ cloudSchedule(); try{ localStorage.setItem("zl_templates",JSON.stringify(templates)); localStorage.setItem("zl_lists",JSON.stringify(lists)); localStorage.setItem("zl_work",JSON.stringify({id:workListId,items:workItems})); localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId);}catch(e){} }
 const stock=()=>stocks.find(s=>s.id===stockId);
 const toMM=(v,u)=>u==="in"?v*MM:v;
 const isAdh=s=>s.adh!==false;
@@ -658,6 +673,14 @@ $("tplSave").onclick=()=>{
   let id; if(ex){ Object.assign(ex,obj); id=ex.id; } else { id="t"+Date.now(); templates.push({id,...obj}); }
   fillTplSel(id); save();
 };
+$("tplUpd").onclick=()=>{
+  const t=templates.find(x=>x.id===$("tplSel").value);
+  if(!t){ alert("Choisissez d'abord un modèle dans la liste."); return; }
+  if(!confirm("Mettre à jour le modèle « "+t.name+" » avec les réglages actuels (papier, texte, code-barres) ?")) return;
+  t.stockId=stockId; t.design=JSON.parse(JSON.stringify(design));
+  save();
+  alert("Modèle « "+t.name+" » mis à jour.");
+};
 $("tplLoad").onclick=()=>{
   const t=templates.find(x=>x.id===$("tplSel").value); if(!t) return;
   const d=JSON.parse(JSON.stringify(t.design));
@@ -670,9 +693,126 @@ $("tplDel").onclick=()=>{
   templates=templates.filter(x=>x!==t); fillTplSel(); save();
 };
 
+/* ---------- Listes d'impression ---------- */
+const uid=()=>Math.random().toString(36).slice(2,9);
+function fillLstSel(sel){
+  $("lstSel").innerHTML='<option value="">— nouvelle liste —</option>'+lists.map(l=>`<option value="${l.id}">${esc(l.name)} (${l.items.length})</option>`).join("");
+  $("lstSel").value=sel&&lists.some(l=>l.id===sel)?sel:"";
+}
+function resolveItem(it){
+  const t=it.tplId&&templates.find(x=>x.id===it.tplId);
+  const src=t||it;
+  const st=stocks.find(x=>x.id===src.stockId);
+  const d=JSON.parse(JSON.stringify(src.design));
+  d.bc=Object.assign({},DEF_DESIGN.bc,d.bc);
+  return {design:Object.assign({},DEF_DESIGN,d), stock:st||null, name:t?t.name:it.name, live:!!t};
+}
+function renderWork(){
+  const box=$("lstItems"); box.innerHTML="";
+  if(!workItems.length){ box.innerHTML='<div class="info">Liste vide. Ajoutez le modèle choisi ou l\'aperçu actuel.</div>'; return; }
+  workItems.forEach((it,i)=>{
+    const r=resolveItem(it);
+    const d=document.createElement("div"); d.className="line";
+    d.innerHTML=`<div style="font-weight:bold">${i+1}. ${esc(r.name)}${r.live?"":" <span style='font-weight:normal;color:#6b7280'>(copie figée)</span>"}</div>
+      <div class="info" style="margin:2px 0 4px">${r.stock?esc(r.stock.name)+" · "+dimTxt(r.stock):"⚠ papier introuvable"}</div>
+      <div class="row" style="align-items:center">
+        <label class="chk" style="flex:1">Copies <input type="number" min="1" max="500" style="width:80px"></label>
+        <button class="sm" data-a="up" title="Monter">↑</button><button class="sm" data-a="dn" title="Descendre">↓</button><button class="sm" data-a="rm" title="Retirer">✕</button>
+      </div>`;
+    const n=d.querySelector("input"); n.value=it.copies||1;
+    n.oninput=()=>{ it.copies=Math.max(1,Math.min(500,+n.value||1)); save(); };
+    d.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+      const a=b.dataset.a;
+      if(a==="rm") workItems.splice(i,1);
+      else if(a==="up"&&i>0) [workItems[i-1],workItems[i]]=[workItems[i],workItems[i-1]];
+      else if(a==="dn"&&i<workItems.length-1) [workItems[i+1],workItems[i]]=[workItems[i],workItems[i+1]];
+      renderWork(); save();
+    });
+    box.appendChild(d);
+  });
+}
+$("lstAddTpl").onclick=()=>{
+  const t=templates.find(x=>x.id===$("tplSel").value);
+  if(!t){ alert("Choisissez d'abord un modèle dans la carte « Modèles »."); return; }
+  workItems.push({id:uid(),tplId:t.id,name:t.name,stockId:t.stockId,design:JSON.parse(JSON.stringify(t.design)),copies:t.design.copies||1});
+  renderWork(); save();
+};
+$("lstAddCur").onclick=()=>{
+  const name=(prompt("Nom de cette ligne :","Aperçu actuel")||"").trim(); if(!name) return;
+  workItems.push({id:uid(),tplId:null,name,stockId,design:JSON.parse(JSON.stringify(design)),copies:design.copies||1});
+  renderWork(); save();
+};
+$("lstLoad").onclick=()=>{
+  const l=lists.find(x=>x.id===$("lstSel").value);
+  if(!l){ workItems=[]; workListId=""; }
+  else { workItems=JSON.parse(JSON.stringify(l.items)); workListId=l.id; }
+  renderWork(); save();
+};
+function saveList(asNew){
+  if(!workItems.length){ alert("La liste est vide."); return; }
+  let l=asNew?null:lists.find(x=>x.id===workListId);
+  if(!l){
+    const name=(prompt("Nom de la liste :")||"").trim(); if(!name) return;
+    const ex=lists.find(x=>x.name===name);
+    if(ex){ if(!confirm("Une liste « "+name+" » existe déjà. La remplacer ?")) return; l=ex; }
+    else { l={id:"l"+uid(),name,items:[]}; lists.push(l); }
+  }
+  l.items=JSON.parse(JSON.stringify(workItems)); workListId=l.id;
+  fillLstSel(l.id); save();
+}
+$("lstSave").onclick=()=>saveList(false);
+$("lstSaveAs").onclick=()=>saveList(true);
+$("lstDel").onclick=()=>{
+  const l=lists.find(x=>x.id===$("lstSel").value);
+  if(!l){ if(workItems.length&&confirm("Vider la liste en cours ?")){ workItems=[]; workListId=""; renderWork(); save(); } return; }
+  if(!confirm("Supprimer la liste « "+l.name+" » ?")) return;
+  lists=lists.filter(x=>x!==l); if(workListId===l.id) workListId="";
+  fillLstSel(); save();
+};
+$("lstPrint").onclick=()=>{
+  if(!workItems.length){ alert("La liste est vide."); return; }
+  const jobs=[], errs=[];
+  for(const it of workItems){
+    const r=resolveItem(it);
+    if(!r.stock){ errs.push("« "+r.name+" » : papier introuvable"); continue; }
+    const od=design, os=stockId;
+    try{
+      design=r.design; stockId=r.stock.id;
+      const W=toMM(r.stock.w,r.stock.u), H=autoActive()?maxAutoHeight():toMM(r.stock.h,r.stock.u);
+      const n=Math.max(1,Math.min(500,+it.copies||1)), labels=[];
+      for(let i=0;i<total();i++){
+        const b=buildLabel(true,i,H);
+        if(b.err&&design.bc.on) errs.push("« "+r.name+" » : "+b.err);
+        for(let c=0;c<n;c++) labels.push(c===0?b.el:b.el.cloneNode(true));
+      }
+      jobs.push({W,H,labels,names:[r.name]});
+    } finally { design=od; stockId=os; }
+  }
+  if(errs.length && !confirm("Problèmes détectés :\n"+[...new Set(errs)].join("\n")+"\n\nImprimer quand même ?")) return;
+  const merged=[];
+  jobs.forEach(j=>{
+    const p=merged[merged.length-1];
+    if(p&&Math.abs(p.W-j.W)<0.05&&Math.abs(p.H-j.H)<0.05){ p.labels.push(...j.labels); p.names.push(...j.names); }
+    else merged.push(j);
+  });
+  if(!merged.length) return;
+  const sz=j=>`${(j.W/MM).toFixed(2)}" × ${(j.H/MM).toFixed(2)}" (${j.W.toFixed(1)} × ${j.H.toFixed(1)} mm)`;
+  if(merged.length>1 && !confirm("La liste contient "+merged.length+" tailles de papier différentes ; elles seront imprimées l'une après l'autre.\n\nÉtape 1 : "+merged[0].names.join(", ")+" — "+sz(merged[0])+"\n\nCommencer ?")) return;
+  for(let k=0;k<merged.length;k++){
+    const j=merged[k];
+    $("pageStyle").textContent=`@page{size:${j.W.toFixed(2)}mm ${j.H.toFixed(2)}mm;margin:0}`;
+    const pa=$("printArea"); pa.innerHTML=""; j.labels.forEach(el=>pa.appendChild(el));
+    window.print();
+    if(k<merged.length-1){
+      const nx=merged[k+1];
+      if(!confirm("Étape "+(k+1)+"/"+merged.length+" envoyée.\n\nProchain : "+nx.names.join(", ")+" — "+sz(nx)+"\n\nChangez le papier / le format du pilote si nécessaire, puis cliquez sur OK.")) break;
+    }
+  }
+};
+
 /* ---------- Synchronisation Vercel (optionnelle) ---------- */
 let cloudOn=false, lastSync="", pushT=null;
-const snap=()=>JSON.stringify({stocks,templates});
+const snap=()=>JSON.stringify({stocks,templates,lists});
 function setCloud(st){
   const m={off:["💾 Local (cet ordinateur)","Base de données Vercel non disponible : les données restent dans ce navigateur."],ok:["☁ Synchronisé",""],sync:["☁ Enregistrement…",""],err:["⚠ Erreur de synchronisation","Nouvel essai à la prochaine modification."]}[st];
   $("cloud").textContent=m[0]; $("cloud").title=m[1]; $("cloud").style.color=st==="err"?"#b91c1c":"#6b7280";
@@ -700,15 +840,16 @@ async function cloudLoad(){
     const sv=Array.isArray(d.stocks)?d.stocks:[], tv=Array.isArray(d.templates)?d.templates:[];
     if(sv.length){ stocks=sv; if(!stocks.some(x=>x.id===stockId)) stockId=stocks[0].id; }
     if(tv.length||sv.length) templates=tv;
-    lastSync=JSON.stringify({stocks:sv,templates:tv});
-    fillStockSel(); fillTplSel($("tplSel").value); autoZoom(); refresh();
+    if(Array.isArray(d.lists)&&(d.lists.length||sv.length)) lists=d.lists;
+    lastSync=JSON.stringify({stocks:sv,templates:tv,lists:Array.isArray(d.lists)?d.lists:[]});
+    fillStockSel(); fillTplSel($("tplSel").value); fillLstSel(workListId); renderWork(); autoZoom(); refresh();
     if(!sv.length){ lastSync=""; cloudSchedule(); } else setCloud("ok");
   }catch(e){ if(!cloudOn) setCloud("off"); }
 }
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&cloudOn&&snap()===lastSync) cloudLoad(); });
 
 syncForm(); autoZoom(); refresh();
-fillTplSel(); setCloud("off"); cloudLoad();
+fillTplSel(); fillLstSel(workListId); renderWork(); setCloud("off"); cloudLoad();
 let rzT; window.addEventListener("resize",()=>{ clearTimeout(rzT); rzT=setTimeout(()=>{ if(!zoomManual) refresh(); },120); });
 </script>
 </body>

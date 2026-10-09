@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
       if (!r.ok) throw new Error("HTTP " + r.status);
       const j = await r.json();
       // Les données sont stockées sous forme de texte JSON (évite que Firebase déforme les tableaux vides).
-      return res.status(200).json(j && typeof j.data === "string" ? JSON.parse(j.data) : { stocks: [], templates: [] });
+      return res.status(200).json(j && typeof j.data === "string" ? JSON.parse(j.data) : { stocks: [], templates: [], lists: [] });
     }
     if (req.method === "PUT") {
       let b = req.body;
@@ -46,6 +46,26 @@ module.exports = async (req, res) => {
           .filter((t) => t && typeof t.name === "string" && t.design && typeof t.design === "object")
           .map((t) => ({ id: String(t.id || "").slice(0, 40), name: t.name.slice(0, 120), stockId: String(t.stockId || ""), design: t.design })),
       };
+      if (Array.isArray(b.lists)) {
+        data.lists = b.lists
+          .slice(0, 200)
+          .filter((l) => l && typeof l.name === "string" && Array.isArray(l.items))
+          .map((l) => ({
+            id: String(l.id || "").slice(0, 40),
+            name: l.name.slice(0, 120),
+            items: l.items
+              .slice(0, 200)
+              .filter((i) => i && i.design && typeof i.design === "object")
+              .map((i) => ({
+                id: String(i.id || "").slice(0, 40),
+                tplId: i.tplId ? String(i.tplId).slice(0, 40) : null,
+                name: String(i.name || "").slice(0, 120),
+                stockId: String(i.stockId || ""),
+                design: i.design,
+                copies: Math.max(1, Math.min(500, +i.copies || 1)),
+              })),
+          }));
+      }
       const str = JSON.stringify(data);
       if (str.length > MAX_BYTES) return res.status(413).json({ error: "Trop volumineux" });
       const r = await fetch(dbUrl(), {
