@@ -84,7 +84,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 #printArea{display:none}
 @media print{
   html,body{margin:0;padding:0;background:#fff}
-  .app,header,dialog{display:none!important}
+  .app,header,dialog,.mbar,.side{display:none!important}
+  body{padding:0!important;background:#fff!important}
   #printArea{display:block}
   #printArea .lbl{box-shadow:none;background:none;page-break-after:always;break-after:page}
   #printArea .lbl:last-child{page-break-after:auto;break-after:auto}
