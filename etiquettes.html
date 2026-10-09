@@ -138,6 +138,11 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <h2>2. Texte (Arial)</h2>
       <div id="lines"></div>
       <button id="addLine">+ Ajouter une ligne</button>
+      <label class="f" style="margin-top:10px">Flèche en haut de l'étiquette (perpendiculaire aux barres du code)</label>
+      <div class="row">
+        <div><select id="arrowSel"><option value="">Aucune</option><option value="left">← Vers la gauche</option><option value="right">→ Vers la droite</option></select></div>
+        <div id="arrowHBox" style="display:none"><input type="number" id="arrowH" min="2" max="30" step="0.5" title="Hauteur de la flèche (mm)" placeholder="Hauteur mm"></div>
+      </div>
       <label class="f" style="margin-top:10px">Rotation du contenu (texte et code-barres)</label>
       <select id="rot"><option value="0">0° (normal : texte parallèle à l'axe X)</option><option value="90">90° (vers la droite)</option><option value="180">180° (à l'envers)</option><option value="270">270° (vers la gauche)</option></select>
     </div>
@@ -345,7 +350,7 @@ const DEF_STOCKS=[
   {id:"s2",name:'Tablette 3" × 2" blanc',w:3,h:2,u:"in",color:"#ffffff",adh:true},
   {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
-const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0};
+const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0,arrow:"",arrowH:5};
 let lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
 try{
   const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
@@ -402,6 +407,12 @@ function contentHTML(idx,cw,m,cwRef){
   const B=design.bc;
   let info="", err="", e=null, code="", html="", note="";
   if(B.on){ const nb=normalizeBC(B.type,codeValue(idx)); code=nb.value; note=nb.note; try{ e=encode(B.type,code); code=e.human; }catch(x){ err=String(x); } }
+  if(design.arrow==="left"||design.arrow==="right"){
+    const aw=Math.max(5,((cwRef||cw)-2*m)*(B.on?B.w:100)/100), ah=Math.max(2,+design.arrowH||5), y=ah/2, t=Math.max(0.4,ah*0.14), hl=Math.min(aw*0.4,ah*0.9), hh=Math.max(0.5,ah/2-0.1);
+    const R=design.arrow==="right";
+    const x0=R?0:hl*0.8, x1=R?aw-hl*0.8:aw, tip=R?aw:0, base=R?aw-hl:hl;
+    html+=`<svg class="bc" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${aw.toFixed(2)} ${ah.toFixed(2)}" style="width:${aw.toFixed(2)}mm;height:${ah.toFixed(2)}mm;margin-bottom:1mm;flex:none" shape-rendering="geometricPrecision"><line x1="${x0.toFixed(2)}" y1="${y}" x2="${x1.toFixed(2)}" y2="${y}" stroke="#000" stroke-width="${t.toFixed(2)}"/><polygon points="${tip.toFixed(2)},${y} ${base.toFixed(2)},${(y-hh).toFixed(2)} ${base.toFixed(2)},${(y+hh).toFixed(2)}" fill="#000"/></svg>`;
+  }
   design.lines.forEach(l=>{ html+=`<div class="tl" style="font-size:${l.size}pt;font-weight:${l.bold?"bold":"normal"};text-align:${l.align}">${esc(l.text.replace(/\{code\}/g,code))||"&nbsp;"}</div>`; });
   if(e){
     const bw=Math.max(5,((cwRef||cw)-2*m)*B.w/100), mod=bw/(e.bits.length+20);
@@ -547,7 +558,7 @@ function syncForm(){
   $("bBatch").checked=B.batch; $("bPre").value=B.pre; $("bSuf").value=B.suf; $("bStart").value=B.start; $("bCount").value=B.count; $("bStep").value=B.step; $("bPad").value=B.pad;
   $("hText").value=B.hText; $("hSize").value=B.hSize; $("hSp").value=B.hSp; $("hAlign").value=B.hAlign; $("hBold").checked=B.hBold; $("hItal").checked=B.hItal; $("hUnd").checked=B.hUnd;
   showBatch(); showHint();
-  $("rot").value=design.rot; $("autoLen").checked=design.auto; $("offOn").checked=design.off; $("offX").value=design.ox; $("offY").value=design.oy; $("offBox").style.display=design.off?"block":"none"; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
+  $("rot").value=design.rot; $("arrowSel").value=design.arrow||""; $("arrowH").value=design.arrowH||5; $("arrowHBox").style.display=design.arrow?"block":"none"; $("autoLen").checked=design.auto; $("offOn").checked=design.off; $("offX").value=design.ox; $("offY").value=design.oy; $("offBox").style.display=design.off?"block":"none"; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
   $("bcBox").style.display=design.bc.on?"block":"none";
 }
 $("stockSel").onchange=()=>{stockId=$("stockSel").value;autoZoom();refresh();};
@@ -571,6 +582,8 @@ $("offX").oninput=()=>{design.ox=+$("offX").value||0;refresh();};
 $("offY").oninput=()=>{design.oy=+$("offY").value||0;refresh();};
 $("autoLen").onchange=()=>{design.auto=$("autoLen").checked;refresh();};
 $("minLen").oninput=()=>{design.minLen=Math.max(0,+$("minLen").value||0);refresh();};
+$("arrowSel").onchange=()=>{design.arrow=$("arrowSel").value;$("arrowHBox").style.display=design.arrow?"block":"none";refresh();};
+$("arrowH").oninput=()=>{design.arrowH=Math.max(2,Math.min(30,+$("arrowH").value||5));refresh();};
 $("rot").onchange=()=>{design.rot=$("rot").value;refresh();};
 $("margin").oninput=()=>{design.margin=Math.max(0,+$("margin").value||0);refresh();};
 $("copies").oninput=()=>{design.copies=Math.min(500,Math.max(1,+$("copies").value||1));save();};
