@@ -193,9 +193,11 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
     <div class="card" id="imgCard">
       <h2>Images</h2>
       <div id="imgList"></div>
+      <label class="f" style="margin-top:6px">Résolution de l'image importée</label>
+      <select id="imgQ"><option value="600">Standard — 600 px</option><option value="1200" selected>Haute — 1200 px (recommandé)</option><option value="2000">Maximale — 2000 px</option></select>
       <label class="chk" style="margin-top:6px"><input type="checkbox" id="imgBw" checked> Convertir en noir et blanc (recommandé)</label>
       <button id="imgAdd" style="margin-top:6px">+ Ajouter une image</button><input type="file" id="imgFile" accept="image/*" style="display:none">
-      <div class="info">Glissez l'image dans l'aperçu pour la placer. Les positions sont en mm depuis le coin haut-gauche du contenu.</div>
+      <div class="info">Glissez l'image dans l'aperçu pour la placer ; tirez un coin de l'image sélectionnée pour la redimensionner en gardant ses proportions. Les positions sont en mm depuis le coin haut-gauche du contenu.</div>
     </div>
 
     <div class="card">
@@ -562,7 +564,7 @@ function maxAutoHeight(){ let h=0; for(let i=0;i<total();i++) h=Math.max(h,autoH
 const imgH=im=>im.w*(im.ih||1)/(im.iw||1);
 let selImg="";
 function imgsHTML(forPrint){
-  return (design.images||[]).map((im,i)=>`<img class="${forPrint?"":"limg"}" data-i="${i}" src="${im.src}" draggable="false" alt="" style="position:absolute;left:${im.x}mm;top:${im.y}mm;width:${im.w}mm;height:${imgH(im).toFixed(2)}mm;max-width:none;${im.bw?"image-rendering:pixelated;":""}${forPrint?"pointer-events:none;":(im.id===selImg?"outline:1px dashed #f96302;":"")}">`).join("");
+  return (design.images||[]).map((im,i)=>`<img class="${forPrint?"":"limg"}" data-i="${i}" src="${im.src}" draggable="false" alt="" style="position:absolute;left:${im.x}mm;top:${im.y}mm;width:${im.w}mm;height:${imgH(im).toFixed(2)}mm;max-width:none;${(im.bw&&forPrint)?"image-rendering:pixelated;":""}${forPrint?"pointer-events:none;":(im.id===selImg?"outline:1px dashed #f96302;":"")}">`).join("");
 }
 function buildLabel(forPrint,idx=0,hOverride){
   const s=stock(), W=toMM(s.w,s.u), R=String((+design.rot+(forPrint&&prefs.rotOn?(+prefs.rotOff||0):0)+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
@@ -651,6 +653,41 @@ function refresh(){
       img.onpointerup=()=>{ img.onpointermove=null; img.onpointerup=null; save(); refresh(); renderImgs(); };
     };
   });
+  (function(){
+    const im=(design.images||[]).find(x=>x.id===selImg); if(!im) return;
+    const imgEl=document.querySelector(`#preview .limg[data-i="${design.images.indexOf(im)}"]`);
+    const rotEl=document.querySelector("#preview .lbl > .rot"); if(!imgEl||!rotEl) return;
+    const k=96/MM*($("zoom").value/100), hs=12/k;
+    const th=(+design.rot||0)*Math.PI/180, ratio=(im.ih||1)/(im.iw||1);
+    const defs=[["nw",0,0,-1,-1,"nwse-resize"],["ne",1,0,1,-1,"nesw-resize"],["sw",0,1,-1,1,"nesw-resize"],["se",1,1,1,1,"nwse-resize"]];
+    const place=()=>{ defs.forEach(([n,fx,fy],j)=>{ const h=hs_[j]; h.style.left=(im.x+fx*im.w-hs/2)+"mm"; h.style.top=(im.y+fy*imgH(im)-hs/2)+"mm"; }); };
+    const hs_=[];
+    defs.forEach(([n,fx,fy,sx,sy,cur])=>{
+      const h=document.createElement("div");
+      h.className="hdl";
+      h.style.cssText=`position:absolute;width:${hs}mm;height:${hs}mm;background:#fff;border:2px solid #f96302;box-sizing:border-box;cursor:${cur};touch-action:none;z-index:6;border-radius:2px`;
+      hs_.push(h); rotEl.appendChild(h);
+      h.onpointerdown=e=>{
+        e.preventDefault(); e.stopPropagation();
+        try{ h.setPointerCapture(e.pointerId); }catch(_){}
+        const px=e.clientX, py=e.clientY, w0=im.w, x0=im.x, y0=im.y, h0=imgH(im);
+        h.onpointermove=ev=>{
+          const dx=ev.clientX-px, dy=ev.clientY-py;
+          const cx=(dx*Math.cos(th)+dy*Math.sin(th))/k, cy=(-dx*Math.sin(th)+dy*Math.cos(th))/k;
+          const dw=(sx*cx+sy*cy/ratio)/2;
+          const w1=Math.max(2,Math.min(300,w0+dw)), h1=w1*ratio;
+          im.w=+w1.toFixed(2);
+          im.x=+(sx<0?x0+(w0-w1):x0).toFixed(2);
+          im.y=+(sy<0?y0+(h0-h1):y0).toFixed(2);
+          imgEl.style.width=im.w+"mm"; imgEl.style.height=imgH(im).toFixed(2)+"mm";
+          imgEl.style.left=im.x+"mm"; imgEl.style.top=im.y+"mm";
+          place(); syncImgInputs(im);
+        };
+        h.onpointerup=()=>{ h.onpointermove=null; h.onpointerup=null; save(); refresh(); renderImgs(); };
+      };
+    });
+    place();
+  })();
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
   $("overflow").textContent = k<1 ? `ℹ Contenu réduit à ${Math.round(k*100)} % pour respecter la marge de ${design.margin||0} mm.` : (design.fill&&k>1.01 ? `ℹ Texte agrandi à ${Math.round(k*100)} % pour remplir l'étiquette.` : "");
@@ -1165,9 +1202,13 @@ $("imgFile").onchange=async()=>{
   const f=$("imgFile").files[0]; $("imgFile").value=""; if(!f) return;
   try{
     const im=await loadImgFile(f), bw=$("imgBw").checked;
-    let maxDim=480, c, src;
-    let thr=128;
-    do{ c=rasterize(im,maxDim); thr=otsu(c); src=encodeCanvas(c,bw,thr); maxDim=Math.round(maxDim*0.75); }while(src.length>150000&&maxDim>120);
+    const q=+$("imgQ").value||1200, cap=({600:120000,1200:250000,2000:400000})[q]||250000;
+    let maxDim=q, c, src, thr=128;
+    for(;;){
+      c=rasterize(im,maxDim); thr=otsu(c); src=encodeCanvas(c,bw,thr);
+      if(src.length<=cap||maxDim<=200) break;
+      maxDim=Math.round(maxDim*0.8);
+    }
     const id="i"+uid(), m=+design.margin||0;
     imgOrig[id]=c;
     design.images=design.images||[];
@@ -1177,7 +1218,7 @@ $("imgFile").onchange=async()=>{
 };
 function syncImgInputs(im){
   const row=document.querySelector(`#imgList .irow[data-id="${im.id}"]`); if(!row) return;
-  row.querySelector(".i-x").value=im.x; row.querySelector(".i-y").value=im.y;
+  row.querySelector(".i-x").value=im.x; row.querySelector(".i-y").value=im.y; row.querySelector(".i-w").value=+im.w.toFixed(1);
 }
 function renderImgs(){
   const box=$("imgList"); if(!box) return; box.innerHTML="";
