@@ -15,6 +15,20 @@ header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
 .pv{height:100%;display:flex;flex-direction:column;margin:0}
 .pv .stage{flex:1;min-height:0}
 .mbar{display:none}
+.drv{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:8px;font-size:12px;margin-top:8px;line-height:1.45}
+.drv b{color:#9a3412}
+.drv:empty{display:none}
+.it{display:flex;gap:8px;border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:6px;background:#fafafa}
+.it .th{flex:0 0 96px;height:64px;display:flex;align-items:center;justify-content:center;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.it .bd{flex:1;min-width:0}
+.it .nm{font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .ctl{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.it .ctl input{width:60px;padding:4px 6px}
+.it .ctl button{min-height:34px;padding:2px 9px}
+#lstTbl input,#lstTbl select{min-width:64px;padding:4px 6px}
+#lstTbl td{vertical-align:middle}
+#lstTbl .thc{width:110px;height:60px;display:flex;align-items:center;justify-content:center;background:#e5e7eb;border-radius:4px;overflow:hidden}
+dialog#lstDlg{width:min(1060px,96vw)}
 .help{margin-top:8px;font-size:13px}
 .help summary{cursor:pointer;color:var(--acc);font-weight:bold}
 .help ol{padding-left:18px;margin:6px 0}
@@ -121,6 +135,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div id="lstItems" style="margin-top:8px"></div>
       <div class="row" style="margin-top:6px"><button id="lstAddTpl">+ Modèle choisi</button><button id="lstAddCur">+ Aperçu actuel</button></div>
       <div class="row" style="margin-top:6px"><button id="lstSave">💾 Enregistrer</button><button id="lstSaveAs">Enregistrer sous…</button><button id="lstDel">Supprimer</button></div>
+      <div class="row" style="margin-top:6px"><button id="lstTable">✎ Modifier en tableau</button></div>
+      <div class="drv" id="drvList"></div>
       <button class="pri" id="lstPrint" style="margin-top:8px;font-size:15px">🖨️ Imprimer la liste</button>
       <div class="info" id="lstInfo">Chaque ligne garde son modèle, son papier et son nombre de copies. Les tailles différentes sont imprimées l'une après l'autre.</div>
     </div>
@@ -220,6 +236,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       </div>
       <div class="info" id="autoInfo"></div>
       <div style="height:10px"></div>
+      <div class="drv" id="drvCur"></div>
       <button class="pri" id="btnPrint">🖨️ Imprimer</button>
       <div class="info">Dans la fenêtre d'impression : choisir l'imprimante Zebra, le papier de même taille que l'étiquette, marges « Aucune » et échelle 100 %.</div>
       <details class="help">
@@ -248,6 +265,12 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </div>
 <div class="mbar"><button class="pri" id="btnPrint2">🖨️ Imprimer</button></div>
 
+<dialog id="lstDlg">
+  <h3 style="margin-top:0">Liste d'impression — tableau</h3>
+  <div class="info" style="margin-bottom:8px">Modifiez le papier, le texte (ligne 1), le code et les quantités de chaque ligne. Le reste vient du modèle.</div>
+  <div style="overflow-x:auto"><table id="lstTbl"><thead><tr><th>Aperçu</th><th>Modèle</th><th>Papier</th><th>Texte (ligne 1)</th><th>Code / préfixe</th><th>Départ</th><th>Qté série</th><th>Copies</th><th></th></tr></thead><tbody></tbody></table></div>
+  <div class="row" style="margin-top:10px"><button class="pri" id="lstDlgClose" style="font-size:14px;padding:8px">Fermer</button></div>
+</dialog>
 <div id="printArea"></div>
 <style id="pageStyle"></style>
 
@@ -493,6 +516,7 @@ function refresh(){
   $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
   const p=$("preview"); p.innerHTML="";
   const u=s.u, Wmm=toMM(s.w,u);
+  $("drvCur").innerHTML=drvHTML([{W:Wmm,H,auto:!!design.auto,names:[]}]);
   if(!zoomManual) fitZoom(H,Wmm);
   const z=$("zoom").value/100;
   const cell=(html,r,c,cls)=>{const d=document.createElement("div"); if(cls) d.className=cls; d.style.gridRow=r; d.style.gridColumn=c; if(typeof html==="string") d.innerHTML=html; else d.appendChild(html); if(!cls) d.style.zoom=z; p.appendChild(d); return d;};
@@ -714,36 +738,130 @@ function fillLstSel(sel){
 }
 function resolveItem(it){
   const t=it.tplId&&templates.find(x=>x.id===it.tplId);
-  const src=t||it;
-  const st=stocks.find(x=>x.id===src.stockId);
+  const src=t||it, ov=it.ov||{};
+  const st=stocks.find(x=>x.id===(ov.stockId||src.stockId))||null;
   const d=JSON.parse(JSON.stringify(src.design));
   d.bc=Object.assign({},DEF_DESIGN.bc,d.bc);
-  return {design:Object.assign({},DEF_DESIGN,d), stock:st||null, name:t?t.name:it.name, live:!!t};
+  const dd=Object.assign({},DEF_DESIGN,d), B=dd.bc;
+  if(ov.text!==undefined&&dd.lines[0]) dd.lines[0].text=ov.text;
+  if(ov.value!==undefined) B.value=ov.value;
+  ["pre","suf","start","count"].forEach(k=>{ if(ov[k]!==undefined) B[k]=ov[k]; });
+  return {design:dd, stock:st, name:t?t.name:it.name, live:!!t};
+}
+function withItem(it,fn){
+  const r=resolveItem(it); if(!r.stock) return null;
+  const od=design, os=stockId;
+  try{ design=r.design; stockId=r.stock.id; return fn(r); } finally { design=od; stockId=os; }
+}
+const frNum=n=>n.toFixed(2).replace(".",",");
+function itemSize(it){
+  return withItem(it,r=>{ const s=r.stock; return {W:toMM(s.w,s.u),H:autoActive()?maxAutoHeight():toMM(s.h,s.u),auto:!!design.auto,name:r.name}; });
+}
+function drvHTML(sizes){
+  if(!sizes.length) return "";
+  const rows=sizes.map(z=>`• <b>${(z.W/MM).toFixed(2)}" × ${(z.H/MM).toFixed(2)}"</b> : Largeur <b>${frNum(z.W/10)} cm</b> × Hauteur <b>${frNum(z.H/10)} cm</b> (${z.W.toFixed(1)} × ${z.H.toFixed(1)} mm)${z.names&&z.names.length?" — "+esc(z.names.join(", ")):""}`);
+  const auto=sizes.some(z=>z.auto);
+  return `<b>À régler dans le pilote</b> (Préférences d'impression)<br>
+    <b>Options</b> : Portrait · zones non imprimables 0 · taille :<br>${rows.join("<br>")}<br>
+    <b>Réglages avancés</b> : mode de détection <b>${auto?"Continu":"Continu ou Détection Web (puis Calibrer)"}</b> · mode opératoire <b>Massicot</b> pour couper.`;
+}
+function thumbOf(it){
+  return withItem(it,r=>{
+    const s=r.stock, W=toMM(s.w,s.u), H=autoActive()?maxAutoHeight():toMM(s.h,s.u);
+    const {el}=buildLabel(false,0,H);
+    const box=document.createElement("div");
+    box.style.cssText=`position:relative;width:${H}mm;height:${W}mm;flex:none`;
+    el.style.cssText+=`;position:absolute;left:0;top:0;transform-origin:0 0;transform:translate(${H}mm,0) rotate(90deg)`;
+    box.appendChild(el);
+    const k=96/MM, z=Math.min(88/(H*k),56/(W*k),3);
+    box.style.zoom=z;
+    return box;
+  });
+}
+function putThumb(host,it){
+  host.innerHTML="";
+  const t=thumbOf(it);
+  if(t) host.appendChild(t); else host.textContent="?";
+}
+function refreshHints(){
+  const groups=[];
+  workItems.forEach(it=>{
+    const z=itemSize(it); if(!z) return;
+    const g=groups.find(x=>Math.abs(x.W-z.W)<0.05&&Math.abs(x.H-z.H)<0.05);
+    if(g){ g.names.push(z.name); g.auto=g.auto||z.auto; } else groups.push({W:z.W,H:z.H,auto:z.auto,names:[z.name]});
+  });
+  $("drvList").innerHTML=drvHTML(groups);
+}
+function dupItem(i){
+  const c=JSON.parse(JSON.stringify(workItems[i])); c.id=uid();
+  workItems.splice(i+1,0,c);
+}
+function moveItem(i,a){
+  if(a==="rm") workItems.splice(i,1);
+  else if(a==="dup") dupItem(i);
+  else if(a==="up"&&i>0) [workItems[i-1],workItems[i]]=[workItems[i],workItems[i-1]];
+  else if(a==="dn"&&i<workItems.length-1) [workItems[i+1],workItems[i]]=[workItems[i],workItems[i+1]];
 }
 function renderWork(){
   const box=$("lstItems"); box.innerHTML="";
-  if(!workItems.length){ box.innerHTML='<div class="info">Liste vide. Ajoutez le modèle choisi ou l\'aperçu actuel.</div>'; return; }
+  if(!workItems.length){ box.innerHTML='<div class="info">Liste vide. Ajoutez le modèle choisi ou l\'aperçu actuel.</div>'; refreshHints(); return; }
   workItems.forEach((it,i)=>{
     const r=resolveItem(it);
-    const d=document.createElement("div"); d.className="line";
-    d.innerHTML=`<div style="font-weight:bold">${i+1}. ${esc(r.name)}${r.live?"":" <span style='font-weight:normal;color:#6b7280'>(copie figée)</span>"}</div>
-      <div class="info" style="margin:2px 0 4px">${r.stock?esc(r.stock.name)+" · "+dimTxt(r.stock):"⚠ papier introuvable"}</div>
-      <div class="row" style="align-items:center">
-        <label class="chk" style="flex:1">Copies <input type="number" min="1" max="500" style="width:80px"></label>
-        <button class="sm" data-a="up" title="Monter">↑</button><button class="sm" data-a="dn" title="Descendre">↓</button><button class="sm" data-a="rm" title="Retirer">✕</button>
-      </div>`;
+    const d=document.createElement("div"); d.className="it";
+    d.innerHTML=`<div class="th"></div><div class="bd">
+      <div class="nm">${i+1}. ${esc(r.name)}${r.live?"":" <span style='font-weight:normal;color:#6b7280'>(copie figée)</span>"}</div>
+      <div class="info" style="margin:2px 0 0">${r.stock?esc(r.stock.name)+" · "+dimTxt(r.stock):"⚠ papier introuvable"}</div>
+      <div class="ctl"><input type="number" min="1" max="500" title="Copies"><span class="info" style="margin:0">copies</span>
+        <button data-a="dup" title="Dupliquer">⧉</button><button data-a="up" title="Monter">↑</button><button data-a="dn" title="Descendre">↓</button><button data-a="rm" title="Retirer">✕</button></div>
+    </div>`;
+    putThumb(d.querySelector(".th"),it);
     const n=d.querySelector("input"); n.value=it.copies||1;
     n.oninput=()=>{ it.copies=Math.max(1,Math.min(500,+n.value||1)); save(); };
-    d.querySelectorAll("button").forEach(b=>b.onclick=()=>{
-      const a=b.dataset.a;
-      if(a==="rm") workItems.splice(i,1);
-      else if(a==="up"&&i>0) [workItems[i-1],workItems[i]]=[workItems[i],workItems[i-1]];
-      else if(a==="dn"&&i<workItems.length-1) [workItems[i+1],workItems[i]]=[workItems[i],workItems[i+1]];
-      renderWork(); save();
-    });
+    d.querySelectorAll("button").forEach(b=>b.onclick=()=>{ moveItem(i,b.dataset.a); renderWork(); save(); });
     box.appendChild(d);
   });
+  refreshHints();
 }
+function renderTable(){
+  const tb=$("lstTbl").querySelector("tbody"); tb.innerHTML="";
+  workItems.forEach((it,i)=>{
+    const r=resolveItem(it), B=r.design.bc, ov=(it.ov=it.ov||{});
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td><div class="thc"></div></td>
+      <td>${esc(r.name)}${r.live?"":"<br><span class='info'>(figée)</span>"}</td>
+      <td><select class="c-stock"></select></td>
+      <td><input type="text" class="c-text"></td>
+      <td><input type="text" class="c-code"></td>
+      <td><input type="number" class="c-start" min="0"></td>
+      <td><input type="number" class="c-count" min="1" max="1000"></td>
+      <td><input type="number" class="c-copies" min="1" max="500"></td>
+      <td style="white-space:nowrap"><button data-a="dup" title="Dupliquer">⧉</button> <button data-a="up">↑</button> <button data-a="dn">↓</button> <button data-a="rm">✕</button></td>`;
+    const q=c=>tr.querySelector(c);
+    putThumb(q(".thc"),it);
+    const sel=q(".c-stock");
+    sel.innerHTML=stocks.map(x=>`<option value="${x.id}">${esc(x.name)} — ${dimTxt(x)}</option>`).join("");
+    sel.value=r.stock?r.stock.id:"";
+    q(".c-text").value=r.design.lines[0]?r.design.lines[0].text:"";
+    q(".c-code").value=B.batch?B.pre:B.value;
+    q(".c-start").value=B.start; q(".c-count").value=B.count; q(".c-copies").value=it.copies||1;
+    q(".c-code").disabled=!B.on; q(".c-start").disabled=!(B.on&&B.batch); q(".c-count").disabled=!(B.on&&B.batch);
+    q(".c-code").title=B.batch?"Préfixe de la série":"Valeur du code-barres";
+    const changed=()=>{ save(); putThumb(q(".thc"),it); renderWork(); };
+    sel.onchange=()=>{ ov.stockId=sel.value; changed(); };
+    q(".c-text").oninput=()=>{ ov.text=q(".c-text").value; changed(); };
+    q(".c-code").oninput=()=>{ if(B.batch) ov.pre=q(".c-code").value; else ov.value=q(".c-code").value; changed(); };
+    q(".c-start").oninput=()=>{ ov.start=+q(".c-start").value||0; changed(); };
+    q(".c-count").oninput=()=>{ ov.count=Math.max(1,Math.min(1000,+q(".c-count").value||1)); changed(); };
+    q(".c-copies").oninput=()=>{ it.copies=Math.max(1,Math.min(500,+q(".c-copies").value||1)); save(); renderWork(); };
+    tr.querySelectorAll("button").forEach(b=>b.onclick=()=>{ moveItem(i,b.dataset.a); save(); renderWork(); renderTable(); });
+    tb.appendChild(tr);
+  });
+}
+$("lstTable").onclick=()=>{
+  if(!workItems.length){ alert("La liste est vide."); return; }
+  renderTable(); $("lstDlg").showModal();
+};
+$("lstDlgClose").onclick=()=>{ $("lstDlg").close(); renderWork(); };
 $("lstAddTpl").onclick=()=>{
   const t=templates.find(x=>x.id===$("tplSel").value);
   if(!t){ alert("Choisissez d'abord un modèle dans la carte « Modèles »."); return; }
