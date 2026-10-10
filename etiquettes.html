@@ -663,20 +663,27 @@ function refresh(){
     const idx=design.images.indexOf(im);
     const imgEl=document.querySelector(`#preview .limg[data-i="${idx}"]`);
     const rotEl=document.querySelector("#preview .lbl > .rot"); if(!imgEl||!rotEl) return;
-    const k=96/MM*($("zoom").value/100), hs=12/k, th=(+design.rot||0)*Math.PI/180, ratio=(im.ih||1)/(im.iw||1);
+    const k=96/MM*($("zoom").value/100), hs=15/k, th=(+design.rot||0)*Math.PI/180, ratio=(im.ih||1)/(im.iw||1);
     const wpos=(lx,ly)=>{ const a=(+im.rot||0)*Math.PI/180, c=Math.cos(a), sn=Math.sin(a), cx=im.x+im.w/2, cy=im.y+imgH(im)/2; return [cx+lx*c-ly*sn, cy+lx*sn+ly*c]; };
-    const mkEl=css=>{ const h=document.createElement("div"); h.className="hdl"; h.style.cssText="position:absolute;box-sizing:border-box;touch-action:none;z-index:6;"+css; rotEl.appendChild(h); return h; };
+    // Surcouche (même transformation que le contenu) hors de l'étiquette : jamais rognée, toujours au premier plan
+    const labelEl=rotEl.parentElement, boxEl=labelEl.parentElement;
+    const ov=document.createElement("div"); ov.className="hdl";
+    ov.style.cssText=`position:absolute;left:0;top:0;width:${rotEl.style.width};height:${rotEl.style.height};transform-origin:0 0;transform:${labelEl.style.transform||"none"} ${rotEl.style.transform||""};pointer-events:none;z-index:50;overflow:visible`;
+    boxEl.appendChild(ov);
+    const mkEl=css=>{ const h=document.createElement("div"); h.className="hdl"; h.style.cssText="position:absolute;box-sizing:border-box;touch-action:none;pointer-events:auto;z-index:51;"+css; ov.appendChild(h); return h; };
     const corners=[[-1,-1,"nwse-resize"],[1,-1,"nesw-resize"],[-1,1,"nesw-resize"],[1,1,"nwse-resize"]];
     const sq=corners.map(([sx,sy,cur])=>mkEl(`width:${hs}mm;height:${hs}mm;background:#fff;border:2px solid #f96302;border-radius:2px;cursor:${cur}`));
-    const rotH=mkEl(`width:${hs*1.15}mm;height:${hs*1.15}mm;background:#f96302;border:2px solid #fff;border-radius:50%;cursor:grab;box-shadow:0 0 0 1px #f96302`);
+    const rotH=mkEl(`width:${hs*1.6}mm;height:${hs*1.6}mm;background:#fff;border:2px solid #f96302;border-radius:50%;cursor:grab;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.35)`);
+    rotH.innerHTML='<svg viewBox="0 0 24 24" width="78%" height="78%" style="display:block"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" fill="none" stroke="#f96302" stroke-width="2.8" stroke-linecap="round"/><polygon points="21,2 21,9.5 13.5,9.5" fill="#f96302"/></svg>';
     rotH.title="Pivoter (Alt = angle libre)";
-    const delH=mkEl(`width:${hs*1.5}mm;height:${hs*1.5}mm;background:#dc2626;color:#fff;border:2px solid #fff;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font:bold ${hs*0.95}mm/1 Arial,sans-serif;box-shadow:0 0 0 1px #dc2626`);
-    delH.textContent="✕"; delH.title="Supprimer l'image";
+    const delH=mkEl(`width:${hs*1.7}mm;height:${hs*1.7}mm;background:#fff;border:2px solid #dc2626;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.35)`);
+    delH.innerHTML='<svg viewBox="0 0 24 24" width="62%" height="62%" style="display:block"><path d="M5 5L19 19M19 5L5 19" stroke="#dc2626" stroke-width="3.6" stroke-linecap="round"/></svg>';
+    delH.title="Supprimer l'image";
     const place=()=>{
       const h=imgH(im);
       corners.forEach(([sx,sy],j)=>{ const [x,y]=wpos(sx*im.w/2,sy*h/2); sq[j].style.left=(x-hs/2)+"mm"; sq[j].style.top=(y-hs/2)+"mm"; });
-      const [rx,ry]=wpos(0,-h/2-hs*2); rotH.style.left=(rx-hs*0.575)+"mm"; rotH.style.top=(ry-hs*0.575)+"mm";
-      const [dx,dy]=wpos(im.w/2+hs*1.1,-h/2-hs*1.1); delH.style.left=(dx-hs*0.75)+"mm"; delH.style.top=(dy-hs*0.75)+"mm";
+      const [rx,ry]=wpos(0,-h/2-hs*2.2); rotH.style.left=(rx-hs*0.8)+"mm"; rotH.style.top=(ry-hs*0.8)+"mm";
+      const [dx,dy]=wpos(im.w/2+hs*1.3,-h/2-hs*1.3); delH.style.left=(dx-hs*0.85)+"mm"; delH.style.top=(dy-hs*0.85)+"mm";
     };
     const applyBox=()=>{ imgEl.style.width=im.w+"mm"; imgEl.style.height=imgH(im).toFixed(2)+"mm"; imgEl.style.left=im.x+"mm"; imgEl.style.top=im.y+"mm"; imgEl.style.transform=`rotate(${+im.rot||0}deg)`; };
     const toLocal=(dx,dy)=>{
