@@ -175,6 +175,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <h2>2. Texte (Arial)</h2>
       <div id="lines"></div>
       <button id="addLine">+ Ajouter une ligne</button>
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="fillOn"> Remplir l'étiquette (le texte s'agrandit ou se réduit selon ses dimensions)</label>
       <label class="f" style="margin-top:10px">Flèche en haut de l'étiquette (perpendiculaire aux barres du code)</label>
       <div class="row">
         <div><select id="arrowSel"><option value="">Aucune</option><option value="left">← Vers la gauche</option><option value="right">→ Vers la droite</option></select></div>
@@ -432,7 +433,7 @@ const DEF_STOCKS=[
   {id:"s2",name:'Tablette 3" × 2" blanc',w:3,h:2,u:"in",color:"#ffffff",adh:true},
   {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
-const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0,arrow:"",arrowH:5};
+const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0,arrow:"",arrowH:5,fill:false};
 let prefs={rotOn:false,rotOff:0,offOn:false,ox:0,oy:0}, lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
 try{
   const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
@@ -548,9 +549,12 @@ function buildLabel(forPrint,idx=0,hOverride){
   const wrap=document.createElement("div"); wrap.style.cssText="position:absolute;left:-9999px;top:0;visibility:hidden";
   document.body.appendChild(wrap); wrap.appendChild(el);
   const fit=el.firstChild.firstChild, pxmm=96/MM;
+  const fill=!!design.fill&&!autoActive();
+  if(fill) fit.style.width="max-content";
   const kh=((ch-2*m)*pxmm)/Math.max(1,fit.offsetHeight), kw=((cw-2*m)*pxmm)/Math.max(1,fit.scrollWidth);
-  k=Math.min(1,kh,kw); if(k>0.985) k=1;
-  if(k<1) fit.style.transform=`scale(${k.toFixed(4)})`;
+  k=Math.min(fill?8:1,kh,kw); if(!fill&&k>0.985) k=1;
+  if(fill&&Math.abs(k-1)<0.01) k=1;
+  if(k!==1) fit.style.transform=`scale(${k.toFixed(4)})`;
   wrap.remove();
   return {el,info:c.info,err:c.err,H,k};
 }
@@ -618,7 +622,7 @@ function refresh(){
   });
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
-  $("overflow").textContent = k<1 ? `ℹ Contenu réduit à ${Math.round(k*100)} % pour respecter la marge de ${design.margin||0} mm.` : "";
+  $("overflow").textContent = k<1 ? `ℹ Contenu réduit à ${Math.round(k*100)} % pour respecter la marge de ${design.margin||0} mm.` : (design.fill&&k>1.01 ? `ℹ Texte agrandi à ${Math.round(k*100)} % pour remplir l'étiquette.` : "");
   save();
 }
 let zoomManual=false;
@@ -666,7 +670,7 @@ function syncForm(){
   $("bBatch").checked=B.batch; $("bPre").value=B.pre; $("bSuf").value=B.suf; $("bStart").value=B.start; $("bCount").value=B.count; $("bStep").value=B.step; $("bPad").value=B.pad;
   $("hText").value=B.hText; $("hSize").value=B.hSize; $("hSp").value=B.hSp; $("hAlign").value=B.hAlign; $("hBold").checked=B.hBold; $("hItal").checked=B.hItal; $("hUnd").checked=B.hUnd;
   showBatch(); showHint();
-  $("rot").value=design.rot; $("arrowSel").value=design.arrow||""; $("arrowH").value=design.arrowH||5; $("arrowHBox").style.display=design.arrow?"block":"none"; $("autoLen").checked=design.auto; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
+  $("rot").value=design.rot; $("fillOn").checked=!!design.fill; $("arrowSel").value=design.arrow||""; $("arrowH").value=design.arrowH||5; $("arrowHBox").style.display=design.arrow?"block":"none"; $("autoLen").checked=design.auto; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
   $("bcBox").style.display=design.bc.on?"block":"none";
 }
 $("stockSel").onchange=()=>{stockId=$("stockSel").value;autoZoom();refresh();};
@@ -687,6 +691,7 @@ $("hAlign").onchange=()=>{design.bc.hAlign=$("hAlign").value;refresh();};
 [["hBold","hBold"],["hItal","hItal"],["hUnd","hUnd"]].forEach(([id,k])=>$(id).onchange=()=>{design.bc[k]=$(id).checked;refresh();});
 $("autoLen").onchange=()=>{design.auto=$("autoLen").checked;refresh();};
 $("minLen").oninput=()=>{design.minLen=Math.max(0,+$("minLen").value||0);refresh();};
+$("fillOn").onchange=()=>{design.fill=$("fillOn").checked;refresh();};
 $("arrowSel").onchange=()=>{design.arrow=$("arrowSel").value;$("arrowHBox").style.display=design.arrow?"block":"none";refresh();};
 $("arrowH").oninput=()=>{design.arrowH=Math.max(2,Math.min(30,+$("arrowH").value||5));refresh();};
 $("rot").onchange=()=>{design.rot=$("rot").value;refresh();};
@@ -780,8 +785,29 @@ $("sSave").onclick=()=>{
 (function(){ const im=$("logo"); im.onload=()=>{im.style.display="block";}; im.onerror=()=>{im.style.display="none";}; im.src="logo.png"; })();
 
 /* ---------- Modèles ---------- */
+const BUILTIN=[
+  {id:"b:it-reseau",name:"Gabarit IT — équipement réseau",design:{
+    lines:[
+      {text:"CISCO SPA122 — VoIP",size:14,bold:true,align:"left"},
+      {text:"IP : 192.168.2.49",size:12,bold:false,align:"left"},
+      {text:"Utilisateur : xxx",size:12,bold:false,align:"left"},
+      {text:"Mot de passe : xxx",size:12,bold:false,align:"left"}],
+    rot:"0",margin:1.5,copies:1,fill:true}},
+  {id:"b:it-simple",name:"Gabarit IT — équipement + IP",design:{
+    lines:[
+      {text:"NOM DE L'ÉQUIPEMENT",size:14,bold:true,align:"left"},
+      {text:"IP : 192.168.0.1",size:12,bold:false,align:"left"}],
+    rot:"0",margin:1.5,copies:1,fill:true}}
+];
+const isBuiltin=id=>String(id||"").startsWith("b:");
+function builtinDesign(b){
+  const d=JSON.parse(JSON.stringify(b.design));
+  d.bc=Object.assign({},DEF_DESIGN.bc,d.bc);
+  return Object.assign({},DEF_DESIGN,d);
+}
 function fillTplSel(sel){
-  $("tplSel").innerHTML='<option value="">— choisir un modèle —</option>'+templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
+  $("tplSel").innerHTML='<option value="">— choisir un modèle —</option>'+templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("")
+    +'<optgroup label="Gabarits fournis">'+BUILTIN.map(t=>`<option value="${t.id}">★ ${esc(t.name)}</option>`).join("")+'</optgroup>';
   if(sel) $("tplSel").value=sel;
 }
 $("tplSave").onclick=()=>{
@@ -793,6 +819,7 @@ $("tplSave").onclick=()=>{
   fillTplSel(id); save();
 };
 $("tplUpd").onclick=()=>{
+  if(isBuiltin($("tplSel").value)){ alert("Les gabarits fournis ne peuvent pas être modifiés. Utilisez « Enregistrer sous… » pour créer votre propre modèle."); return; }
   const t=templates.find(x=>x.id===$("tplSel").value);
   if(!t){ alert("Choisissez d'abord un modèle dans la liste."); return; }
   if(!confirm("Mettre à jour le modèle « "+t.name+" » avec les réglages actuels (papier, texte, code-barres) ?")) return;
@@ -801,6 +828,8 @@ $("tplUpd").onclick=()=>{
   alert("Modèle « "+t.name+" » mis à jour.");
 };
 $("tplLoad").onclick=()=>{
+  const bt=BUILTIN.find(x=>x.id===$("tplSel").value);
+  if(bt){ design=builtinDesign(bt); syncForm(); autoZoom(); refresh(); return; }
   const t=templates.find(x=>x.id===$("tplSel").value); if(!t) return;
   const d=JSON.parse(JSON.stringify(t.design));
   d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d);
@@ -808,6 +837,7 @@ $("tplLoad").onclick=()=>{
   syncForm(); autoZoom(); refresh();
 };
 $("tplDel").onclick=()=>{
+  if(isBuiltin($("tplSel").value)){ alert("Les gabarits fournis ne peuvent pas être supprimés."); return; }
   const t=templates.find(x=>x.id===$("tplSel").value); if(!t||!confirm("Supprimer le modèle « "+t.name+" » ?")) return;
   templates=templates.filter(x=>x!==t); fillTplSel(); save();
 };
@@ -949,6 +979,8 @@ $("lstTable").onclick=()=>{
 };
 $("lstDlgClose").onclick=()=>{ $("lstDlg").close(); renderWork(); };
 $("lstAddTpl").onclick=()=>{
+  const bt=BUILTIN.find(x=>x.id===$("tplSel").value);
+  if(bt){ const d=builtinDesign(bt); workItems.push({id:uid(),tplId:null,name:bt.name,stockId,design:d,copies:1}); renderWork(); save(); return; }
   const t=templates.find(x=>x.id===$("tplSel").value);
   if(!t){ alert("Choisissez d'abord un modèle dans la carte « Modèles »."); return; }
   workItems.push({id:uid(),tplId:t.id,name:t.name,stockId:t.stockId,design:JSON.parse(JSON.stringify(t.design)),copies:t.design.copies||1});
