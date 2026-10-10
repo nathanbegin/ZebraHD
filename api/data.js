@@ -22,6 +22,16 @@ function cleanStock(x) {
   };
 }
 
+function cleanDesign(d) {
+  if (!d || typeof d !== "object") return {};
+  if (Array.isArray(d.images)) {
+    d.images = d.images
+      .filter((im) => im && typeof im.src === "string" && /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(im.src))
+      .map((im) => ({ ...im, x: +im.x || 0, y: +im.y || 0, w: +im.w || 10, iw: +im.iw || 1, ih: +im.ih || 1, rot: +im.rot || 0, id: String(im.id || "") }));
+  }
+  return d;
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   if (!/^https:\/\//.test(DB)) return res.status(503).json({ error: "Base de données non configurée" });
@@ -44,7 +54,7 @@ module.exports = async (req, res) => {
         templates: b.templates
           .slice(0, 500)
           .filter((t) => t && typeof t.name === "string" && t.design && typeof t.design === "object")
-          .map((t) => ({ id: String(t.id || "").slice(0, 40), name: t.name.slice(0, 120), stockId: String(t.stockId || ""), design: t.design })),
+          .map((t) => ({ id: String(t.id || "").slice(0, 40), name: t.name.slice(0, 120), folder: String(t.folder || "").slice(0, 60), stockId: String(t.stockId || ""), design: cleanDesign(t.design) })),
       };
       if (Array.isArray(b.lists)) {
         data.lists = b.lists
@@ -61,7 +71,7 @@ module.exports = async (req, res) => {
                 tplId: i.tplId ? String(i.tplId).slice(0, 40) : null,
                 name: String(i.name || "").slice(0, 120),
                 stockId: String(i.stockId || ""),
-                design: i.design,
+                design: cleanDesign(i.design),
                 copies: Math.max(1, Math.min(500, +i.copies || 1)),
               })),
           }));

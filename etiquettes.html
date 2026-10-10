@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Étiquettes Zebra</title>
 <style>
-:root{--hh:56px;--bg:#f3f4f6;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#d1d5db;--acc:#f96302;--accd:#d65402}
+:root{--hh:56px;--bg:#f3f4f6;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#d1d5db;--acc:#f96302;--accd:#d65402;--card2:#fafafa;--stage:#e5e7eb;--hint:#fff7ed;--hintb:#fdba74;--hover:#f3f4f6;--rule:#374151;color-scheme:light}
+:root[data-theme="dark"]{--bg:#0f172a;--card:#1e293b;--ink:#e5e7eb;--mute:#9ca3af;--line:#3b4a63;--card2:#243247;--stage:#0b1220;--hint:#3b2a18;--hintb:#a55a1c;--hover:#2b3a52;--rule:#cbd5e1;color-scheme:dark}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]):not([data-theme="dark"]){--bg:#0f172a;--card:#1e293b;--ink:#e5e7eb;--mute:#9ca3af;--line:#3b4a63;--card2:#243247;--stage:#0b1220;--hint:#3b2a18;--hintb:#a55a1c;--hover:#2b3a52;--rule:#cbd5e1;color-scheme:dark}}
+dialog{background:var(--card);color:var(--ink)}
+:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
+.sr{position:absolute;left:-9999px;top:0}
+.sr:focus{left:8px;top:8px;z-index:99;background:#fff;color:#000;padding:8px 12px;border-radius:6px}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 Arial,Helvetica,sans-serif}
 header{background:var(--acc);color:#fff;padding:8px 16px;font-size:18px;font-weight:bold;display:flex;align-items:center;gap:12px}
@@ -25,14 +31,14 @@ header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
   .app.rc #colR #listCard{display:none}
   .lt .lt-a{font-size:18px;line-height:1}
   .lt .lt-t{writing-mode:vertical-rl;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
-  .lt{position:absolute;left:-21px;top:50%;transform:translateY(-50%);width:28px;height:96px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:#fff;cursor:pointer;z-index:6;padding:0;font-size:16px;line-height:1;color:var(--acc);font-weight:bold;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .lt{position:absolute;left:-21px;top:50%;transform:translateY(-50%);width:28px;height:96px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);cursor:pointer;z-index:6;padding:0;font-size:16px;line-height:1;color:var(--acc);font-weight:bold;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 }
 @media(max-width:800px){ #colR,.lt{display:none} }
-.drv{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:8px;font-size:12px;margin-top:8px;line-height:1.45}
+.drv{background:var(--hint);border:1px solid var(--hintb);border-radius:6px;padding:8px;font-size:12px;margin-top:8px;line-height:1.45}
 .drv b{color:#9a3412}
 .drv:empty{display:none}
-.it{display:flex;gap:8px;border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:6px;background:#fafafa}
-.it .th{flex:0 0 96px;height:64px;display:flex;align-items:center;justify-content:center;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.it{display:flex;gap:8px;border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:6px;background:var(--card2)}
+.it .th{flex:0 0 96px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--stage);border-radius:4px;overflow:hidden}
 .it .bd{flex:1;min-width:0}
 .it .nm{font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .it .ctl{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px}
@@ -40,23 +46,23 @@ header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
 .it .ctl button{min-height:34px;padding:2px 9px}
 #lstTbl input,#lstTbl select{min-width:64px;padding:4px 6px}
 #lstTbl td{vertical-align:middle}
-#lstTbl .thc{width:110px;height:60px;display:flex;align-items:center;justify-content:center;background:#e5e7eb;border-radius:4px;overflow:hidden}
+#lstTbl .thc{width:110px;height:60px;display:flex;align-items:center;justify-content:center;background:var(--stage);border-radius:4px;overflow:hidden}
 dialog#lstDlg{width:min(1060px,96vw)}
 .gear{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.75);color:#fff;font-size:20px;line-height:1;padding:4px 10px;border-radius:6px;min-height:0}
 .gear:hover{background:rgba(255,255,255,.2)}
 .dash{width:100%;font-size:13px}
 .dash td{padding:4px 6px}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:bold;font-size:12px;color:#fff}
-.slog{max-height:140px;overflow:auto;font-size:12px;background:#f3f4f6;border-radius:6px;padding:6px;margin-top:6px}
+.slog{max-height:140px;overflow:auto;font-size:12px;background:var(--hover);border-radius:6px;padding:6px;margin-top:6px}
 .limg{cursor:move;touch-action:none;user-select:none;-webkit-user-drag:none}
-.irow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:6px;background:#fafafa}
+.irow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:6px;background:var(--card2)}
 .irow.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .irow img{width:38px;height:38px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px}
 .irow label{font-size:11px;color:var(--mute);display:flex;flex-direction:column;gap:1px}
 .irow input[type=number]{width:62px;padding:4px 5px}
 .it{cursor:pointer}
-.it.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);background:#fff7ed}
-.editb{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:13px;display:none;gap:6px;align-items:center;flex-wrap:wrap}
+.it.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);background:var(--hint)}
+.editb{background:var(--hint);border:1px solid var(--hintb);border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:13px;display:none;gap:6px;align-items:center;flex-wrap:wrap}
 .editb button{min-height:30px;padding:2px 8px;font-size:12px}
 .help{margin-top:8px;font-size:13px}
 .help summary{cursor:pointer;color:var(--acc);font-weight:bold}
@@ -80,7 +86,7 @@ dialog#lstDlg{width:min(1060px,96vw)}
   button{min-height:42px}
   .card{margin-bottom:10px}
   dialog{width:96vw;max-height:92vh;overflow:auto;padding:12px}
-  .mbar{display:flex;gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+  .mbar{display:flex;gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
   .mbar button{flex:1;width:auto}
 }
 @media(max-width:800px) and (max-height:520px){
@@ -92,19 +98,19 @@ dialog#lstDlg{width:min(1060px,96vw)}
 .card h2{margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
 label.f{display:block;font-size:12px;color:var(--mute);margin:6px 0 2px}
 input,select,textarea,button{font:inherit}
-input[type=text],input[type=number],select,textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:#fff}
+input[type=text],input[type=number],select,textarea{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--card);color:var(--ink)}
 textarea{resize:vertical}
 .row{display:flex;gap:8px;align-items:flex-end}
 .row>*{flex:1;min-width:0}
-button{padding:7px 12px;border:1px solid var(--line);background:#fff;border-radius:5px;cursor:pointer}
-button:hover{background:#f3f4f6}
+button{padding:7px 12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:5px;cursor:pointer}
+button:hover{background:var(--hover)}
 button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:bold;font-size:16px;padding:10px;width:100%}
 button.pri:hover{background:var(--accd)}
 button.sm{padding:3px 8px}
-.line{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;background:#fafafa}
+.line{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;background:var(--card2)}
 .line .row{margin-top:6px}
 .chk{display:flex;gap:5px;align-items:center;flex:0 0 auto;font-size:13px}
-.stage{display:flex;background:#e5e7eb;border-radius:8px;overflow:auto;padding:12px}
+.stage{display:flex;background:var(--stage);border-radius:8px;overflow:auto;padding:12px}
 .lbl{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35);position:relative;overflow:hidden;color:#000;font-family:Arial,Helvetica,sans-serif}
 .rot{position:absolute;left:0;top:0;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden;transform-origin:0 0}
 .tl{width:100%;line-height:1.1;white-space:pre-wrap;word-break:break-word;font-family:Arial,Helvetica,sans-serif}
@@ -127,8 +133,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 .feedh i{font-style:normal;font-size:18px;line-height:1}
 .slot{border-right:3px dashed var(--acc)}
 #preview{margin:auto;display:grid;grid-template-columns:auto auto auto;align-items:stretch}
-.rl{overflow:visible;display:block;color:#374151}
-.corner{font-size:10px;line-height:1.2;color:#374151;font-weight:bold;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 4px 2px 0;white-space:nowrap}
+.rl{overflow:visible;display:block;color:var(--rule)}
+.corner{font-size:10px;line-height:1.2;color:var(--rule);font-weight:bold;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 4px 2px 0;white-space:nowrap}
 #printArea{display:none}
 @media print{
   html,body{margin:0;padding:0;background:#fff}
@@ -142,23 +148,28 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </style>
 </head>
 <body>
+<a href="#side" class="sr">Aller à l'aperçu</a>
 <header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span><button class="gear" id="gear" title="Réglages">⚙</button></header>
 <div class="app">
   <div id="colL">
     <div class="card">
       <h2>Modèles <span id="cloud" style="float:right;text-transform:none;font-weight:normal;letter-spacing:0"></span></h2>
       <div class="row">
-        <div><select id="tplSel"></select></div>
+        <div><input type="text" id="tplSearch" placeholder="Rechercher un modèle…" aria-label="Rechercher un modèle"></div>
+        <div><select id="tplFolder" aria-label="Filtrer par dossier"></select></div>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <div><select id="tplSel" aria-label="Modèle"></select></div>
         <div style="flex:0 0 auto"><button id="tplLoad">Charger</button></div>
       </div>
-      <div class="row" style="margin-top:6px"><button id="tplSave">💾 Enregistrer sous…</button><button id="tplUpd" title="Remplace le modèle choisi par les réglages actuels">↻ Mettre à jour</button><button id="tplDel">Supprimer</button></div>
+      <div class="row" style="margin-top:6px"><button id="tplSave">💾 Enregistrer sous…</button><button id="tplUpd" title="Remplace le modèle choisi par les réglages actuels">↻ Mettre à jour</button><button id="tplMeta" title="Renommer le modèle choisi ou le classer dans un dossier">📁 Nom / dossier</button><button id="tplDel">Supprimer</button></div>
       <div class="info">Un modèle garde le papier, le texte, le code-barres et les réglages.</div>
     </div>
 
     <div class="card" id="listCard">
       <h2>Liste d'impression</h2>
       <div class="row">
-        <div><select id="lstSel"></select></div>
+        <div><select id="lstSel" aria-label="Liste d'impression enregistrée"></select></div>
         <div style="flex:0 0 auto"><button id="lstLoad">Charger</button></div>
       </div>
       <div id="lstItems" style="margin-top:8px"></div>
@@ -172,7 +183,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
     <div class="card" id="paperCard">
       <h2>1. Papier (type d'étiquette)</h2>
       <div class="row">
-        <div><select id="stockSel"></select></div>
+        <div><select id="stockSel" aria-label="Type de papier"></select></div>
         <div style="flex:0 0 auto"><button id="btnManage">Gérer…</button></div>
       </div>
       <div class="info" id="stockInfo"></div>
@@ -296,7 +307,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 
   <div class="side" id="side">
     <div class="card pv">
-      <h2>Aperçu <span style="float:right;text-transform:none;font-weight:normal"><button class="sm" id="zoomFit" style="min-height:0;padding:2px 8px">Ajuster</button> <input type="range" id="zoom" min="20" max="800" value="200" style="vertical-align:middle;width:110px"></span></h2>
+      <h2>Aperçu <span style="float:right;text-transform:none;font-weight:normal"><label class="chk" style="display:inline-flex;margin-right:8px" title="Affiche l'étiquette dans son orientation d'origine (sortie de l'imprimante vers le haut) au lieu de la vue tournée dans le sens d'impression"><input type="checkbox" id="viewRead"> Vue lisible</label><button class="sm" id="zoomFit" style="min-height:0;padding:2px 8px">Ajuster</button> <input type="range" id="zoom" aria-label="Zoom de l'aperçu" min="20" max="800" value="200" style="vertical-align:middle;width:110px"></span></h2>
       <div class="editb" id="editBanner"></div>
       <div class="stage"><div id="preview"></div></div>
       <div class="warn" id="overflow"></div>
@@ -306,6 +317,14 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </div>
 <div class="mbar"><button class="pri" id="btnPrint2">🖨️ Étiquette</button><button class="pri dark" id="btnPrint3">🖨️ Liste</button></div>
 
+<dialog id="tplDlg" style="width:min(480px,96vw)">
+  <h3 id="tplDlgTitle" style="margin-top:0">Enregistrer le modèle</h3>
+  <label class="f" for="tplName">Nom du modèle</label><input type="text" id="tplName">
+  <label class="f" for="tplFolderIn">Dossier (optionnel)</label><input type="text" id="tplFolderIn" list="folderList" placeholder="ex. IT, Promotions, Cour arrière">
+  <datalist id="folderList"></datalist>
+  <div class="warn" id="tplDlgErr"></div>
+  <div class="row" style="margin-top:10px"><button class="pri" id="tplDlgOk" style="font-size:14px;padding:8px">Enregistrer</button><button id="tplDlgCancel">Annuler</button></div>
+</dialog>
 <dialog id="dirtyDlg" style="width:min(520px,96vw)">
   <h3 style="margin-top:0">⚠ Étiquette non enregistrée</h3>
   <div id="dirtyMsg" style="margin-bottom:12px"></div>
@@ -339,6 +358,11 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </dialog>
 <dialog id="setDlg" style="width:min(680px,96vw);max-height:92vh;overflow:auto">
   <h3 style="margin-top:0">⚙ Réglages</h3>
+  <div class="card">
+    <h2>Apparence</h2>
+    <label class="f" for="prTheme">Thème</label>
+    <select id="prTheme"><option value="auto">Automatique (suit l'appareil)</option><option value="light">Clair</option><option value="dark">Sombre</option></select>
+  </div>
   <div class="card">
     <h2>Offset de rotation du contenu</h2>
     <label class="chk"><input type="checkbox" id="prRotOn"> Activer l'offset de rotation (désactivé par défaut)</label>
@@ -605,10 +629,12 @@ function autoHeight(idx){
   return Math.max(Math.ceil(px/96*MM*10)/10, +design.minLen||0, Math.ceil(ext*10)/10);
 }
 function maxAutoHeight(){ let h=0; for(let i=0;i<total();i++) h=Math.max(h,autoHeight(i)); return h; }
+const viewTheta=()=>prefs.readable?((+design.rot||0)-90):(+design.rot||0);
 const imgH=im=>im.w*(im.ih||1)/(im.iw||1);
 let selImg="";
+const safeSrc=v=>/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(String(v||""))?v:"";
 function imgsHTML(forPrint){
-  return (design.images||[]).map((im,i)=>`<img class="${forPrint?"":"limg"}" data-i="${i}" src="${im.src}" draggable="false" alt="" style="position:absolute;left:${im.x}mm;top:${im.y}mm;width:${im.w}mm;height:${imgH(im).toFixed(2)}mm;max-width:none;transform:rotate(${+im.rot||0}deg);transform-origin:50% 50%;${(im.bw&&forPrint)?"image-rendering:pixelated;":""}${forPrint?"pointer-events:none;":(im.id===selImg?"outline:1px dashed #f96302;":"")}">`).join("");
+  return (design.images||[]).map((im,i)=>`<img class="${forPrint?"":"limg"}" data-i="${i}" src="${safeSrc(im.src)}" draggable="false" alt="Image ${i+1}" style="position:absolute;left:${+im.x||0}mm;top:${+im.y||0}mm;width:${+im.w||10}mm;height:${imgH(im).toFixed(2)}mm;max-width:none;transform:rotate(${+im.rot||0}deg);transform-origin:50% 50%;${(im.bw&&forPrint)?"image-rendering:pixelated;":""}${forPrint?"pointer-events:none;":(im.id===selImg?"outline:1px dashed #f96302;":"")}">`).join("");
 }
 function frameHTML(){
   if(!design.frameOn) return "";
@@ -672,7 +698,7 @@ function rulerSVG(len,vertical,unit,ttl){
   g+=vertical?`<line x1="${T-3.5}" y1="${len}" x2="${T}" y2="${len}" stroke="#f96302"/>`:`<line x1="${len}" y1="${T-3.5}" x2="${len}" y2="${T}" stroke="#f96302"/>`;
   const vb=vertical?`0 0 ${T} ${len}`:`0 0 ${len} ${T}`;
   const sz=vertical?`width:${T}mm;height:${len}mm`:`width:${len}mm;height:${T}mm`;
-  return `<svg class="rl" xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" style="${sz}" stroke="#374151" stroke-width=".15" fill="#374151" font-family="Arial,sans-serif" font-size="2.3"><title>${ttl||(vertical?"Y : longueur (sens d'impression)":"X : largeur")}</title>${g}</svg>`;
+  return `<svg class="rl" xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" style="${sz}" stroke="currentColor" stroke-width=".15" fill="currentColor" font-family="Arial,sans-serif" font-size="2.3"><title>${ttl||(vertical?"Y : longueur (sens d'impression)":"X : largeur")}</title>${g}</svg>`;
 }
 function refresh(){
   const s=stock();
@@ -683,9 +709,24 @@ function refresh(){
   const p=$("preview"); p.innerHTML="";
   const u=s.u, Wmm=toMM(s.w,u);
   $("drvCur").innerHTML=drvHTML([{W:Wmm,H,auto:!!design.auto,names:[]}]);
-  if(!zoomManual) fitZoom(H,Wmm);
+  if(!zoomManual) fitZoom(prefs.readable?Wmm:H, prefs.readable?H:Wmm, prefs.readable?60:0);
   const z=$("zoom").value/100;
   const cell=(html,r,c,cls)=>{const d=document.createElement("div"); if(cls) d.className=cls; d.style.gridRow=r; d.style.gridColumn=c; if(typeof html==="string") d.innerHTML=html; else d.appendChild(html); if(!cls) d.style.zoom=z; p.appendChild(d); return d;};
+  if(prefs.readable){
+    // Vue lisible : étiquette dans son orientation d'origine (largeur du ruban en X, sortie vers le haut).
+    const box=document.createElement("div");
+    box.style.cssText=`position:relative;width:${Wmm}mm;height:${H}mm`;
+    el.style.cssText+=";position:absolute;left:0;top:0";
+    box.appendChild(el);
+    const slot=document.createElement("div"); slot.style.cssText="position:absolute;left:0;right:0;top:-2px;height:0;border-top:3px dashed #f96302"; box.appendChild(slot);
+    cell(box,2,2);
+    cell(rulerSVG(Wmm,false,u,"X : largeur du ruban"),1,2);
+    cell(rulerSVG(H,true,u,"Y : longueur (sens d'impression)"),2,1);
+    cell("X ↔<br>Y ↕",1,1,"corner");
+    const fd=document.createElement("div"); fd.className="feed";
+    fd.innerHTML="<div class='ar'><i>▲</i><b></b></div><div class='tx'>Sens d'impression (sortie de l'imprimante)</div>";
+    fd.style.gridRow="2"; fd.style.gridColumn="3"; p.appendChild(fd);
+  } else {
     // Sens d'impression horizontal : X = longueur (parallèle à la sortie), Y = largeur du ruban ; la sortie est à droite.
     const box=document.createElement("div");
     box.style.cssText=`position:relative;width:${H}mm;height:${Wmm}mm`;
@@ -698,13 +739,14 @@ function refresh(){
     cell("X ↔<br>Y ↕",1,1,"corner");
     const fh=cell("<div class='feedh'><span>Sens d'impression<span class='lg'> (sortie de l'imprimante, fente à droite)</span></span><b></b><i>▶</i></div>",3,2,"nz");
     fh.style.zoom="";
+  }
   document.querySelectorAll("#preview .limg").forEach(img=>{
     const i=+img.dataset.i, im=(design.images||[])[i]; if(!im) return;
     img.onpointerdown=e=>{
       e.preventDefault();
       selImg=im.id; try{ img.setPointerCapture(e.pointerId); }catch(_){}
       const sx=e.clientX, sy=e.clientY, ix=im.x, iy=im.y;
-      const th=(+design.rot||0)*Math.PI/180, k=96/MM*($("zoom").value/100);
+      const th=viewTheta()*Math.PI/180, k=96/MM*($("zoom").value/100);
       img.style.outline="1px dashed #f96302";
       document.querySelectorAll("#preview .hdl").forEach(h=>h.style.display="none");
       img.onpointermove=ev=>{
@@ -722,12 +764,12 @@ function refresh(){
     const idx=design.images.indexOf(im);
     const imgEl=document.querySelector(`#preview .limg[data-i="${idx}"]`);
     const rotEl=document.querySelector("#preview .lbl > .rot"); if(!imgEl||!rotEl) return;
-    const k=96/MM*($("zoom").value/100), hs=15/k, th=(+design.rot||0)*Math.PI/180, ratio=(im.ih||1)/(im.iw||1);
+    const k=96/MM*($("zoom").value/100), hs=15/k, th=viewTheta()*Math.PI/180, ratio=(im.ih||1)/(im.iw||1);
     const wpos=(lx,ly)=>{ const a=(+im.rot||0)*Math.PI/180, c=Math.cos(a), sn=Math.sin(a), cx=im.x+im.w/2, cy=im.y+imgH(im)/2; return [cx+lx*c-ly*sn, cy+lx*sn+ly*c]; };
     // Surcouche (même transformation que le contenu) hors de l'étiquette : jamais rognée, toujours au premier plan
     const labelEl=rotEl.parentElement, boxEl=labelEl.parentElement;
     const ov=document.createElement("div"); ov.className="hdl";
-    ov.style.cssText=`position:absolute;left:0;top:0;width:${rotEl.style.width};height:${rotEl.style.height};transform-origin:0 0;transform:${labelEl.style.transform||"none"} ${rotEl.style.transform||""};pointer-events:none;z-index:50;overflow:visible`;
+    ov.style.cssText=`position:absolute;left:0;top:0;width:${rotEl.style.width};height:${rotEl.style.height};transform-origin:0 0;transform:${[labelEl.style.transform,rotEl.style.transform].filter(Boolean).join(" ")||"none"};pointer-events:none;z-index:50;overflow:visible`;
     boxEl.appendChild(ov);
     const mkEl=css=>{ const h=document.createElement("div"); h.className="hdl"; h.style.cssText="position:absolute;box-sizing:border-box;touch-action:none;pointer-events:auto;z-index:51;"+css; ov.appendChild(h); return h; };
     const corners=[[-1,-1,"nwse-resize"],[1,-1,"nesw-resize"],[-1,1,"nesw-resize"],[1,1,"nwse-resize"]];
@@ -776,7 +818,7 @@ function refresh(){
       try{ rotH.setPointerCapture(e.pointerId); }catch(_){}
       const r=imgEl.getBoundingClientRect(), ccx=r.left+r.width/2, ccy=r.top+r.height/2;
       rotH.onpointermove=ev=>{
-        let a=Math.atan2(ev.clientY-ccy,ev.clientX-ccx)*180/Math.PI+90-(+design.rot||0);
+        let a=Math.atan2(ev.clientY-ccy,ev.clientX-ccx)*180/Math.PI+90-viewTheta();
         a=((a%360)+360)%360; if(a>180) a-=360;
         if(!ev.altKey) a=Math.round(a/15)*15;
         im.rot=a; applyBox(); place(); syncImgInputs(im);
@@ -797,9 +839,9 @@ function refresh(){
   save();
 }
 let zoomManual=false;
-function fitZoom(Hmm,Wmm){
+function fitZoom(Hmm,Wmm,extraW){
   const st=document.querySelector(".stage"); if(!st) return;
-  const aw=st.clientWidth-40, ah=st.clientHeight-24-44;
+  const aw=st.clientWidth-40-(extraW||0), ah=st.clientHeight-24-(extraW?10:44);
   if(aw<60||ah<60) return;
   const k=96/MM;
   const z=Math.min(aw/((Hmm+10)*k), ah/((Wmm+9)*k));
@@ -821,7 +863,7 @@ function renderLines(){
         <div><input type="number" min="4" max="120" step="1" title="Taille (pt)"></div>
         <label class="chk"><input type="checkbox" class="l-bold"> Gras</label>
         <label class="chk"><input type="checkbox" class="l-sep"> Trait dessous</label>
-        <div><select><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></div>
+        <div><select aria-label="Alignement du texte"><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></div>
         <button class="sm" title="Supprimer">✕</button>
       </div>`;
     const [ta,num,chk,sel,del]=[d.querySelector("textarea"),d.querySelector("input[type=number]"),d.querySelector(".l-bold"),d.querySelector("select"),d.querySelector("button")];
@@ -980,18 +1022,66 @@ function builtinDesign(b){
   d.bc=Object.assign({},DEF_DESIGN.bc,d.bc);
   return Object.assign({},DEF_DESIGN,d);
 }
-function fillTplSel(sel){
-  $("tplSel").innerHTML='<option value="">— choisir un modèle —</option>'+templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("")
-    +'<optgroup label="Gabarits fournis">'+BUILTIN.map(t=>`<option value="${t.id}">★ ${esc(t.name)}</option>`).join("")+'</optgroup>';
-  if(sel) $("tplSel").value=sel;
+function folderNames(){ return [...new Set(templates.map(t=>String(t.folder||"").trim()).filter(Boolean))].sort((x,y)=>x.localeCompare(y,"fr")); }
+function fillTplSel(sel,_retry){
+  const folders=folderNames(), cur=$("tplFolder").value;
+  $("tplFolder").innerHTML='<option value="">Tous les dossiers</option><option value="__none">Sans dossier</option>'+folders.map(f=>`<option value="${esc(f)}">📁 ${esc(f)}</option>`).join("");
+  $("tplFolder").value=(cur===""||cur==="__none"||folders.includes(cur))?cur:"";
+  $("folderList").innerHTML=folders.map(f=>`<option value="${esc(f)}">`).join("");
+  const q=($("tplSearch").value||"").trim().toLowerCase(), f=$("tplFolder").value;
+  const match=t=>{
+    const tf=String(t.folder||"").trim();
+    if(f==="__none"&&tf) return false;
+    if(f&&f!=="__none"&&tf!==f) return false;
+    return !q||t.name.toLowerCase().includes(q)||tf.toLowerCase().includes(q);
+  };
+  const shown=templates.filter(match);
+  let html='<option value="">— choisir un modèle —</option>';
+  html+=shown.filter(t=>!String(t.folder||"").trim()).map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("");
+  folders.forEach(fo=>{ const g=shown.filter(t=>String(t.folder||"").trim()===fo); if(g.length) html+=`<optgroup label="📁 ${esc(fo)}">`+g.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("")+"</optgroup>"; });
+  if(!f){ const bs=BUILTIN.filter(t=>!q||t.name.toLowerCase().includes(q)); if(bs.length) html+='<optgroup label="Gabarits fournis">'+bs.map(t=>`<option value="${t.id}">★ ${esc(t.name)}</option>`).join("")+'</optgroup>'; }
+  $("tplSel").innerHTML=html;
+  if(sel){
+    $("tplSel").value=sel;
+    if($("tplSel").value!==sel && !_retry){ $("tplSearch").value=""; $("tplFolder").value=""; fillTplSel(sel,true); }
+  }
 }
-$("tplSave").onclick=()=>{
-  const name=(prompt("Nom du modèle :")||"").trim(); if(!name) return;
+const refilterTpl=()=>{ const cur=$("tplSel").value; fillTplSel(); if([...$("tplSel").options].some(o=>o.value===cur)) $("tplSel").value=cur; };
+$("tplSearch").addEventListener("input",refilterTpl);
+$("tplFolder").addEventListener("change",refilterTpl);
+let tplDlgCb=null;
+function askTplMeta(title,name,folder,cb,okLabel){
+  $("tplDlgTitle").textContent=title; $("tplName").value=name||""; $("tplFolderIn").value=folder||"";
+  $("tplDlgErr").textContent=""; $("tplDlgOk").textContent=okLabel||"Enregistrer"; tplDlgCb=cb;
+  $("tplDlg").showModal(); $("tplName").focus(); $("tplName").select();
+}
+$("tplDlgOk").onclick=()=>{
+  const n=$("tplName").value.trim(); if(!n){ $("tplDlgErr").textContent="Entrez un nom."; return; }
+  const r=tplDlgCb&&tplDlgCb(n,$("tplFolderIn").value.trim());
+  if(r!==false) $("tplDlg").close();
+};
+$("tplDlgCancel").onclick=()=>$("tplDlg").close();
+$("tplName").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("tplDlgOk").click(); } });
+$("tplFolderIn").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("tplDlgOk").click(); } });
+function saveTemplateAs(name,folder){
   const ex=templates.find(t=>t.name===name);
-  if(ex && !confirm("Un modèle « "+name+" » existe déjà. Le remplacer ?")) return;
-  const obj={name,stockId,design:JSON.parse(JSON.stringify(design))};
+  if(ex && !confirm("Un modèle « "+name+" » existe déjà. Le remplacer ?")) return false;
+  const obj={name,folder,stockId,design:JSON.parse(JSON.stringify(design))};
   let id; if(ex){ Object.assign(ex,obj); id=ex.id; } else { id="t"+Date.now(); templates.push({id,...obj}); }
   fillTplSel(id); save(); markClean();
+  return true;
+}
+$("tplSave").onclick=()=>{
+  const cur=templates.find(x=>x.id===$("tplSel").value);
+  askTplMeta("Enregistrer le modèle sous…", cur?cur.name:"", cur?cur.folder:"", (name,folder)=>saveTemplateAs(name,folder));
+};
+$("tplMeta").onclick=()=>{
+  const t=templates.find(x=>x.id===$("tplSel").value);
+  if(!t){ alert(isBuiltin($("tplSel").value)?"Les gabarits fournis ne peuvent pas être renommés.":"Choisissez d'abord un modèle dans la liste."); return; }
+  askTplMeta("Renommer / classer le modèle", t.name, t.folder, (name,folder)=>{
+    if(templates.some(x=>x!==t&&x.name===name)){ $("tplDlgErr").textContent="Un autre modèle porte déjà ce nom."; return false; }
+    t.name=name; t.folder=folder; fillTplSel(t.id); save();
+  },"Appliquer");
 };
 $("tplUpd").onclick=()=>{
   if(isBuiltin($("tplSel").value)){ alert("Les gabarits fournis ne peuvent pas être modifiés. Utilisez « Enregistrer sous… » pour créer votre propre modèle."); return; }
@@ -1112,6 +1202,8 @@ function renderWork(){
     const d=document.createElement("div"); d.className="it"+(it.id===editItemId?" sel":"");
     d.title="Cliquer pour afficher et modifier cette étiquette dans l'aperçu";
     d.onclick=e=>{ if(e.target.closest("button,input,select,textarea")) return; selectItem(it.id); };
+    d.tabIndex=0; d.setAttribute("role","group"); d.setAttribute("aria-label","Ligne "+(i+1)+" : "+r.name+(it.id===editItemId?" (en édition)":""));
+    d.onkeydown=e=>{ if((e.key==="Enter"||e.key===" ")&&e.target===d){ e.preventDefault(); selectItem(it.id); } };
     d.innerHTML=`<div class="th"></div><div class="bd">
       <div class="nm">${i+1}. ${esc(r.name)}${r.live?"":" <span style='font-weight:normal;color:#6b7280'>(copie figée)</span>"}</div>
       <div class="info" style="margin:2px 0 0">${r.stock?esc(r.stock.name)+" · "+dimTxt(r.stock):"⚠ papier introuvable"}</div>
@@ -1345,7 +1437,7 @@ function renderImgs(){
   design.images=design.images||[];
   design.images.forEach((im,i)=>{
     const r=document.createElement("div"); r.className="irow"+(im.id===selImg?" sel":""); r.dataset.id=im.id;
-    r.innerHTML=`<img src="${im.src}" alt="">
+    r.innerHTML=`<img src="${safeSrc(im.src)}" alt="">
       <label>Largeur mm<input type="number" class="i-w" min="2" max="300" step="0.5"></label>
       <label>Angle °<input type="number" class="i-a" step="1" min="-360" max="360"></label>
       <button class="sm i-rl" title="Pivoter de 90° vers la gauche" style="min-height:0">⟲</button>
@@ -1416,12 +1508,7 @@ function guardDirty(next){
   if(i>=0) add("💾 Enregistrer dans la ligne "+(i+1)+" et poursuivre",()=>{ commitEdit(); next(); },"pri");
   else {
     add("💾 Enregistrer comme modèle…",()=>{
-      const name=(prompt("Nom du modèle :")||"").trim(); if(!name) return;
-      const ex=templates.find(t=>t.name===name);
-      if(ex&&!confirm("Un modèle « "+name+" » existe déjà. Le remplacer ?")) return;
-      const obj={name,stockId,design:JSON.parse(JSON.stringify(design))};
-      let id; if(ex){ Object.assign(ex,obj); id=ex.id; } else { id="t"+Date.now(); templates.push({id,...obj}); }
-      fillTplSel(id); save(); markClean(); next();
+      askTplMeta("Enregistrer comme modèle","","",(name,folder)=>{ if(saveTemplateAs(name,folder)===false) return false; next(); });
     },"pri");
     add("➕ Ajouter à la liste d'impression et poursuivre",()=>{
       const name=(prompt("Nom de cette ligne :","Aperçu actuel")||"").trim(); if(!name) return;
@@ -1507,6 +1594,50 @@ $("impGo").onclick=()=>{
   if(take.length<rows.length) alert("Seules les "+take.length+" premières étiquettes ont été importées (limite de 200 lignes par liste).");
 };
 
+/* ---------- Accessibilité ---------- */
+let a11yN=0, a11yT=null;
+function a11yFix(){
+  document.querySelectorAll("label.f").forEach(l=>{
+    if(l.htmlFor||l.querySelector("input,select,textarea")) return;
+    let t=l.nextElementSibling, ctl=null;
+    while(t&&!ctl){
+      ctl=t.matches("input,select,textarea")?t:t.querySelector("input,select,textarea");
+      if(ctl||t.tagName==="LABEL") break; t=t.nextElementSibling;
+    }
+    if(!ctl) ctl=l.parentElement&&l.parentElement.querySelector("input,select,textarea");
+    if(ctl){ if(!ctl.id) ctl.id="a11y_"+(++a11yN); l.htmlFor=ctl.id; }
+  });
+  document.querySelectorAll("button").forEach(b=>{ if(!b.getAttribute("aria-label")&&b.title) b.setAttribute("aria-label",b.title); });
+  document.querySelectorAll("input,select,textarea").forEach(c=>{
+    if(c.getAttribute("aria-label")||c.type==="hidden") return;
+    if(c.labels&&c.labels.length) return;
+    const t=c.title||c.placeholder; if(t) c.setAttribute("aria-label",t);
+  });
+  document.querySelectorAll("dialog").forEach((d,i)=>{ const h=d.querySelector("h3"); if(h&&!d.getAttribute("aria-labelledby")){ if(!h.id) h.id="dlgh_"+i; d.setAttribute("aria-labelledby",h.id); } });
+}
+function a11ySoon(){ clearTimeout(a11yT); a11yT=setTimeout(a11yFix,120); }
+new MutationObserver(a11ySoon).observe(document.body,{childList:true,subtree:true});
+["overflow","autoInfo","bcInfo","impCount","calRes","cloud"].forEach(id=>{ const e=$(id); if(e) e.setAttribute("aria-live","polite"); });
+{ const e=$("bcErr"); if(e) e.setAttribute("role","alert"); }
+{ const st=document.querySelector(".stage"); if(st){ st.setAttribute("role","region"); st.setAttribute("aria-label","Aperçu de l'étiquette"); st.id=st.id||"stageRegion"; } }
+document.addEventListener("keydown",e=>{
+  if(!selImg) return;
+  const t=e.target; if(t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable)) return;
+  if(document.querySelector("dialog[open]")) return;
+  const idx=(design.images||[]).findIndex(x=>x.id===selImg); if(idx<0) return;
+  const im=design.images[idx];
+  const step=e.shiftKey?2:0.5; let sx=0, sy=0;
+  if(e.key==="ArrowLeft") sx=-1; else if(e.key==="ArrowRight") sx=1; else if(e.key==="ArrowUp") sy=-1; else if(e.key==="ArrowDown") sy=1;
+  else if(e.key==="Delete"||e.key==="Backspace"){ e.preventDefault(); design.images.splice(idx,1); delete imgOrig[im.id]; selImg=""; save(); refresh(); renderImgs(); return; }
+  else if(e.key==="Escape"){ selImg=""; refresh(); renderImgs(); return; }
+  else return;
+  e.preventDefault();
+  const th=viewTheta()*Math.PI/180;
+  im.x=+(im.x+step*(sx*Math.cos(th)+sy*Math.sin(th))).toFixed(1);
+  im.y=+(im.y+step*(-sx*Math.sin(th)+sy*Math.cos(th))).toFixed(1);
+  save(); refresh(); renderImgs();
+});
+
 /* ---------- Synchronisation Vercel (optionnelle) ---------- */
 let cloudOn=false, lastSync="", pushT=null;
 const cs={state:"off",lastPull:0,lastPush:0,lastErr:"",lat:0,server:null,log:[],http:0};
@@ -1580,13 +1711,16 @@ function renderSync(){
 }
 $("gear").onclick=()=>{
   $("prRotOn").checked=!!prefs.rotOn; $("prRot").value=String(prefs.rotOff||0);
-  $("prDpi").value=String(prefs.dpi||300); $("prSnap").checked=!!prefs.snap; $("calRes").textContent="";
+  $("prTheme").value=prefs.theme||"auto"; $("prDpi").value=String(prefs.dpi||300); $("prSnap").checked=!!prefs.snap; $("calRes").textContent="";
   $("prOffOn").checked=!!prefs.offOn; $("prOx").value=prefs.ox||0; $("prOy").value=prefs.oy||0;
   renderSync(); $("setDlg").showModal();
 };
 $("setClose").onclick=()=>$("setDlg").close();
 $("prRotOn").onchange=()=>{ prefs.rotOn=$("prRotOn").checked; save(); refresh(); renderWork(); };
 $("prRot").onchange=()=>{ prefs.rotOff=+$("prRot").value; save(); refresh(); renderWork(); };
+function applyTheme(){ document.documentElement.setAttribute("data-theme",(prefs.theme==="light"||prefs.theme==="dark")?prefs.theme:""); }
+$("prTheme").onchange=()=>{ prefs.theme=$("prTheme").value; applyTheme(); save(); };
+$("viewRead").onchange=()=>{ prefs.readable=$("viewRead").checked; save(); zoomManual=false; refresh(); };
 $("prDpi").onchange=()=>{ prefs.dpi=+$("prDpi").value; save(); refresh(); renderWork(); };
 $("prSnap").onchange=()=>{ prefs.snap=$("prSnap").checked; save(); refresh(); renderWork(); };
 $("calPrint").onclick=()=>{
@@ -1642,7 +1776,8 @@ function setRC(c){ document.querySelector(".app").classList.toggle("rc",c); $("l
 $("listToggle").onclick=()=>setRC(!document.querySelector(".app").classList.contains("rc"));
 try{ if(localStorage.getItem("zl_rc")==="1"){ document.querySelector(".app").classList.add("rc"); $("listToggle").querySelector(".lt-a").textContent="«"; } }catch(e){}
 placeList();
-syncForm(); autoZoom(); refresh(); markClean();
+applyTheme(); $("viewRead").checked=!!prefs.readable;
+syncForm(); autoZoom(); refresh(); markClean(); a11yFix();
 fillTplSel(); fillLstSel(workListId); renderWork(); setCloud("off"); cloudLoad();
 let rzT; window.addEventListener("resize",()=>{ clearTimeout(rzT); rzT=setTimeout(()=>{ if(!zoomManual) refresh(); },120); });
 </script>
