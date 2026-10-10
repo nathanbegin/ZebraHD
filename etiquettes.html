@@ -271,6 +271,12 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
   <div style="overflow-x:auto"><table id="lstTbl"><thead><tr><th>Aperçu</th><th>Modèle</th><th>Papier</th><th>Texte (ligne 1)</th><th>Code / préfixe</th><th>Départ</th><th>Qté série</th><th>Copies</th><th></th></tr></thead><tbody></tbody></table></div>
   <div class="row" style="margin-top:10px"><button class="pri" id="lstDlgClose" style="font-size:14px;padding:8px">Fermer</button></div>
 </dialog>
+<dialog id="seqDlg" style="width:min(560px,96vw);max-height:92vh;overflow:auto">
+  <h3 style="margin-top:0">Impression par séquences</h3>
+  <div class="info" style="margin-bottom:10px">Les lignes de même papier sont regroupées. Imprimez la séquence 1, changez ensuite le format de papier dans le pilote (Préférences d'impression → Options), puis imprimez la séquence suivante.</div>
+  <div id="seqBody"></div>
+  <div class="row"><button id="seqClose">Fermer</button></div>
+</dialog>
 <div id="printArea"></div>
 <style id="pageStyle"></style>
 
@@ -916,30 +922,44 @@ $("lstPrint").onclick=()=>{
         if(b.err&&design.bc.on) errs.push("« "+r.name+" » : "+b.err);
         for(let c=0;c<n;c++) labels.push(c===0?b.el:b.el.cloneNode(true));
       }
-      jobs.push({W,H,labels,names:[r.name]});
+      jobs.push({W,H,labels,names:[r.name],auto:!!design.auto});
     } finally { design=od; stockId=os; }
   }
   if(errs.length && !confirm("Problèmes détectés :\n"+[...new Set(errs)].join("\n")+"\n\nImprimer quand même ?")) return;
+  // Regroupement par taille de papier (toutes les lignes de même taille ensemble, ordre de première apparition)
   const merged=[];
   jobs.forEach(j=>{
-    const p=merged[merged.length-1];
-    if(p&&Math.abs(p.W-j.W)<0.05&&Math.abs(p.H-j.H)<0.05){ p.labels.push(...j.labels); p.names.push(...j.names); }
+    const p=merged.find(x=>Math.abs(x.W-j.W)<0.05&&Math.abs(x.H-j.H)<0.05);
+    if(p){ p.labels.push(...j.labels); p.names.push(...j.names); p.auto=p.auto||j.auto; }
     else merged.push(j);
   });
   if(!merged.length) return;
-  const sz=j=>`${(j.W/MM).toFixed(2)}" × ${(j.H/MM).toFixed(2)}" (${j.W.toFixed(1)} × ${j.H.toFixed(1)} mm)`;
-  if(merged.length>1 && !confirm("La liste contient "+merged.length+" tailles de papier différentes ; elles seront imprimées l'une après l'autre.\n\nÉtape 1 : "+merged[0].names.join(", ")+" — "+sz(merged[0])+"\n\nCommencer ?")) return;
-  for(let k=0;k<merged.length;k++){
-    const j=merged[k];
-    $("pageStyle").textContent=`@page{size:${j.W.toFixed(2)}mm ${j.H.toFixed(2)}mm;margin:0}`;
-    const pa=$("printArea"); pa.innerHTML=""; j.labels.forEach(el=>pa.appendChild(el));
-    window.print();
-    if(k<merged.length-1){
-      const nx=merged[k+1];
-      if(!confirm("Étape "+(k+1)+"/"+merged.length+" envoyée.\n\nProchain : "+nx.names.join(", ")+" — "+sz(nx)+"\n\nChangez le papier / le format du pilote si nécessaire, puis cliquez sur OK.")) break;
-    }
-  }
+  openSeq(merged);
 };
+function openSeq(groups){
+  const box=$("seqBody"); box.innerHTML="";
+  groups.forEach((g,k)=>{
+    const d=document.createElement("div"); d.className="card"; d.style.margin="0 0 10px";
+    d.innerHTML=`<h2 style="margin:0 0 6px">Séquence ${k+1} / ${groups.length}</h2>
+      <div style="font-weight:bold">${(g.W/MM).toFixed(2)}" × ${(g.H/MM).toFixed(2)}" · ${g.labels.length} étiquette(s)</div>
+      <div class="info">${esc([...new Set(g.names)].join(", "))}</div>
+      <div class="drv">${drvHTML([{W:g.W,H:g.H,auto:g.auto,names:[]}])}</div>
+      <button class="pri" style="margin-top:8px;font-size:15px">🖨️ Imprimer cette séquence</button>
+      <div class="info st" style="font-weight:bold"></div>`;
+    const btn=d.querySelector("button"), st=d.querySelector(".st");
+    btn.onclick=()=>{
+      $("pageStyle").textContent=`@page{size:${g.W.toFixed(2)}mm ${g.H.toFixed(2)}mm;margin:0}`;
+      const pa=$("printArea"); pa.innerHTML=""; g.labels.forEach(el=>pa.appendChild(el));
+      window.print();
+      st.textContent="✔ Envoyée à l'impression — vous pouvez la réimprimer au besoin.";
+      st.style.color="#15803d";
+      const nx=box.children[k+1]; if(nx) nx.scrollIntoView({block:"nearest"});
+    };
+    box.appendChild(d);
+  });
+  $("seqDlg").showModal();
+}
+$("seqClose").onclick=()=>$("seqDlg").close();
 
 /* ---------- Synchronisation Vercel (optionnelle) ---------- */
 let cloudOn=false, lastSync="", pushT=null;
