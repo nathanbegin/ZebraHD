@@ -29,6 +29,12 @@ header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
 #lstTbl td{vertical-align:middle}
 #lstTbl .thc{width:110px;height:60px;display:flex;align-items:center;justify-content:center;background:#e5e7eb;border-radius:4px;overflow:hidden}
 dialog#lstDlg{width:min(1060px,96vw)}
+.gear{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.75);color:#fff;font-size:20px;line-height:1;padding:4px 10px;border-radius:6px;min-height:0}
+.gear:hover{background:rgba(255,255,255,.2)}
+.dash{width:100%;font-size:13px}
+.dash td{padding:4px 6px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:bold;font-size:12px;color:#fff}
+.slog{max-height:140px;overflow:auto;font-size:12px;background:#f3f4f6;border-radius:6px;padding:6px;margin-top:6px}
 .help{margin-top:8px;font-size:13px}
 .help summary{cursor:pointer;color:var(--acc);font-weight:bold}
 .help ol{padding-left:18px;margin:6px 0}
@@ -113,7 +119,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </style>
 </head>
 <body>
-<header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span></header>
+<header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span><button class="gear" id="gear" title="Réglages">⚙</button></header>
 <div class="app">
   <div>
     <div class="card">
@@ -221,14 +227,6 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
         <div><label class="f">Copies de chaque</label><input type="number" id="copies" min="1" max="500" value="1"></div>
         <div><label class="f">Marge (mm)</label><input type="number" id="margin" min="0" step="0.5"></div>
       </div>
-      <label class="chk" style="margin-top:10px"><input type="checkbox" id="offOn"> Décalage manuel du contenu (centrage)</label>
-      <div id="offBox" style="display:none">
-        <div class="row">
-          <div><label class="f">Horizontal X (mm) : + vers la sortie</label><input type="number" id="offX" step="0.1"></div>
-          <div><label class="f">Vertical Y (mm) : + vers le bas</label><input type="number" id="offY" step="0.1"></div>
-        </div>
-        <div class="info">Mêmes axes que l'aperçu (X = sens d'impression, Y = largeur du ruban). Sert à corriger un décalage de l'imprimante sans toucher au pilote.</div>
-      </div>
       <label class="chk" style="margin-top:10px"><input type="checkbox" id="autoLen"> Longueur automatique (rouleau avec couteau)</label>
       <div id="autoBox" style="display:none">
         <div class="row"><div><label class="f">Longueur minimale (mm)</label><input type="number" id="minLen" min="0" step="1"></div></div>
@@ -270,6 +268,35 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
   <div class="info" style="margin-bottom:8px">Modifiez le papier, le texte (ligne 1), le code et les quantités de chaque ligne. Le reste vient du modèle.</div>
   <div style="overflow-x:auto"><table id="lstTbl"><thead><tr><th>Aperçu</th><th>Modèle</th><th>Papier</th><th>Texte (ligne 1)</th><th>Code / préfixe</th><th>Départ</th><th>Qté série</th><th>Copies</th><th></th></tr></thead><tbody></tbody></table></div>
   <div class="row" style="margin-top:10px"><button class="pri" id="lstDlgClose" style="font-size:14px;padding:8px">Fermer</button></div>
+</dialog>
+<dialog id="setDlg" style="width:min(680px,96vw);max-height:92vh;overflow:auto">
+  <h3 style="margin-top:0">⚙ Réglages</h3>
+  <div class="card">
+    <h2>Offset de rotation du contenu</h2>
+    <label class="chk"><input type="checkbox" id="prRotOn"> Activer l'offset de rotation (désactivé par défaut)</label>
+    <label class="f">Rotation ajoutée à l'impression</label>
+    <select id="prRot"><option value="0">0° / 360°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select>
+    <div class="info">S'ajoute à la rotation du contenu choisie dans « 2. Texte ». Appliqué à l'impression seulement : l'aperçu montre le résultat voulu. Sert à compenser l'orientation du pilote. Avec la longueur automatique, préférez 0° ou 180°.</div>
+  </div>
+  <div class="card">
+    <h2>Décalage manuel du contenu (centrage)</h2>
+    <label class="chk"><input type="checkbox" id="prOffOn"> Activer le décalage (désactivé par défaut)</label>
+    <div class="row">
+      <div><label class="f">Horizontal X (mm) : + vers la sortie</label><input type="number" id="prOx" step="0.1"></div>
+      <div><label class="f">Vertical Y (mm) : + vers le bas</label><input type="number" id="prOy" step="0.1"></div>
+    </div>
+    <div class="info">Mêmes axes que l'aperçu (X = sens d'impression, Y = largeur du ruban). Réglage propre à cet ordinateur.</div>
+  </div>
+  <div class="card">
+    <h2>Synchronisation avec la base de données</h2>
+    <div id="syncDash"></div>
+    <div class="row" style="margin-top:8px;flex-wrap:wrap">
+      <button id="syTest">Tester la connexion</button>
+      <button id="syPull">↻ Récupérer du serveur</button>
+      <button id="syPush">⬆ Envoyer maintenant</button>
+    </div>
+  </div>
+  <div class="row"><button class="pri" id="setClose" style="font-size:14px;padding:8px">Fermer</button></div>
 </dialog>
 <dialog id="seqDlg" style="width:min(560px,96vw);max-height:92vh;overflow:auto">
   <h3 style="margin-top:0">Impression par séquences</h3>
@@ -380,17 +407,18 @@ const DEF_STOCKS=[
   {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
 const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0,arrow:"",arrowH:5};
-let lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
+let prefs={rotOn:false,rotOff:0,offOn:false,ox:0,oy:0}, lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
 try{
   const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
   const d=JSON.parse(localStorage.getItem("zl_design")||"null"); if(d&&d.lines&&d.bc){ d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d); }
   const id=localStorage.getItem("zl_stockId"); if(id) stockId=id;
   const t=JSON.parse(localStorage.getItem("zl_templates")||"null"); if(Array.isArray(t)) templates=t;
+  const pf=JSON.parse(localStorage.getItem("zl_prefs")||"null"); if(pf&&typeof pf==="object") prefs=Object.assign(prefs,pf);
   const l=JSON.parse(localStorage.getItem("zl_lists")||"null"); if(Array.isArray(l)) lists=l;
   const w=JSON.parse(localStorage.getItem("zl_work")||"null"); if(w&&Array.isArray(w.items)){ workItems=w.items; workListId=w.id||""; }
 }catch(e){}
 if(!stocks.some(s=>s.id===stockId)) stockId=stocks[0].id;
-function save(){ cloudSchedule(); try{ localStorage.setItem("zl_templates",JSON.stringify(templates)); localStorage.setItem("zl_lists",JSON.stringify(lists)); localStorage.setItem("zl_work",JSON.stringify({id:workListId,items:workItems})); localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId);}catch(e){} }
+function save(){ cloudSchedule(); try{ localStorage.setItem("zl_templates",JSON.stringify(templates)); localStorage.setItem("zl_lists",JSON.stringify(lists)); localStorage.setItem("zl_prefs",JSON.stringify(prefs)); localStorage.setItem("zl_work",JSON.stringify({id:workListId,items:workItems})); localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId);}catch(e){} }
 const stock=()=>stocks.find(s=>s.id===stockId);
 const toMM=(v,u)=>u==="in"?v*MM:v;
 const isAdh=s=>s.adh!==false;
@@ -473,13 +501,13 @@ function autoHeight(idx){
 }
 function maxAutoHeight(){ let h=0; for(let i=0;i<total();i++) h=Math.max(h,autoHeight(i)); return h; }
 function buildLabel(forPrint,idx=0,hOverride){
-  const s=stock(), W=toMM(s.w,s.u), R=String((+design.rot+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
+  const s=stock(), W=toMM(s.w,s.u), R=String((+design.rot+(forPrint&&prefs.rotOn?(+prefs.rotOff||0):0)+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
   const H=autoActive()?(hOverride||autoHeight(idx)):toMM(s.h,s.u);
   const sw=R==="90"||R==="270", cw=sw?H:W, ch=sw?W:H, m=+design.margin||0;
   const el=document.createElement("div"); el.className="lbl";
   el.style.cssText=`width:${W}mm;height:${H}mm;`+(forPrint?"":`background:${s.color}`);
   const tf={"90":`translate(${W}mm,0) rotate(90deg)`,"180":`translate(${W}mm,${H}mm) rotate(180deg)`,"270":`translate(0,${H}mm) rotate(-90deg)`}[R];
-  const dxp=design.off?(+design.oy||0):0, dyp=design.off?-(+design.ox||0):0; // axes de l'aperçu -> axes de la page
+  const dxp=prefs.offOn?(+prefs.oy||0):0, dyp=prefs.offOn?-(+prefs.ox||0):0; // axes de l'aperçu -> axes de la page
   const tr=(dxp||dyp?`translate(${dxp}mm,${dyp}mm)`+(tf?" ":""):"")+(tf||"");
   const c=contentHTML(idx,cw,m,(autoActive()&&sw)?nominalLen():undefined);
   el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tr?`transform:${tr};`:"")+`"><div class="fit" style="width:100%;display:flex;flex-direction:column;align-items:center;transform-origin:50% 50%">${c.html}</div></div>`;
@@ -588,7 +616,7 @@ function syncForm(){
   $("bBatch").checked=B.batch; $("bPre").value=B.pre; $("bSuf").value=B.suf; $("bStart").value=B.start; $("bCount").value=B.count; $("bStep").value=B.step; $("bPad").value=B.pad;
   $("hText").value=B.hText; $("hSize").value=B.hSize; $("hSp").value=B.hSp; $("hAlign").value=B.hAlign; $("hBold").checked=B.hBold; $("hItal").checked=B.hItal; $("hUnd").checked=B.hUnd;
   showBatch(); showHint();
-  $("rot").value=design.rot; $("arrowSel").value=design.arrow||""; $("arrowH").value=design.arrowH||5; $("arrowHBox").style.display=design.arrow?"block":"none"; $("autoLen").checked=design.auto; $("offOn").checked=design.off; $("offX").value=design.ox; $("offY").value=design.oy; $("offBox").style.display=design.off?"block":"none"; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
+  $("rot").value=design.rot; $("arrowSel").value=design.arrow||""; $("arrowH").value=design.arrowH||5; $("arrowHBox").style.display=design.arrow?"block":"none"; $("autoLen").checked=design.auto; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
   $("bcBox").style.display=design.bc.on?"block":"none";
 }
 $("stockSel").onchange=()=>{stockId=$("stockSel").value;autoZoom();refresh();};
@@ -607,9 +635,6 @@ $("bBatch").onchange=()=>{design.bc.batch=$("bBatch").checked;showBatch();refres
 });
 $("hAlign").onchange=()=>{design.bc.hAlign=$("hAlign").value;refresh();};
 [["hBold","hBold"],["hItal","hItal"],["hUnd","hUnd"]].forEach(([id,k])=>$(id).onchange=()=>{design.bc[k]=$(id).checked;refresh();});
-$("offOn").onchange=()=>{design.off=$("offOn").checked;$("offBox").style.display=design.off?"block":"none";refresh();};
-$("offX").oninput=()=>{design.ox=+$("offX").value||0;refresh();};
-$("offY").oninput=()=>{design.oy=+$("offY").value||0;refresh();};
 $("autoLen").onchange=()=>{design.auto=$("autoLen").checked;refresh();};
 $("minLen").oninput=()=>{design.minLen=Math.max(0,+$("minLen").value||0);refresh();};
 $("arrowSel").onchange=()=>{design.arrow=$("arrowSel").value;$("arrowHBox").style.display=design.arrow?"block":"none";refresh();};
@@ -769,7 +794,9 @@ function drvHTML(sizes){
   const auto=sizes.some(z=>z.auto);
   return `<b>À régler dans le pilote</b> (Préférences d'impression)<br>
     <b>Options</b> : Portrait · zones non imprimables 0 · taille :<br>${rows.join("<br>")}<br>
-    <b>Réglages avancés</b> : mode de détection <b>${auto?"Continu":"Continu ou Détection Web (puis Calibrer)"}</b> · mode opératoire <b>Massicot</b> pour couper.`;
+    <b>Réglages avancés</b> : mode de détection <b>${auto?"Continu":"Continu ou Détection Web (puis Calibrer)"}</b> · mode opératoire <b>Massicot</b> pour couper.`
+    +(prefs.rotOn&&+prefs.rotOff?`<br>⚙ Offset de rotation à l'impression : <b>${prefs.rotOff}°</b>`:"")
+    +(prefs.offOn&&(+prefs.ox||+prefs.oy)?`<br>⚙ Décalage du contenu : X <b>${+prefs.ox||0}</b> mm, Y <b>${+prefs.oy||0}</b> mm`:"");
 }
 function thumbOf(it){
   return withItem(it,r=>{
@@ -963,6 +990,8 @@ $("seqClose").onclick=()=>$("seqDlg").close();
 
 /* ---------- Synchronisation Vercel (optionnelle) ---------- */
 let cloudOn=false, lastSync="", pushT=null;
+const cs={state:"off",lastPull:0,lastPush:0,lastErr:"",lat:0,server:null,log:[],http:0};
+function slog(msg,ok){ cs.log.unshift({t:Date.now(),msg,ok}); if(cs.log.length>25) cs.log.pop(); if($("setDlg")&&$("setDlg").open) renderSync(); }
 const snap=()=>JSON.stringify({stocks,templates,lists});
 function setCloud(st){
   const m={off:["💾 Local (cet ordinateur)","Base de données Vercel non disponible : les données restent dans ce navigateur."],ok:["☁ Synchronisé",""],sync:["☁ Enregistrement…",""],err:["⚠ Erreur de synchronisation","Nouvel essai à la prochaine modification."]}[st];
@@ -976,16 +1005,24 @@ function cloudSchedule(){
 async function cloudPush(){
   const cur=snap();
   try{
+    const t0=performance.now();
     const r=await fetch("api/data",{method:"PUT",headers:{"Content-Type":"application/json"},body:cur});
-    if(!r.ok) throw 0;
-    lastSync=cur; setCloud(snap()===cur?"ok":"sync");
-  }catch(e){ setCloud("err"); }
+    cs.lat=Math.round(performance.now()-t0); cs.http=r.status;
+    if(!r.ok){ cs.lastErr="Envoi refusé (HTTP "+r.status+")"; throw 0; }
+    lastSync=cur; cs.lastPush=Date.now(); cs.lastErr=""; setCloud(snap()===cur?"ok":"sync");
+    slog("Envoi réussi ("+cur.length+" octets, "+cs.lat+" ms)",true);
+  }catch(e){ if(!cs.lastErr||cs.lastErr.indexOf("Envoi")<0) cs.lastErr="Envoi impossible (réseau)"; slog(cs.lastErr,false); setCloud("err"); }
 }
 async function cloudLoad(){
   try{
+    const t0=performance.now();
     const r=await fetch("api/data",{cache:"no-store"});
-    if(!r.ok) throw 0;
-    const d=await r.json(); if(!d||typeof d!=="object") throw 0;
+    cs.lat=Math.round(performance.now()-t0); cs.http=r.status;
+    if(!r.ok){ cs.lastErr=r.status===503?"Base non configurée sur le serveur (variable FIREBASE_DB_URL absente)":"Lecture refusée (HTTP "+r.status+")"; throw 0; }
+    const d=await r.json(); if(!d||typeof d!=="object"){ cs.lastErr="Réponse invalide du serveur"; throw 0; }
+    cs.lastPull=Date.now(); cs.lastErr="";
+    cs.server={stocks:Array.isArray(d.stocks)?d.stocks.length:0,templates:Array.isArray(d.templates)?d.templates.length:0,lists:Array.isArray(d.lists)?d.lists.length:0};
+    slog("Lecture réussie ("+cs.lat+" ms)",true);
     const first=!cloudOn; cloudOn=true;
     if(first && snap()!==lastSync && pushT) return;
     const sv=Array.isArray(d.stocks)?d.stocks:[], tv=Array.isArray(d.templates)?d.templates:[];
@@ -995,8 +1032,58 @@ async function cloudLoad(){
     lastSync=JSON.stringify({stocks:sv,templates:tv,lists:Array.isArray(d.lists)?d.lists:[]});
     fillStockSel(); fillTplSel($("tplSel").value); fillLstSel(workListId); renderWork(); autoZoom(); refresh();
     if(!sv.length){ lastSync=""; cloudSchedule(); } else setCloud("ok");
-  }catch(e){ if(!cloudOn) setCloud("off"); }
+  }catch(e){
+    if(!cs.lastErr) cs.lastErr="Serveur injoignable (hors ligne ou page ouverte en local)";
+    slog("Lecture impossible : "+cs.lastErr,false);
+    if(!cloudOn) setCloud("off");
+  }
+  if($("setDlg")&&$("setDlg").open) renderSync();
 }
+const fmtT=t=>t?new Date(t).toLocaleString("fr-CA",{hour:"2-digit",minute:"2-digit",second:"2-digit",day:"2-digit",month:"short"}):"—";
+function renderSync(){
+  const dirty=cloudOn&&snap()!==lastSync;
+  let badge, msg;
+  if(!cloudOn){ badge=["#6b7280","Mode local"]; msg=cs.lastErr||"Aucune base de données détectée : les données restent dans ce navigateur."; }
+  else if(cs.lastErr&&cs.log[0]&&!cs.log[0].ok){ badge=["#b91c1c","Erreur"]; msg=cs.lastErr; }
+  else if(dirty){ badge=["#b45309","Modifications en attente"]; msg="Des changements locaux n'ont pas encore été envoyés."; }
+  else { badge=["#15803d","Synchronisé"]; msg="Les données locales correspondent au serveur."; }
+  const L={stocks:stocks.length,templates:templates.length,lists:lists.length}, S=cs.server;
+  const cmp=(a,b)=>S?(a===b?"✔":"≠"):"";
+  $("syncDash").innerHTML=`<div><span class="badge" style="background:${badge[0]}">${badge[1]}</span> <span class="info" style="margin:0">${esc(msg)}</span></div>
+    <table class="dash">
+      <tr><th></th><th>Cet ordinateur</th><th>Serveur</th><th></th></tr>
+      <tr><td>Types de papier</td><td>${L.stocks}</td><td>${S?S.stocks:"—"}</td><td>${cmp(L.stocks,S&&S.stocks)}</td></tr>
+      <tr><td>Modèles</td><td>${L.templates}</td><td>${S?S.templates:"—"}</td><td>${cmp(L.templates,S&&S.templates)}</td></tr>
+      <tr><td>Listes</td><td>${L.lists}</td><td>${S?S.lists:"—"}</td><td>${cmp(L.lists,S&&S.lists)}</td></tr>
+    </table>
+    <div class="info">Dernière lecture : <b>${fmtT(cs.lastPull)}</b> · Dernier envoi : <b>${fmtT(cs.lastPush)}</b> · Latence : <b>${cs.lat?cs.lat+" ms":"—"}</b> · Taille : <b>${snap().length} octets</b>${cs.http?" · HTTP "+cs.http:""}</div>
+    <div class="slog">${cs.log.length?cs.log.map(e=>`<div style="color:${e.ok?"#15803d":"#b91c1c"}">${fmtT(e.t)} — ${esc(e.msg)}</div>`).join(""):"Aucun événement pour l'instant."}</div>`;
+}
+$("gear").onclick=()=>{
+  $("prRotOn").checked=!!prefs.rotOn; $("prRot").value=String(prefs.rotOff||0);
+  $("prOffOn").checked=!!prefs.offOn; $("prOx").value=prefs.ox||0; $("prOy").value=prefs.oy||0;
+  renderSync(); $("setDlg").showModal();
+};
+$("setClose").onclick=()=>$("setDlg").close();
+$("prRotOn").onchange=()=>{ prefs.rotOn=$("prRotOn").checked; save(); refresh(); renderWork(); };
+$("prRot").onchange=()=>{ prefs.rotOff=+$("prRot").value; save(); refresh(); renderWork(); };
+$("prOffOn").onchange=()=>{ prefs.offOn=$("prOffOn").checked; save(); refresh(); renderWork(); };
+$("prOx").oninput=()=>{ prefs.ox=+$("prOx").value||0; save(); refresh(); renderWork(); };
+$("prOy").oninput=()=>{ prefs.oy=+$("prOy").value||0; save(); refresh(); renderWork(); };
+$("syTest").onclick=async()=>{
+  try{
+    const t0=performance.now(), r=await fetch("api/data",{cache:"no-store"}), ms=Math.round(performance.now()-t0);
+    cs.http=r.status; cs.lat=ms;
+    if(r.ok) slog("Test réussi : serveur joignable ("+ms+" ms)",true);
+    else { cs.lastErr=r.status===503?"Base non configurée sur le serveur (variable FIREBASE_DB_URL absente)":"Test échoué (HTTP "+r.status+")"; slog(cs.lastErr,false); }
+  }catch(e){ cs.lastErr="Serveur injoignable"; slog("Test échoué : serveur injoignable",false); }
+  renderSync();
+};
+$("syPull").onclick=async()=>{
+  if(cloudOn&&snap()!==lastSync&&!confirm("Des modifications locales ne sont pas encore envoyées. Les remplacer par les données du serveur ?")) return;
+  clearTimeout(pushT); pushT=null; lastSync=""; cloudOn=false; await cloudLoad(); renderSync();
+};
+$("syPush").onclick=async()=>{ if(!cloudOn){ slog("Envoi impossible : aucune base détectée",false); renderSync(); return; } clearTimeout(pushT); await cloudPush(); renderSync(); };
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&cloudOn&&snap()===lastSync) cloudLoad(); });
 
 syncForm(); autoZoom(); refresh();
