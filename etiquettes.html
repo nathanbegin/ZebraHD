@@ -52,6 +52,10 @@ dialog#lstDlg{width:min(1060px,96vw)}
 .irow img{width:38px;height:38px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px}
 .irow label{font-size:11px;color:var(--mute);display:flex;flex-direction:column;gap:1px}
 .irow input[type=number]{width:62px;padding:4px 5px}
+.it{cursor:pointer}
+.it.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);background:#fff7ed}
+.editb{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:13px;display:none;gap:6px;align-items:center;flex-wrap:wrap}
+.editb button{min-height:30px;padding:2px 8px;font-size:12px}
 .help{margin-top:8px;font-size:13px}
 .help summary{cursor:pointer;color:var(--acc);font-weight:bold}
 .help ol{padding-left:18px;margin:6px 0}
@@ -283,6 +287,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
   <div class="side" id="side">
     <div class="card pv">
       <h2>Aperçu <span style="float:right;text-transform:none;font-weight:normal"><button class="sm" id="zoomFit" style="min-height:0;padding:2px 8px">Ajuster</button> <input type="range" id="zoom" min="20" max="800" value="200" style="vertical-align:middle;width:110px"></span></h2>
+      <div class="editb" id="editBanner"></div>
       <div class="stage"><div id="preview"></div></div>
       <div class="warn" id="overflow"></div>
     </div>
@@ -291,6 +296,11 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </div>
 <div class="mbar"><button class="pri" id="btnPrint2">🖨️ Étiquette</button><button class="pri dark" id="btnPrint3">🖨️ Liste</button></div>
 
+<dialog id="dirtyDlg" style="width:min(520px,96vw)">
+  <h3 style="margin-top:0">⚠ Étiquette non enregistrée</h3>
+  <div id="dirtyMsg" style="margin-bottom:12px"></div>
+  <div id="dirtyBtns" style="display:flex;flex-direction:column;gap:8px"></div>
+</dialog>
 <dialog id="impDlg" style="width:min(720px,96vw);max-height:92vh;overflow:auto">
   <h3 style="margin-top:0">Importer des étiquettes</h3>
   <div class="info" style="margin-bottom:6px">Collez une étiquette par ligne, ou chargez un fichier .csv / .txt. Les colonnes (séparées par tabulation, « ; » ou « | ») deviennent les lignes de texte de l'étiquette.</div>
@@ -455,7 +465,7 @@ const DEF_STOCKS=[
   {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
 const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0,arrow:"",arrowH:5,fill:false};
-let prefs={rotOn:false,rotOff:0,offOn:false,ox:0,oy:0}, lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
+let editItemId="", cleanSnap="", prefs={rotOn:false,rotOff:0,offOn:false,ox:0,oy:0}, lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
 try{
   const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
   const d=JSON.parse(localStorage.getItem("zl_design")||"null"); if(d&&d.lines&&d.bc){ d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d); }
@@ -837,7 +847,7 @@ $("tplSave").onclick=()=>{
   if(ex && !confirm("Un modèle « "+name+" » existe déjà. Le remplacer ?")) return;
   const obj={name,stockId,design:JSON.parse(JSON.stringify(design))};
   let id; if(ex){ Object.assign(ex,obj); id=ex.id; } else { id="t"+Date.now(); templates.push({id,...obj}); }
-  fillTplSel(id); save();
+  fillTplSel(id); save(); markClean();
 };
 $("tplUpd").onclick=()=>{
   if(isBuiltin($("tplSel").value)){ alert("Les gabarits fournis ne peuvent pas être modifiés. Utilisez « Enregistrer sous… » pour créer votre propre modèle."); return; }
@@ -845,10 +855,10 @@ $("tplUpd").onclick=()=>{
   if(!t){ alert("Choisissez d'abord un modèle dans la liste."); return; }
   if(!confirm("Mettre à jour le modèle « "+t.name+" » avec les réglages actuels (papier, texte, code-barres) ?")) return;
   t.stockId=stockId; t.design=JSON.parse(JSON.stringify(design));
-  save();
+  save(); markClean();
   alert("Modèle « "+t.name+" » mis à jour.");
 };
-$("tplLoad").onclick=()=>{
+function doTplLoad(){
   const bt=BUILTIN.find(x=>x.id===$("tplSel").value);
   if(bt){ design=builtinDesign(bt); syncForm(); autoZoom(); refresh(); return; }
   const t=templates.find(x=>x.id===$("tplSel").value); if(!t) return;
@@ -856,7 +866,8 @@ $("tplLoad").onclick=()=>{
   d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d);
   if(stocks.some(x=>x.id===t.stockId)) stockId=t.stockId; else alert("Le papier de ce modèle n'existe plus : le papier actuel est conservé.");
   syncForm(); autoZoom(); refresh();
-};
+}
+$("tplLoad").onclick=()=>guardDirty(()=>{ doTplLoad(); editItemId=""; markClean(); renderWork(); });
 $("tplDel").onclick=()=>{
   if(isBuiltin($("tplSel").value)){ alert("Les gabarits fournis ne peuvent pas être supprimés."); return; }
   const t=templates.find(x=>x.id===$("tplSel").value); if(!t||!confirm("Supprimer le modèle « "+t.name+" » ?")) return;
@@ -948,11 +959,15 @@ function moveItem(i,a){
   else if(a==="dn"&&i<workItems.length-1) [workItems[i+1],workItems[i]]=[workItems[i],workItems[i+1]];
 }
 function renderWork(){
+  if(editItemId&&!workItems.some(x=>x.id===editItemId)) editItemId="";
+  updateBanner();
   const box=$("lstItems"); box.innerHTML="";
   if(!workItems.length){ box.innerHTML='<div class="info">Liste vide. Ajoutez le modèle choisi ou l\'aperçu actuel.</div>'; refreshHints(); return; }
   workItems.forEach((it,i)=>{
     const r=resolveItem(it);
-    const d=document.createElement("div"); d.className="it";
+    const d=document.createElement("div"); d.className="it"+(it.id===editItemId?" sel":"");
+    d.title="Cliquer pour afficher et modifier cette étiquette dans l'aperçu";
+    d.onclick=e=>{ if(e.target.closest("button,input,select,textarea")) return; selectItem(it.id); };
     d.innerHTML=`<div class="th"></div><div class="bd">
       <div class="nm">${i+1}. ${esc(r.name)}${r.live?"":" <span style='font-weight:normal;color:#6b7280'>(copie figée)</span>"}</div>
       <div class="info" style="margin:2px 0 0">${r.stock?esc(r.stock.name)+" · "+dimTxt(r.stock):"⚠ papier introuvable"}</div>
@@ -1026,12 +1041,13 @@ $("lstAddTpl").onclick=()=>{
 $("lstAddCur").onclick=()=>{
   const name=(prompt("Nom de cette ligne :","Aperçu actuel")||"").trim(); if(!name) return;
   workItems.push({id:uid(),tplId:null,name,stockId,design:JSON.parse(JSON.stringify(design)),copies:design.copies||1});
-  renderWork(); save();
+  renderWork(); save(); markClean();
 };
 $("lstLoad").onclick=()=>{
   const l=lists.find(x=>x.id===$("lstSel").value);
   if(!l){ workItems=[]; workListId=""; }
   else { workItems=JSON.parse(JSON.stringify(l.items)); workListId=l.id; }
+  editItemId="";
   renderWork(); save();
 };
 function saveList(asNew){
@@ -1187,6 +1203,65 @@ function renderImgs(){
     q(".i-d").onclick=ev=>{ ev.stopPropagation(); design.images.splice(i,1); delete imgOrig[im.id]; renderImgs(); refresh(); };
     box.appendChild(r);
   });
+}
+
+/* ---------- Édition d'une ligne dans l'aperçu ---------- */
+const stateSnap=()=>JSON.stringify([design,stockId]);
+function markClean(){ cleanSnap=stateSnap(); }
+function isDirty(){ return stateSnap()!==cleanSnap; }
+function itemIndex(){ return workItems.findIndex(x=>x.id===editItemId); }
+function updateBanner(){
+  const b=$("editBanner"); if(!b) return;
+  const i=itemIndex();
+  if(i<0){ b.style.display="none"; b.innerHTML=""; return; }
+  const it=workItems[i];
+  b.style.display="flex";
+  b.innerHTML=`<span>✎ Édition de la ligne <b>${i+1}</b> : ${esc(resolveItem(it).name||"")}</span>`;
+  const mk=(txt,fn)=>{ const x=document.createElement("button"); x.textContent=txt; x.onclick=fn; b.appendChild(x); };
+  mk("💾 Mettre à jour la ligne",()=>{ commitEdit(); });
+  mk("✕ Quitter",()=>guardDirty(()=>{ editItemId=""; markClean(); renderWork(); }));
+}
+function commitEdit(){
+  const i=itemIndex(); if(i<0) return;
+  const it=workItems[i];
+  it.tplId=null; it.design=JSON.parse(JSON.stringify(design)); it.stockId=stockId; it.ov={};
+  const t0=design.lines[0]&&design.lines[0].text.trim(); if(t0) it.label=t0.slice(0,60);
+  renderWork(); save(); markClean();
+}
+function loadItemForEdit(id){
+  const it=workItems.find(x=>x.id===id); if(!it) return;
+  const r=resolveItem(it);
+  if(!r.stock){ alert("Le papier ou le modèle de cette ligne est introuvable."); return; }
+  design=JSON.parse(JSON.stringify(r.design)); stockId=r.stock.id; editItemId=id;
+  syncForm(); autoZoom(); refresh(); renderWork(); markClean();
+}
+function selectItem(id){ if(id===editItemId) return; guardDirty(()=>loadItemForEdit(id)); }
+function guardDirty(next){
+  if(!isDirty()){ next(); return; }
+  const i=itemIndex(), box=$("dirtyBtns"); box.innerHTML="";
+  $("dirtyMsg").textContent = i>=0
+    ? "La ligne "+(i+1)+" est en cours de modification et n'est pas enregistrée. Enregistrez cette étiquette avant de poursuivre."
+    : "L'étiquette en cours de modification n'est pas enregistrée. Enregistrez-la avant d'afficher celle de la liste d'impression.";
+  const add=(txt,fn,cls)=>{ const b=document.createElement("button"); b.textContent=txt; if(cls) b.className=cls; b.onclick=()=>{ $("dirtyDlg").close(); fn&&fn(); }; box.appendChild(b); };
+  if(i>=0) add("💾 Enregistrer dans la ligne "+(i+1)+" et poursuivre",()=>{ commitEdit(); next(); },"pri");
+  else {
+    add("💾 Enregistrer comme modèle…",()=>{
+      const name=(prompt("Nom du modèle :")||"").trim(); if(!name) return;
+      const ex=templates.find(t=>t.name===name);
+      if(ex&&!confirm("Un modèle « "+name+" » existe déjà. Le remplacer ?")) return;
+      const obj={name,stockId,design:JSON.parse(JSON.stringify(design))};
+      let id; if(ex){ Object.assign(ex,obj); id=ex.id; } else { id="t"+Date.now(); templates.push({id,...obj}); }
+      fillTplSel(id); save(); markClean(); next();
+    },"pri");
+    add("➕ Ajouter à la liste d'impression et poursuivre",()=>{
+      const name=(prompt("Nom de cette ligne :","Aperçu actuel")||"").trim(); if(!name) return;
+      workItems.push({id:uid(),tplId:null,name,stockId,design:JSON.parse(JSON.stringify(design)),copies:design.copies||1});
+      renderWork(); save(); markClean(); next();
+    });
+  }
+  add("Abandonner les modifications et poursuivre",()=>{ next(); });
+  add("Annuler");
+  $("dirtyDlg").showModal();
 }
 
 /* ---------- Import d'étiquettes ---------- */
@@ -1371,7 +1446,7 @@ function setRC(c){ document.querySelector(".app").classList.toggle("rc",c); $("l
 $("listToggle").onclick=()=>setRC(!document.querySelector(".app").classList.contains("rc"));
 try{ if(localStorage.getItem("zl_rc")==="1"){ document.querySelector(".app").classList.add("rc"); $("listToggle").textContent="«"; } }catch(e){}
 placeList();
-syncForm(); autoZoom(); refresh();
+syncForm(); autoZoom(); refresh(); markClean();
 fillTplSel(); fillLstSel(workListId); renderWork(); setCloud("off"); cloudLoad();
 let rzT; window.addEventListener("resize",()=>{ clearTimeout(rzT); rzT=setTimeout(()=>{ if(!zoomManual) refresh(); },120); });
 </script>
