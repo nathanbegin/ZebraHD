@@ -18,10 +18,14 @@ header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
 .pri.dark{background:#374151;border-color:#374151;margin-top:8px}
 .pri.dark:hover{background:#1f2937}
 @media(min-width:801px){
-  .side{display:flex;flex-direction:column;gap:10px}
-  .side .pv{height:auto;flex:1 1 56%;min-height:0}
-  .side #listCard{flex:1 1 44%;min-height:0;overflow:auto;margin:0}
+  .app{grid-template-columns:380px minmax(0,1fr) 360px;max-width:1800px;transition:none}
+  .app.rc{grid-template-columns:380px minmax(0,1fr) 0px}
+  #colR{position:sticky;top:14px;align-self:start;height:calc(100vh - var(--hh) - 28px);min-height:340px;min-width:0}
+  #colR #listCard{height:100%;margin:0;overflow:auto}
+  .app.rc #colR #listCard{display:none}
+  .lt{position:absolute;left:-21px;top:50%;transform:translateY(-50%);width:26px;height:60px;border-radius:13px;border:1px solid var(--line);background:#fff;cursor:pointer;z-index:6;padding:0;font-size:16px;line-height:1;color:var(--acc);font-weight:bold;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 }
+@media(max-width:800px){ #colR,.lt{display:none} }
 .drv{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:8px;font-size:12px;margin-top:8px;line-height:1.45}
 .drv b{color:#9a3412}
 .drv:empty{display:none}
@@ -267,6 +271,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div class="warn" id="overflow"></div>
     </div>
   </div>
+  <div id="colR"><button class="lt" id="listToggle" title="Masquer / afficher la liste d'impression">»</button></div>
 </div>
 <div class="mbar"><button class="pri" id="btnPrint2">🖨️ Étiquette</button><button class="pri dark" id="btnPrint3">🖨️ Liste</button></div>
 
@@ -581,10 +586,10 @@ function refresh(){
 let zoomManual=false;
 function fitZoom(Hmm,Wmm){
   const st=document.querySelector(".stage"); if(!st) return;
-  const aw=st.clientWidth-24, ah=st.clientHeight-24-34;
+  const aw=st.clientWidth-40, ah=st.clientHeight-24-44;
   if(aw<60||ah<60) return;
   const k=96/MM;
-  const z=Math.min(aw/((Hmm+8)*k), ah/((Wmm+8)*k));
+  const z=Math.min(aw/((Hmm+10)*k), ah/((Wmm+9)*k));
   $("zoom").value=Math.max(20,Math.min(800,Math.floor(z*100)));
 }
 function autoZoom(){ zoomManual=false; }
@@ -825,7 +830,8 @@ function putThumb(host,it){
   if(t) host.appendChild(t); else host.textContent="?";
 }
 function refreshHints(){
-  $("lstPrint").textContent="🖨️ Imprimer la liste"+(workItems.length?" ("+workItems.length+" ligne"+(workItems.length>1?"s":"")+")":"");
+  const cl=lists.find(l=>l.id===workListId);
+  $("lstPrint").textContent="🖨️ Imprimer la liste « "+(cl?cl.name:"non enregistrée")+" »"+(workItems.length?" ("+workItems.length+" ligne"+(workItems.length>1?"s":"")+")":"");
   const groups=[];
   workItems.forEach(it=>{
     const z=itemSize(it); if(!z) return;
@@ -931,7 +937,7 @@ function saveList(asNew){
     else { l={id:"l"+uid(),name,items:[]}; lists.push(l); }
   }
   l.items=JSON.parse(JSON.stringify(workItems)); workListId=l.id;
-  fillLstSel(l.id); save();
+  fillLstSel(l.id); save(); refreshHints();
 }
 $("lstSave").onclick=()=>saveList(false);
 $("lstSaveAs").onclick=()=>saveList(true);
@@ -940,7 +946,7 @@ $("lstDel").onclick=()=>{
   if(!l){ if(workItems.length&&confirm("Vider la liste en cours ?")){ workItems=[]; workListId=""; renderWork(); save(); } return; }
   if(!confirm("Supprimer la liste « "+l.name+" » ?")) return;
   lists=lists.filter(x=>x!==l); if(workListId===l.id) workListId="";
-  fillLstSel(); save();
+  fillLstSel(); save(); refreshHints();
 };
 $("lstPrint").onclick=()=>{
   if(!workItems.length){ alert("La liste est vide."); return; }
@@ -1098,10 +1104,13 @@ document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&cloudOn&
 const mqDesk=window.matchMedia("(min-width:801px)");
 function placeList(){
   const c=$("listCard");
-  if(mqDesk.matches){ if(c.parentElement!==$("side")) $("side").appendChild(c); }
-  else if(c.parentElement===$("side")) $("paperCard").parentElement.insertBefore(c,$("paperCard"));
+  if(mqDesk.matches){ if(c.parentElement!==$("colR")) $("colR").appendChild(c); }
+  else if(c.parentElement===$("colR")) $("paperCard").parentElement.insertBefore(c,$("paperCard"));
 }
 mqDesk.addEventListener("change",()=>{ placeList(); refresh(); });
+function setRC(c){ document.querySelector(".app").classList.toggle("rc",c); $("listToggle").textContent=c?"«":"»"; $("listToggle").title=c?"Afficher la liste d'impression":"Masquer la liste d'impression"; try{localStorage.setItem("zl_rc",c?"1":"0");}catch(e){} setTimeout(refresh,30); }
+$("listToggle").onclick=()=>setRC(!document.querySelector(".app").classList.contains("rc"));
+try{ if(localStorage.getItem("zl_rc")==="1"){ document.querySelector(".app").classList.add("rc"); $("listToggle").textContent="«"; } }catch(e){}
 placeList();
 syncForm(); autoZoom(); refresh();
 fillTplSel(); fillLstSel(workListId); renderWork(); setCloud("off"); cloudLoad();
