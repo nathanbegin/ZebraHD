@@ -183,6 +183,12 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div id="lines"></div>
       <button id="addLine">+ Ajouter une ligne</button>
       <label class="chk" style="margin-top:10px"><input type="checkbox" id="fillOn"> Remplir l'étiquette (le texte s'agrandit ou se réduit selon ses dimensions)</label>
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="frmOn"> Cadre autour de l'étiquette</label>
+      <div id="frmBox" style="display:none"><div class="row">
+        <div><label class="f">Épaisseur (mm)</label><input type="number" id="frmT" min="0.1" max="3" step="0.1"></div>
+        <div><label class="f">Distance du bord (mm)</label><input type="number" id="frmIn" min="0" max="10" step="0.1"></div>
+        <div><label class="f">Coins arrondis (mm)</label><input type="number" id="frmR" min="0" max="20" step="0.5"></div>
+      </div></div>
       <label class="f" style="margin-top:10px">Flèche en haut de l'étiquette (perpendiculaire aux barres du code)</label>
       <div class="row">
         <div><select id="arrowSel"><option value="">Aucune</option><option value="left">← Vers la gauche</option><option value="right">→ Vers la droite</option></select></div>
@@ -350,6 +356,29 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
     <div class="info">Mêmes axes que l'aperçu (X = sens d'impression, Y = largeur du ruban). Réglage propre à cet ordinateur.</div>
   </div>
   <div class="card">
+    <h2>Précision d'impression (codes-barres)</h2>
+    <div class="row">
+      <div><label class="f">Résolution de l'imprimante</label><select id="prDpi"><option value="203">203 dpi</option><option value="300">300 dpi</option><option value="600">600 dpi</option></select></div>
+    </div>
+    <label class="chk" style="margin-top:6px"><input type="checkbox" id="prSnap"> Aligner la largeur des barres sur les points de l'imprimante (recommandé)</label>
+    <div class="info">Chaque barre fine occupe alors un nombre entier de points : les barres ont toutes la même largeur et le scan est plus fiable. Le code peut devenir un peu plus étroit.</div>
+  </div>
+  <div class="card">
+    <h2>Calibrage du centrage</h2>
+    <div class="info" style="margin:0 0 6px">1. Choisissez le papier voulu, puis imprimez l'étiquette de calibrage (cadre à 3 mm des bords, sans décalage appliqué). 2. Mesurez avec une règle l'écart entre le cadre et chaque bord de l'étiquette. 3. Entrez les valeurs : le décalage X/Y est calculé et appliqué.</div>
+    <button id="calPrint">🖨️ Imprimer l'étiquette de calibrage</button>
+    <div class="row" style="margin-top:8px">
+      <div><label class="f">Écart côté SORTIE (mm)</label><input type="number" id="calExit" step="0.1" min="0"></div>
+      <div><label class="f">Écart côté opposé (mm)</label><input type="number" id="calOpp" step="0.1" min="0"></div>
+    </div>
+    <div class="row">
+      <div><label class="f">Écart en HAUT (mm)</label><input type="number" id="calTop" step="0.1" min="0"></div>
+      <div><label class="f">Écart en BAS (mm)</label><input type="number" id="calBot" step="0.1" min="0"></div>
+    </div>
+    <div class="row" style="margin-top:8px"><button id="calApply">Calculer et appliquer le décalage</button></div>
+    <div class="info" id="calRes"></div>
+  </div>
+  <div class="card">
     <h2>Synchronisation avec la base de données</h2>
     <div id="syncDash"></div>
     <div class="row" style="margin-top:8px;flex-wrap:wrap">
@@ -468,8 +497,8 @@ const DEF_STOCKS=[
   {id:"s2",name:'Tablette 3" × 2" blanc',w:3,h:2,u:"in",color:"#ffffff",adh:true},
   {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
 ];
-const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0,arrow:"",arrowH:5,fill:false};
-let editItemId="", cleanSnap="", prefs={rotOn:false,rotOff:0,offOn:false,ox:0,oy:0}, lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
+const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0,arrow:"",arrowH:5,fill:false,frameOn:false,frameT:0.4,frameIn:0.5,frameR:0};
+let editItemId="", cleanSnap="", prefs={rotOn:false,rotOff:0,offOn:false,ox:0,oy:0,snap:true,dpi:300,readable:false,theme:"auto"}, lists=[], workItems=[], workListId="", templates=[], stocks=DEF_STOCKS, stockId="s1", design=JSON.parse(JSON.stringify(DEF_DESIGN)), editId=null;
 try{
   const s=JSON.parse(localStorage.getItem("zl_stocks")||"null"); if(Array.isArray(s)&&s.length) stocks=s;
   const d=JSON.parse(localStorage.getItem("zl_design")||"null"); if(d&&d.lines&&d.bc){ d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d); }
@@ -522,7 +551,8 @@ function codeValue(i){
   return pre+String((+b.start||0)+i*(+b.step||1)).padStart(pad,"0")+suf;
 }
 const total=()=>design.bc.on&&design.bc.batch?Math.max(1,Math.min(1000,+design.bc.count||1)):1;
-function contentHTML(idx,cw,m,cwRef){
+function contentHTML(idx,cw,m,cwRef,ch){
+  if(design.calib) return {html:calibSVG(cw,ch),info:"",err:""};
   const B=design.bc;
   let info="", err="", e=null, code="", html="", note="";
   if(B.on){ const nb=normalizeBC(B.type,codeValue(idx)); code=nb.value; note=nb.note; try{ e=encode(B.type,code); code=e.human; }catch(x){ err=String(x); } }
@@ -532,16 +562,24 @@ function contentHTML(idx,cw,m,cwRef){
     const x0=R?0:hl*0.8, x1=R?aw-hl*0.8:aw, tip=R?aw:0, base=R?aw-hl:hl;
     html+=`<svg class="bc" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${aw.toFixed(2)} ${ah.toFixed(2)}" style="width:${aw.toFixed(2)}mm;height:${ah.toFixed(2)}mm;margin-bottom:1mm;flex:none" shape-rendering="geometricPrecision"><line x1="${x0.toFixed(2)}" y1="${y}" x2="${x1.toFixed(2)}" y2="${y}" stroke="#000" stroke-width="${t.toFixed(2)}"/><polygon points="${tip.toFixed(2)},${y} ${base.toFixed(2)},${(y-hh).toFixed(2)} ${base.toFixed(2)},${(y+hh).toFixed(2)}" fill="#000"/></svg>`;
   }
-  design.lines.forEach(l=>{ html+=`<div class="tl" style="font-size:${l.size}pt;font-weight:${l.bold?"bold":"normal"};text-align:${l.align}">${esc(l.text.replace(/\{code\}/g,code))||"&nbsp;"}</div>`; });
+  design.lines.forEach(l=>{
+    html+=`<div class="tl" style="font-size:${l.size}pt;font-weight:${l.bold?"bold":"normal"};text-align:${l.align}">${esc(l.text.replace(/\{code\}/g,code))||"&nbsp;"}</div>`;
+    if(l.sep) html+=`<div style="width:100%;height:0;flex:none;border-bottom:0.3mm solid #000;margin:0.8mm 0"></div>`;
+  });
   if(e){
-    const bw=Math.max(5,((cwRef||cw)-2*m)*B.w/100), mod=bw/(e.bits.length+20);
-    html+=`<div style="height:1.5mm;flex:none"></div>`+barcodeSVG(e.bits,bw.toFixed(2),B.h);
+    let bw=Math.max(5,((cwRef||cw)-2*m)*B.w/100);
+    const NM=e.bits.length+20, dot=25.4/(+prefs.dpi||300);
+    let snapped=false;
+    if(prefs.snap){ const dots=Math.max(1,Math.floor(bw/NM/dot)); bw=NM*dots*dot; snapped=true; }
+    const mod=bw/NM;
+    html+=`<div style="height:1.5mm;flex:none"></div>`+barcodeSVG(e.bits,bw.toFixed(3),B.h);
     if(B.human){
       const ht=B.hText?B.hText.replace(/\{code\}/g,e.human):e.human;
       html+=`<div class="hr" style="width:${bw.toFixed(2)}mm;font-size:${B.hSize}pt;margin-top:.5mm;text-align:${B.hAlign};letter-spacing:${B.hSp/100}em;font-weight:${B.hBold?"bold":"normal"};font-style:${B.hItal?"italic":"normal"};text-decoration:${B.hUnd?"underline":"none"};white-space:pre-wrap;word-break:break-all">${esc(ht)}</div>`;
     }
-    info=(note?"ℹ Valeur ajustée : "+note+" → "+e.human+". ":"")+`Largeur d'une barre fine : ${mod.toFixed(2)} mm (${(mod/0.125).toFixed(1)} points à 203 dpi, ${(mod/0.0847).toFixed(1)} à 300 dpi).`;
-    if(mod<0.25) err="⚠ Barres très fines : risque de lecture difficile. Augmentez la largeur ou raccourcissez la valeur.";
+    const nd=mod/dot;
+    info=(note?"ℹ Valeur ajustée : "+note+" → "+e.human+". ":"")+`Barre fine : ${mod.toFixed(3)} mm = ${nd.toFixed(snapped?0:1)} point${nd>=1.5?"s":""} à ${+prefs.dpi||300} dpi`+(snapped?" (alignée sur les points de l'imprimante).":".");
+    if(mod<0.25||nd<2) err="⚠ Barres très fines ("+nd.toFixed(snapped?0:1)+" point"+(nd>=1.5?"s":"")+") : risque de lecture difficile. Augmentez la largeur ou raccourcissez la valeur.";
   }
   return {html,info,err};
 }
@@ -572,6 +610,24 @@ let selImg="";
 function imgsHTML(forPrint){
   return (design.images||[]).map((im,i)=>`<img class="${forPrint?"":"limg"}" data-i="${i}" src="${im.src}" draggable="false" alt="" style="position:absolute;left:${im.x}mm;top:${im.y}mm;width:${im.w}mm;height:${imgH(im).toFixed(2)}mm;max-width:none;transform:rotate(${+im.rot||0}deg);transform-origin:50% 50%;${(im.bw&&forPrint)?"image-rendering:pixelated;":""}${forPrint?"pointer-events:none;":(im.id===selImg?"outline:1px dashed #f96302;":"")}">`).join("");
 }
+function frameHTML(){
+  if(!design.frameOn) return "";
+  const t=Math.max(0.1,+design.frameT||0.4), i=Math.max(0,+design.frameIn||0), r=Math.max(0,+design.frameR||0);
+  return `<div style="position:absolute;left:${i}mm;top:${i}mm;right:${i}mm;bottom:${i}mm;border:${t}mm solid #000;border-radius:${r}mm;box-sizing:border-box;pointer-events:none"></div>`;
+}
+function calibSVG(w,h){
+  const ins=3; let g="";
+  g+=`<rect x="${ins}" y="${ins}" width="${(w-2*ins).toFixed(2)}" height="${(h-2*ins).toFixed(2)}" fill="none" stroke="#000" stroke-width="0.3"/>`;
+  const cx=w/2, cy=h/2;
+  g+=`<line x1="${cx-4}" y1="${cy}" x2="${cx+4}" y2="${cy}" stroke="#000" stroke-width="0.25"/><line x1="${cx}" y1="${cy-4}" x2="${cx}" y2="${cy+4}" stroke="#000" stroke-width="0.25"/>`;
+  for(let x=ins,i=0;x<=w-ins+1e-6;x+=5,i++){ const maj=i%2===0; g+=`<line x1="${x}" y1="${ins}" x2="${x}" y2="${ins+(maj?3:1.6)}" stroke="#000" stroke-width="0.2"/>`; if(maj&&i>0) g+=`<text x="${x}" y="${ins+5.6}" font-size="1.9" text-anchor="middle" font-family="Arial">${i*5}</text>`; }
+  for(let y=ins,i=0;y<=h-ins+1e-6;y+=5,i++){ const maj=i%2===0; g+=`<line x1="${ins}" y1="${y}" x2="${ins+(maj?3:1.6)}" y2="${y}" stroke="#000" stroke-width="0.2"/>`; if(maj&&i>0) g+=`<text x="${ins+4}" y="${y+0.7}" font-size="1.9" font-family="Arial">${i*5}</text>`; }
+  g+=`<text x="${cx}" y="${ins+9.5}" font-size="2.6" font-weight="bold" text-anchor="middle" font-family="Arial">HAUT</text>`;
+  g+=`<text x="${w-ins-2}" y="${cy+1}" font-size="2.6" font-weight="bold" text-anchor="end" font-family="Arial">SORTIE ▶</text>`;
+  g+=`<text x="${cx}" y="${cy+8}" font-size="2.2" text-anchor="middle" font-family="Arial">${w.toFixed(1)} × ${h.toFixed(1)} mm</text>`;
+  g+=`<text x="${cx}" y="${h-ins-2}" font-size="1.8" text-anchor="middle" font-family="Arial">Cadre à ${ins} mm des bords</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}" style="width:${w.toFixed(2)}mm;height:${h.toFixed(2)}mm;flex:none;display:block">${g}</svg>`;
+}
 function buildLabel(forPrint,idx=0,hOverride){
   const s=stock(), W=toMM(s.w,s.u), R=String((+design.rot+(forPrint&&prefs.rotOn?(+prefs.rotOff||0):0)+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
   const H=autoActive()?(hOverride||autoHeight(idx)):toMM(s.h,s.u);
@@ -579,10 +635,11 @@ function buildLabel(forPrint,idx=0,hOverride){
   const el=document.createElement("div"); el.className="lbl";
   el.style.cssText=`width:${W}mm;height:${H}mm;`+(forPrint?"":`background:${s.color}`);
   const tf={"90":`translate(${W}mm,0) rotate(90deg)`,"180":`translate(${W}mm,${H}mm) rotate(180deg)`,"270":`translate(0,${H}mm) rotate(-90deg)`}[R];
-  const dxp=prefs.offOn?(+prefs.oy||0):0, dyp=prefs.offOn?-(+prefs.ox||0):0; // axes de l'aperçu -> axes de la page
+  const useOff=prefs.offOn&&!design.calib;
+  const dxp=useOff?(+prefs.oy||0):0, dyp=useOff?-(+prefs.ox||0):0; // axes de l'aperçu -> axes de la page
   const tr=(dxp||dyp?`translate(${dxp}mm,${dyp}mm)`+(tf?" ":""):"")+(tf||"");
-  const c=contentHTML(idx,cw,m,(autoActive()&&sw)?nominalLen():undefined);
-  el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tr?`transform:${tr};`:"")+`"><div class="fit" style="width:100%;display:flex;flex-direction:column;align-items:center;transform-origin:50% 50%">${c.html}</div>${imgsHTML(forPrint)}</div>`;
+  const c=contentHTML(idx,cw,m,(autoActive()&&sw)?nominalLen():undefined,ch);
+  el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tr?`transform:${tr};`:"")+`"><div class="fit" style="width:100%;display:flex;flex-direction:column;align-items:center;transform-origin:50% 50%">${c.html}</div>${frameHTML()}${imgsHTML(forPrint)}</div>`;
   // Réduction automatique si le contenu dépasse la zone délimitée par les marges.
   let k=1;
   const wrap=document.createElement("div"); wrap.style.cssText="position:absolute;left:-9999px;top:0;visibility:hidden";
@@ -762,11 +819,13 @@ function renderLines(){
     d.innerHTML=`<textarea rows="2" placeholder="Texte de la ligne"></textarea>
       <div class="row">
         <div><input type="number" min="4" max="120" step="1" title="Taille (pt)"></div>
-        <label class="chk"><input type="checkbox"> Gras</label>
+        <label class="chk"><input type="checkbox" class="l-bold"> Gras</label>
+        <label class="chk"><input type="checkbox" class="l-sep"> Trait dessous</label>
         <div><select><option value="left">Gauche</option><option value="center">Centre</option><option value="right">Droite</option></select></div>
         <button class="sm" title="Supprimer">✕</button>
       </div>`;
-    const [ta,num,chk,sel,del]=[d.querySelector("textarea"),d.querySelector("input[type=number]"),d.querySelector("input[type=checkbox]"),d.querySelector("select"),d.querySelector("button")];
+    const [ta,num,chk,sel,del]=[d.querySelector("textarea"),d.querySelector("input[type=number]"),d.querySelector(".l-bold"),d.querySelector("select"),d.querySelector("button")];
+    const sepc=d.querySelector(".l-sep"); sepc.checked=!!l.sep; sepc.onchange=()=>{ l.sep=sepc.checked; refresh(); };
     ta.value=l.text; num.value=l.size; chk.checked=l.bold; sel.value=l.align;
     ta.oninput=()=>{l.text=ta.value;refresh();};
     num.oninput=()=>{l.size=Math.max(4,+num.value||12);refresh();};
@@ -784,7 +843,7 @@ function syncForm(){
   $("bBatch").checked=B.batch; $("bPre").value=B.pre; $("bSuf").value=B.suf; $("bStart").value=B.start; $("bCount").value=B.count; $("bStep").value=B.step; $("bPad").value=B.pad;
   $("hText").value=B.hText; $("hSize").value=B.hSize; $("hSp").value=B.hSp; $("hAlign").value=B.hAlign; $("hBold").checked=B.hBold; $("hItal").checked=B.hItal; $("hUnd").checked=B.hUnd;
   showBatch(); showHint();
-  $("rot").value=design.rot; $("fillOn").checked=!!design.fill; $("arrowSel").value=design.arrow||""; $("arrowH").value=design.arrowH||5; $("arrowHBox").style.display=design.arrow?"block":"none"; $("autoLen").checked=design.auto; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
+  $("rot").value=design.rot; $("fillOn").checked=!!design.fill; $("frmOn").checked=!!design.frameOn; $("frmT").value=design.frameT; $("frmIn").value=design.frameIn; $("frmR").value=design.frameR; $("frmBox").style.display=design.frameOn?"block":"none"; $("arrowSel").value=design.arrow||""; $("arrowH").value=design.arrowH||5; $("arrowHBox").style.display=design.arrow?"block":"none"; $("autoLen").checked=design.auto; $("minLen").value=design.minLen; $("margin").value=design.margin; $("copies").value=design.copies||1;
   $("bcBox").style.display=design.bc.on?"block":"none";
 }
 $("stockSel").onchange=()=>{stockId=$("stockSel").value;autoZoom();refresh();};
@@ -805,6 +864,8 @@ $("hAlign").onchange=()=>{design.bc.hAlign=$("hAlign").value;refresh();};
 [["hBold","hBold"],["hItal","hItal"],["hUnd","hUnd"]].forEach(([id,k])=>$(id).onchange=()=>{design.bc[k]=$(id).checked;refresh();});
 $("autoLen").onchange=()=>{design.auto=$("autoLen").checked;refresh();};
 $("minLen").oninput=()=>{design.minLen=Math.max(0,+$("minLen").value||0);refresh();};
+$("frmOn").onchange=()=>{design.frameOn=$("frmOn").checked;$("frmBox").style.display=design.frameOn?"block":"none";refresh();};
+[["frmT","frameT",0.4],["frmIn","frameIn",0.5],["frmR","frameR",0]].forEach(([id,k,d])=>{ $(id).oninput=()=>{ design[k]=+$(id).value||(k==="frameR"?0:d); refresh(); }; });
 $("fillOn").onchange=()=>{design.fill=$("fillOn").checked;refresh();};
 $("arrowSel").onchange=()=>{design.arrow=$("arrowSel").value;$("arrowHBox").style.display=design.arrow?"block":"none";refresh();};
 $("arrowH").oninput=()=>{design.arrowH=Math.max(2,Math.min(30,+$("arrowH").value||5));refresh();};
@@ -1519,12 +1580,38 @@ function renderSync(){
 }
 $("gear").onclick=()=>{
   $("prRotOn").checked=!!prefs.rotOn; $("prRot").value=String(prefs.rotOff||0);
+  $("prDpi").value=String(prefs.dpi||300); $("prSnap").checked=!!prefs.snap; $("calRes").textContent="";
   $("prOffOn").checked=!!prefs.offOn; $("prOx").value=prefs.ox||0; $("prOy").value=prefs.oy||0;
   renderSync(); $("setDlg").showModal();
 };
 $("setClose").onclick=()=>$("setDlg").close();
 $("prRotOn").onchange=()=>{ prefs.rotOn=$("prRotOn").checked; save(); refresh(); renderWork(); };
 $("prRot").onchange=()=>{ prefs.rotOff=+$("prRot").value; save(); refresh(); renderWork(); };
+$("prDpi").onchange=()=>{ prefs.dpi=+$("prDpi").value; save(); refresh(); renderWork(); };
+$("prSnap").onchange=()=>{ prefs.snap=$("prSnap").checked; save(); refresh(); renderWork(); };
+$("calPrint").onclick=()=>{
+  const od=design;
+  let b, W, H;
+  try{
+    design=Object.assign(JSON.parse(JSON.stringify(DEF_DESIGN)),{rot:"0",margin:0,lines:[],calib:true,auto:false,fill:false,images:[]});
+    const s=stock(); W=toMM(s.w,s.u); H=toMM(s.h,s.u);
+    b=buildLabel(true,0,H);
+  } finally { design=od; }
+  $("pageStyle").textContent=`@page{size:${W.toFixed(2)}mm ${H.toFixed(2)}mm;margin:0}`;
+  const pa=$("printArea"); pa.innerHTML=""; pa.appendChild(b.el);
+  $("setDlg").close();
+  setTimeout(()=>window.print(),80);
+};
+$("calApply").onclick=()=>{
+  const g=id=>{ const v=$(id).value; return v===""?NaN:+v; };
+  const ex=g("calExit"), op=g("calOpp"), tp=g("calTop"), bt=g("calBot");
+  if([ex,op,tp,bt].some(isNaN)){ $("calRes").textContent="Entrez les quatre écarts mesurés."; return; }
+  const ox=+((ex-op)/2).toFixed(1), oy=+((bt-tp)/2).toFixed(1);
+  prefs.ox=ox; prefs.oy=oy; prefs.offOn=true; save();
+  $("prOffOn").checked=true; $("prOx").value=ox; $("prOy").value=oy;
+  $("calRes").textContent=`Décalage appliqué : X = ${ox} mm, Y = ${oy} mm. Réimprimez l'étiquette de calibrage pour vérifier (les écarts devraient être égaux).`;
+  refresh(); renderWork();
+};
 $("prOffOn").onchange=()=>{ prefs.offOn=$("prOffOn").checked; save(); refresh(); renderWork(); };
 $("prOx").oninput=()=>{ prefs.ox=+$("prOx").value||0; save(); refresh(); renderWork(); };
 $("prOy").oninput=()=>{ prefs.oy=+$("prOy").value||0; save(); refresh(); renderWork(); };
