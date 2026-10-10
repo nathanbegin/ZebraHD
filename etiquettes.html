@@ -46,6 +46,12 @@ dialog#lstDlg{width:min(1060px,96vw)}
 .dash td{padding:4px 6px}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:bold;font-size:12px;color:#fff}
 .slog{max-height:140px;overflow:auto;font-size:12px;background:#f3f4f6;border-radius:6px;padding:6px;margin-top:6px}
+.limg{cursor:move;touch-action:none;user-select:none;-webkit-user-drag:none}
+.irow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:6px;padding:6px;margin-bottom:6px;background:#fafafa}
+.irow.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.irow img{width:38px;height:38px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:4px}
+.irow label{font-size:11px;color:var(--mute);display:flex;flex-direction:column;gap:1px}
+.irow input[type=number]{width:62px;padding:4px 5px}
 .help{margin-top:8px;font-size:13px}
 .help summary{cursor:pointer;color:var(--acc);font-weight:bold}
 .help ol{padding-left:18px;margin:6px 0}
@@ -176,6 +182,14 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       </div>
       <label class="f" style="margin-top:10px">Rotation du contenu (texte et code-barres)</label>
       <select id="rot"><option value="0">0° (normal : texte parallèle à l'axe X)</option><option value="90">90° (vers la droite)</option><option value="180">180° (à l'envers)</option><option value="270">270° (vers la gauche)</option></select>
+    </div>
+
+    <div class="card" id="imgCard">
+      <h2>Images</h2>
+      <div id="imgList"></div>
+      <label class="chk" style="margin-top:6px"><input type="checkbox" id="imgBw" checked> Convertir en noir et blanc (recommandé)</label>
+      <button id="imgAdd" style="margin-top:6px">+ Ajouter une image</button><input type="file" id="imgFile" accept="image/*" style="display:none">
+      <div class="info">Glissez l'image dans l'aperçu pour la placer. Les positions sont en mm depuis le coin haut-gauche du contenu.</div>
     </div>
 
     <div class="card">
@@ -509,9 +523,15 @@ function autoHeight(idx){
   const r=probe.getBoundingClientRect();
   wrap.remove();
   const px=rt?r.width+1:r.height;
-  return Math.max(Math.ceil(px/96*MM*10)/10, +design.minLen||0);
+  const ext=(design.images||[]).reduce((a,im)=>Math.max(a,(rt?im.x+im.w:im.y+imgH(im))+m),0);
+  return Math.max(Math.ceil(px/96*MM*10)/10, +design.minLen||0, Math.ceil(ext*10)/10);
 }
 function maxAutoHeight(){ let h=0; for(let i=0;i<total();i++) h=Math.max(h,autoHeight(i)); return h; }
+const imgH=im=>im.w*(im.ih||1)/(im.iw||1);
+let selImg="";
+function imgsHTML(forPrint){
+  return (design.images||[]).map((im,i)=>`<img class="${forPrint?"":"limg"}" data-i="${i}" src="${im.src}" draggable="false" alt="" style="position:absolute;left:${im.x}mm;top:${im.y}mm;width:${im.w}mm;height:${imgH(im).toFixed(2)}mm;max-width:none;${im.bw?"image-rendering:pixelated;":""}${forPrint?"pointer-events:none;":(im.id===selImg?"outline:1px dashed #f96302;":"")}">`).join("");
+}
 function buildLabel(forPrint,idx=0,hOverride){
   const s=stock(), W=toMM(s.w,s.u), R=String((+design.rot+(forPrint&&prefs.rotOn?(+prefs.rotOff||0):0)+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
   const H=autoActive()?(hOverride||autoHeight(idx)):toMM(s.h,s.u);
@@ -522,7 +542,7 @@ function buildLabel(forPrint,idx=0,hOverride){
   const dxp=prefs.offOn?(+prefs.oy||0):0, dyp=prefs.offOn?-(+prefs.ox||0):0; // axes de l'aperçu -> axes de la page
   const tr=(dxp||dyp?`translate(${dxp}mm,${dyp}mm)`+(tf?" ":""):"")+(tf||"");
   const c=contentHTML(idx,cw,m,(autoActive()&&sw)?nominalLen():undefined);
-  el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tr?`transform:${tr};`:"")+`"><div class="fit" style="width:100%;display:flex;flex-direction:column;align-items:center;transform-origin:50% 50%">${c.html}</div></div>`;
+  el.innerHTML=`<div class="rot" style="width:${cw}mm;height:${ch}mm;padding:${m}mm;`+(tr?`transform:${tr};`:"")+`"><div class="fit" style="width:100%;display:flex;flex-direction:column;align-items:center;transform-origin:50% 50%">${c.html}</div>${imgsHTML(forPrint)}</div>`;
   // Réduction automatique si le contenu dépasse la zone délimitée par les marges.
   let k=1;
   const wrap=document.createElement("div"); wrap.style.cssText="position:absolute;left:-9999px;top:0;visibility:hidden";
@@ -578,6 +598,24 @@ function refresh(){
     cell("X ↔<br>Y ↕",1,1,"corner");
     const fh=cell("<div class='feedh'><span>Sens d'impression<span class='lg'> (sortie de l'imprimante, fente à droite)</span></span><b></b><i>▶</i></div>",3,2,"nz");
     fh.style.zoom="";
+  document.querySelectorAll("#preview .limg").forEach(img=>{
+    const i=+img.dataset.i, im=(design.images||[])[i]; if(!im) return;
+    img.onpointerdown=e=>{
+      e.preventDefault();
+      selImg=im.id; try{ img.setPointerCapture(e.pointerId); }catch(_){}
+      const sx=e.clientX, sy=e.clientY, ix=im.x, iy=im.y;
+      const th=(+design.rot||0)*Math.PI/180, k=96/MM*($("zoom").value/100);
+      img.style.outline="1px dashed #f96302";
+      img.onpointermove=ev=>{
+        const dx=ev.clientX-sx, dy=ev.clientY-sy;
+        im.x=+(ix+(dx*Math.cos(th)+dy*Math.sin(th))/k).toFixed(1);
+        im.y=+(iy+(-dx*Math.sin(th)+dy*Math.cos(th))/k).toFixed(1);
+        img.style.left=im.x+"mm"; img.style.top=im.y+"mm";
+        syncImgInputs(im);
+      };
+      img.onpointerup=()=>{ img.onpointermove=null; img.onpointerup=null; save(); refresh(); renderImgs(); };
+    };
+  });
   $("bcInfo").textContent=info;
   if(design.bc.on&&design.bc.batch){ const n=total(); $("bRange").textContent=`${n} étiquette(s) : ${codeValue(0)} → ${codeValue(n-1)} (aperçu : la première)`; } $("bcErr").textContent=err;
   $("overflow").textContent = k<1 ? `ℹ Contenu réduit à ${Math.round(k*100)} % pour respecter la marge de ${design.margin||0} mm.` : "";
@@ -621,7 +659,7 @@ function renderLines(){
   });
 }
 function syncForm(){
-  fillStockSel(); renderLines();
+  fillStockSel(); renderLines(); renderImgs();
   $("bcOn").checked=design.bc.on; $("bcType").value=design.bc.type; $("bcValue").value=design.bc.value;
   $("bcH").value=design.bc.h; $("bcW").value=design.bc.w; $("bcHuman").checked=design.bc.human;
   const B=design.bc;
@@ -1002,6 +1040,85 @@ function openSeq(groups){
   $("seqDlg").showModal();
 }
 $("seqClose").onclick=()=>$("seqDlg").close();
+
+/* ---------- Images ---------- */
+const imgOrig={};
+function loadImgFile(file){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>rej(new Error("Image illisible")); im.src=fr.result; };
+    fr.onerror=()=>rej(new Error("Lecture impossible")); fr.readAsDataURL(file);
+  });
+}
+function rasterize(im,maxDim){
+  const nw=im.naturalWidth||300, nh=im.naturalHeight||300;
+  const sc=Math.min(1,maxDim/Math.max(nw,nh));
+  const w=Math.max(1,Math.round(nw*sc)), h=Math.max(1,Math.round(nh*sc));
+  const c=document.createElement("canvas"); c.width=w; c.height=h;
+  const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.drawImage(im,0,0,w,h);
+  return c;
+}
+function encodeCanvas(c,bw,thr){
+  if(!bw) return c.toDataURL("image/jpeg",0.85);
+  const d=c.getContext("2d").getImageData(0,0,c.width,c.height), p=d.data;
+  for(let i=0;i<p.length;i+=4){ const y=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2]; const v=y<thr?0:255; p[i]=p[i+1]=p[i+2]=v; p[i+3]=255; }
+  const c2=document.createElement("canvas"); c2.width=c.width; c2.height=c.height;
+  c2.getContext("2d").putImageData(d,0,0);
+  return c2.toDataURL("image/png");
+}
+function otsu(c){
+  const p=c.getContext("2d").getImageData(0,0,c.width,c.height).data, h=new Array(256).fill(0);
+  for(let i=0;i<p.length;i+=4) h[Math.round(0.299*p[i]+0.587*p[i+1]+0.114*p[i+2])]++;
+  const tot=p.length/4; let sum=0; for(let t=0;t<256;t++) sum+=t*h[t];
+  let wB=0,sB=0,best=0,thr=128;
+  for(let t=0;t<256;t++){ wB+=h[t]; if(!wB) continue; const wF=tot-wB; if(!wF) break; sB+=t*h[t];
+    const mB=sB/wB, mF=(sum-sB)/wF, v=wB*wF*(mB-mF)*(mB-mF); if(v>best){best=v;thr=t;} }
+  return Math.max(10,Math.min(245,thr+1));
+}
+$("imgAdd").onclick=()=>$("imgFile").click();
+$("imgFile").onchange=async()=>{
+  const f=$("imgFile").files[0]; $("imgFile").value=""; if(!f) return;
+  try{
+    const im=await loadImgFile(f), bw=$("imgBw").checked;
+    let maxDim=480, c, src;
+    let thr=128;
+    do{ c=rasterize(im,maxDim); thr=otsu(c); src=encodeCanvas(c,bw,thr); maxDim=Math.round(maxDim*0.75); }while(src.length>150000&&maxDim>120);
+    const id="i"+uid(), m=+design.margin||0;
+    imgOrig[id]=c;
+    design.images=design.images||[];
+    design.images.push({id,src,iw:c.width,ih:c.height,x:m,y:m,w:15,bw,thr});
+    selImg=id; renderImgs(); refresh();
+  }catch(e){ alert("Impossible d'ajouter cette image : "+e.message); }
+};
+function syncImgInputs(im){
+  const row=document.querySelector(`#imgList .irow[data-id="${im.id}"]`); if(!row) return;
+  row.querySelector(".i-x").value=im.x; row.querySelector(".i-y").value=im.y;
+}
+function renderImgs(){
+  const box=$("imgList"); if(!box) return; box.innerHTML="";
+  design.images=design.images||[];
+  design.images.forEach((im,i)=>{
+    const r=document.createElement("div"); r.className="irow"+(im.id===selImg?" sel":""); r.dataset.id=im.id;
+    r.innerHTML=`<img src="${im.src}" alt="">
+      <label>Largeur mm<input type="number" class="i-w" min="2" max="300" step="0.5"></label>
+      <label>X mm<input type="number" class="i-x" step="0.5"></label>
+      <label>Y mm<input type="number" class="i-y" step="0.5"></label>
+      <label class="i-thrl">Seuil<input type="range" class="i-thr" min="10" max="245"></label>
+      <button class="sm i-c" title="Centrer horizontalement" style="min-height:0">⇔</button>
+      <button class="sm i-d" title="Supprimer" style="min-height:0">✕</button>`;
+    const q=c=>r.querySelector(c);
+    q(".i-w").value=im.w; q(".i-x").value=im.x; q(".i-y").value=im.y; q(".i-thr").value=im.thr||128;
+    q(".i-thrl").style.display=(im.bw&&imgOrig[im.id])?"flex":"none";
+    r.onclick=e=>{ if(selImg!==im.id){ selImg=im.id; renderImgs(); refresh(); } };
+    q(".i-w").oninput=()=>{ im.w=Math.max(2,+q(".i-w").value||15); refresh(); };
+    q(".i-x").oninput=()=>{ im.x=+q(".i-x").value||0; refresh(); };
+    q(".i-y").oninput=()=>{ im.y=+q(".i-y").value||0; refresh(); };
+    q(".i-thr").oninput=()=>{ im.thr=+q(".i-thr").value; im.src=encodeCanvas(imgOrig[im.id],true,im.thr); q("img").src=im.src; refresh(); };
+    q(".i-c").onclick=ev=>{ ev.stopPropagation(); const s=stock(), W=toMM(s.w,s.u), H=toMM(s.h,s.u); const rt=rotated(); const cw=rt?(autoActive()?nominalLen():H):W; im.x=+((cw-im.w)/2).toFixed(1); renderImgs(); refresh(); };
+    q(".i-d").onclick=ev=>{ ev.stopPropagation(); design.images.splice(i,1); delete imgOrig[im.id]; renderImgs(); refresh(); };
+    box.appendChild(r);
+  });
+}
 
 /* ---------- Synchronisation Vercel (optionnelle) ---------- */
 let cloudOn=false, lastSync="", pushT=null;
