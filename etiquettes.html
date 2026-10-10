@@ -61,6 +61,9 @@ dialog#lstDlg{width:min(1060px,96vw)}
 .irow label{font-size:11px;color:var(--mute);display:flex;flex-direction:column;gap:1px}
 .irow input[type=number]{width:62px;padding:4px 5px}
 .it{cursor:pointer}
+.it .sel{align-self:flex-start;margin-top:6px;width:18px;height:18px;flex:0 0 auto}
+.bulk{border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-top:8px;background:var(--card2)}
+.bulk .row{margin-top:6px;align-items:center}
 .it.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);background:var(--hint)}
 .editb{background:var(--hint);border:1px solid var(--hintb);border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:13px;display:none;gap:6px;align-items:center;flex-wrap:wrap}
 .editb button{min-height:30px;padding:2px 8px;font-size:12px}
@@ -171,6 +174,17 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div class="row">
         <div><select id="lstSel" aria-label="Liste d'impression enregistrée"></select></div>
         <div style="flex:0 0 auto"><button id="lstLoad">Charger</button></div>
+      </div>
+      <div class="bulk" id="bulkBar">
+        <label class="chk"><input type="checkbox" id="lstAll"> Tout sélectionner</label> <span class="info" id="selCount" style="margin:0 0 0 6px"></span>
+        <div class="row">
+          <div><select id="bulkRot" aria-label="Rotation à appliquer"><option value="">Rotation…</option><option value="0">0° (normal)</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div>
+          <div style="flex:0 0 auto"><button id="bulkRotApply" title="Applique la rotation aux lignes cochées (ou à toute la liste si aucune n'est cochée)">Appliquer</button></div>
+        </div>
+        <div class="row">
+          <div><select id="bulkStock" aria-label="Papier à appliquer"></select></div>
+          <div style="flex:0 0 auto"><button id="bulkStockApply" title="Applique le papier aux lignes cochées (ou à toute la liste si aucune n'est cochée)">Appliquer</button></div>
+        </div>
       </div>
       <div id="lstItems" style="margin-top:8px"></div>
       <div class="row" style="margin-top:6px"><button id="lstAddTpl">+ Modèle choisi</button><button id="lstAddCur">+ Aperçu actuel</button></div>
@@ -352,8 +366,9 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 <dialog id="lstDlg">
   <h3 style="margin-top:0">Liste d'impression — tableau</h3>
   <div class="info" style="margin-bottom:8px">Modifiez le papier, le texte, le code et les quantités de chaque ligne. Le reste vient du modèle.</div>
-  <div class="row" style="margin-bottom:8px;align-items:flex-end"><div><label class="f">Papier pour toutes les lignes</label><select id="allStock"></select></div><div style="flex:0 0 auto"><button id="allApply">Appliquer à toutes</button></div></div>
-  <div style="overflow-x:auto"><table id="lstTbl"><thead><tr><th>Aperçu</th><th>Modèle</th><th>Papier</th><th>Texte (1 ligne par ligne)</th><th>Code / préfixe</th><th>Départ</th><th>Qté série</th><th>Copies</th><th></th></tr></thead><tbody></tbody></table></div>
+  <div class="row" style="margin-bottom:8px;align-items:flex-end"><div><label class="f">Papier pour toutes les lignes</label><select id="allStock"></select></div><div style="flex:0 0 auto"><button id="allApply">Appliquer à toutes</button></div>
+    <div><label class="f">Rotation pour toutes les lignes</label><select id="allRot"><option value="0">0° (normal)</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></div><div style="flex:0 0 auto"><button id="allRotApply">Appliquer à toutes</button></div></div>
+  <div style="overflow-x:auto"><table id="lstTbl"><thead><tr><th>Aperçu</th><th>Modèle</th><th>Papier</th><th>Rotation</th><th>Texte (1 ligne par ligne)</th><th>Code / préfixe</th><th>Départ</th><th>Qté série</th><th>Copies</th><th></th></tr></thead><tbody></tbody></table></div>
   <div class="row" style="margin-top:10px"><button class="pri" id="lstDlgClose" style="font-size:14px;padding:8px">Fermer</button></div>
 </dialog>
 <dialog id="setDlg" style="width:min(680px,96vw);max-height:92vh;overflow:auto">
@@ -1130,6 +1145,7 @@ function resolveItem(it){
     const base=dd.lines.length?dd.lines:[{text:"",size:12,bold:false,align:"left"}];
     dd.lines=ov.lines.map((tx,i)=>Object.assign({},base[Math.min(i,base.length-1)],{text:tx}));
   } else if(ov.text!==undefined&&dd.lines[0]) dd.lines[0].text=ov.text;
+  if(ov.rot!==undefined) dd.rot=String(ov.rot);
   if(ov.value!==undefined) B.value=ov.value;
   ["pre","suf","start","count"].forEach(k=>{ if(ov[k]!==undefined) B[k]=ov[k]; });
   return {design:dd, stock:st, name:label, live:!!t};
@@ -1192,11 +1208,46 @@ function moveItem(i,a){
   else if(a==="up"&&i>0) [workItems[i-1],workItems[i]]=[workItems[i],workItems[i-1]];
   else if(a==="dn"&&i<workItems.length-1) [workItems[i+1],workItems[i]]=[workItems[i],workItems[i+1]];
 }
+const selItems=new Set();
+function bulkTargets(){
+  const t=workItems.filter(x=>selItems.has(x.id));
+  return t.length?t:workItems;
+}
+function updateSelUI(){
+  const n=workItems.filter(x=>selItems.has(x.id)).length;
+  $("selCount").textContent=n?n+" ligne"+(n>1?"s":"")+" sélectionnée"+(n>1?"s":""):"Aucune ligne cochée : les actions visent toute la liste.";
+  const all=$("lstAll"); all.checked=workItems.length>0&&n===workItems.length; all.indeterminate=n>0&&n<workItems.length;
+}
+function applyBulk(kind,v){
+  if(!workItems.length){ alert("La liste est vide."); return; }
+  const had=workItems.some(x=>selItems.has(x.id)), T=bulkTargets();
+  if(!had&&!confirm("Aucune ligne n'est cochée : appliquer à toute la liste ("+T.length+" ligne"+(T.length>1?"s":"")+") ?")) return;
+  const wasDirty=isDirty();
+  T.forEach(it=>{ it.ov=it.ov||{}; if(kind==="rot") it.ov.rot=String(v); else it.ov.stockId=v; });
+  if(editItemId&&T.some(x=>x.id===editItemId)){
+    if(kind==="rot") design.rot=String(v); else stockId=v;
+    syncForm(); autoZoom(); refresh();
+    if(!wasDirty) markClean();
+  }
+  save(); renderWork();
+}
+$("lstAll").onchange=()=>{ selItems.clear(); if($("lstAll").checked) workItems.forEach(x=>selItems.add(x.id)); renderWork(); };
+$("bulkRotApply").onclick=()=>{ const v=$("bulkRot").value; if(v===""){ alert("Choisissez d'abord une rotation."); return; } applyBulk("rot",v); };
+$("bulkStockApply").onclick=()=>{ const v=$("bulkStock").value; if(!v){ alert("Choisissez d'abord un papier."); return; } applyBulk("stock",v); };
+$("allRotApply").onclick=()=>{
+  const v=$("allRot").value;
+  if(!confirm("Appliquer la rotation "+v+"° à toutes les lignes de la liste ?")) return;
+  workItems.forEach(it=>{ it.ov=it.ov||{}; it.ov.rot=v; });
+  if(editItemId){ design.rot=v; syncForm(); refresh(); }
+  save(); renderWork(); renderTable();
+};
 function renderWork(){
   if(editItemId&&!workItems.some(x=>x.id===editItemId)) editItemId="";
+  [...selItems].forEach(id=>{ if(!workItems.some(x=>x.id===id)) selItems.delete(id); });
+  $("bulkStock").innerHTML='<option value="">Papier…</option>'+stocks.map(x=>`<option value="${x.id}">${esc(x.name)} — ${dimTxt(x)}</option>`).join("");
   updateBanner();
   const box=$("lstItems"); box.innerHTML="";
-  if(!workItems.length){ box.innerHTML='<div class="info">Liste vide. Ajoutez le modèle choisi ou l\'aperçu actuel.</div>'; refreshHints(); return; }
+  if(!workItems.length){ box.innerHTML='<div class="info">Liste vide. Ajoutez le modèle choisi ou l\'aperçu actuel.</div>'; refreshHints(); updateSelUI(); return; }
   workItems.forEach((it,i)=>{
     const r=resolveItem(it);
     const d=document.createElement("div"); d.className="it"+(it.id===editItemId?" sel":"");
@@ -1204,19 +1255,21 @@ function renderWork(){
     d.onclick=e=>{ if(e.target.closest("button,input,select,textarea")) return; selectItem(it.id); };
     d.tabIndex=0; d.setAttribute("role","group"); d.setAttribute("aria-label","Ligne "+(i+1)+" : "+r.name+(it.id===editItemId?" (en édition)":""));
     d.onkeydown=e=>{ if((e.key==="Enter"||e.key===" ")&&e.target===d){ e.preventDefault(); selectItem(it.id); } };
-    d.innerHTML=`<div class="th"></div><div class="bd">
+    d.innerHTML=`<input type="checkbox" class="sel" aria-label="Sélectionner la ligne ${i+1}"><div class="th"></div><div class="bd">
       <div class="nm">${i+1}. ${esc(r.name)}${r.live?"":" <span style='font-weight:normal;color:#6b7280'>(copie figée)</span>"}</div>
       <div class="info" style="margin:2px 0 0">${r.stock?esc(r.stock.name)+" · "+dimTxt(r.stock):"⚠ papier introuvable"}</div>
       <div class="ctl"><input type="number" min="1" max="500" title="Copies"><span class="info" style="margin:0">copies</span>
         <button data-a="dup" title="Dupliquer">⧉</button><button data-a="up" title="Monter">↑</button><button data-a="dn" title="Descendre">↓</button><button data-a="rm" title="Retirer">✕</button></div>
     </div>`;
     putThumb(d.querySelector(".th"),it);
-    const n=d.querySelector("input"); n.value=it.copies||1;
+    const sc=d.querySelector(".sel"); sc.checked=selItems.has(it.id);
+    sc.onchange=()=>{ if(sc.checked) selItems.add(it.id); else selItems.delete(it.id); updateSelUI(); };
+    const n=d.querySelector('input[type="number"]'); n.value=it.copies||1;
     n.oninput=()=>{ it.copies=Math.max(1,Math.min(500,+n.value||1)); save(); };
     d.querySelectorAll("button").forEach(b=>b.onclick=()=>{ moveItem(i,b.dataset.a); renderWork(); save(); });
     box.appendChild(d);
   });
-  refreshHints();
+  refreshHints(); updateSelUI();
 }
 function renderTable(){
   const tb=$("lstTbl").querySelector("tbody"); tb.innerHTML="";
@@ -1226,6 +1279,7 @@ function renderTable(){
     tr.innerHTML=`<td><div class="thc"></div></td>
       <td>${esc(r.name)}${r.live?"":"<br><span class='info'>(figée)</span>"}</td>
       <td><select class="c-stock"></select></td>
+      <td><select class="c-rot" aria-label="Rotation"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></td>
       <td><textarea class="c-text" rows="2" style="min-width:150px;resize:vertical"></textarea></td>
       <td><input type="text" class="c-code"></td>
       <td><input type="number" class="c-start" min="0"></td>
@@ -1239,11 +1293,12 @@ function renderTable(){
     sel.value=r.stock?r.stock.id:"";
     q(".c-text").value=r.design.lines.map(l=>l.text).join("\n");
     q(".c-code").value=B.batch?B.pre:B.value;
-    q(".c-start").value=B.start; q(".c-count").value=B.count; q(".c-copies").value=it.copies||1;
+    q(".c-rot").value=String(r.design.rot||"0"); q(".c-start").value=B.start; q(".c-count").value=B.count; q(".c-copies").value=it.copies||1;
     q(".c-code").disabled=!B.on; q(".c-start").disabled=!(B.on&&B.batch); q(".c-count").disabled=!(B.on&&B.batch);
     q(".c-code").title=B.batch?"Préfixe de la série":"Valeur du code-barres";
     const changed=()=>{ save(); putThumb(q(".thc"),it); renderWork(); };
     sel.onchange=()=>{ ov.stockId=sel.value; changed(); };
+    q(".c-rot").onchange=()=>{ ov.rot=q(".c-rot").value; changed(); };
     q(".c-text").oninput=()=>{ ov.lines=q(".c-text").value.split("\n"); delete ov.text; changed(); };
     q(".c-code").oninput=()=>{ if(B.batch) ov.pre=q(".c-code").value; else ov.value=q(".c-code").value; changed(); };
     q(".c-start").oninput=()=>{ ov.start=+q(".c-start").value||0; changed(); };

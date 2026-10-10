@@ -22,6 +22,20 @@ function cleanStock(x) {
   };
 }
 
+function cleanOv(o) {
+  if (!o || typeof o !== "object") return {};
+  const r = {};
+  if (Array.isArray(o.lines)) r.lines = o.lines.slice(0, 30).map((x) => String(x).slice(0, 300));
+  ["text", "value", "pre", "suf", "stockId"].forEach((k) => {
+    if (typeof o[k] === "string") r[k] = o[k].slice(0, 300);
+  });
+  ["start", "count"].forEach((k) => {
+    if (typeof o[k] === "number" && isFinite(o[k])) r[k] = o[k];
+  });
+  if (o.rot !== undefined) r.rot = String(o.rot).slice(0, 4);
+  return r;
+}
+
 function cleanDesign(d) {
   if (!d || typeof d !== "object") return {};
   if (Array.isArray(d.images)) {
@@ -73,6 +87,8 @@ module.exports = async (req, res) => {
                 stockId: String(i.stockId || ""),
                 design: cleanDesign(i.design),
                 copies: Math.max(1, Math.min(500, +i.copies || 1)),
+                label: String(i.label || "").slice(0, 80),
+                ov: cleanOv(i.ov),
               })),
           }));
       }
