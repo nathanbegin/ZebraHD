@@ -194,7 +194,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <h2>Images</h2>
       <div id="imgList"></div>
       <label class="f" style="margin-top:6px">Résolution de l'image importée</label>
-      <select id="imgQ"><option value="600">Standard — 600 px</option><option value="1200" selected>Haute — 1200 px (recommandé)</option><option value="2000">Maximale — 2000 px</option></select>
+      <select id="imgQ"><option value="600">Standard — 600 px</option><option value="1200">Haute — 1200 px</option><option value="2000" selected>Maximale — 2000 px (par défaut)</option></select>
       <label class="chk" style="margin-top:6px"><input type="checkbox" id="imgBw" checked> Convertir en noir et blanc (recommandé)</label>
       <button id="imgAdd" style="margin-top:6px">+ Ajouter une image</button><input type="file" id="imgFile" accept="image/*" style="display:none">
       <div class="info">Glissez l'image dans l'aperçu pour la placer ; tirez un coin de l'image sélectionnée pour la redimensionner en gardant ses proportions. Les positions sont en mm depuis le coin haut-gauche du contenu.</div>
@@ -1212,10 +1212,22 @@ $("imgFile").onchange=async()=>{
     const id="i"+uid(), m=+design.margin||0;
     imgOrig[id]=c;
     design.images=design.images||[];
-    design.images.push({id,src,iw:c.width,ih:c.height,x:m,y:m,w:15,bw,thr});
+    const nim={id,src,iw:c.width,ih:c.height,x:m,y:m,w:15,bw,thr};
+    fitImageToLabel(nim);
+    design.images.push(nim);
     selImg=id; renderImgs(); refresh();
   }catch(e){ alert("Impossible d'ajouter cette image : "+e.message); }
 };
+function fitImageToLabel(im){
+  const s=stock(), W=toMM(s.w,s.u), H=toMM(s.h,s.u), m=+design.margin||0;
+  const rt=rotated();                       // largeur du contenu = longueur (sens d'impression) si 0°/180°
+  const cw=rt?H:W, ch=rt?W:H;
+  const aw=Math.max(2,cw-2*m), ah=Math.max(2,ch-2*m), r=(im.ih||1)/(im.iw||1);
+  const w=Math.min(aw, ah/r);
+  im.w=+w.toFixed(2);
+  im.x=+((cw-w)/2).toFixed(2);
+  im.y=+((ch-w*r)/2).toFixed(2);
+}
 function syncImgInputs(im){
   const row=document.querySelector(`#imgList .irow[data-id="${im.id}"]`); if(!row) return;
   row.querySelector(".i-x").value=im.x; row.querySelector(".i-y").value=im.y; row.querySelector(".i-w").value=+im.w.toFixed(1);
@@ -1230,6 +1242,7 @@ function renderImgs(){
       <label>X mm<input type="number" class="i-x" step="0.5"></label>
       <label>Y mm<input type="number" class="i-y" step="0.5"></label>
       <label class="i-thrl">Seuil<input type="range" class="i-thr" min="10" max="245"></label>
+      <button class="sm i-f" title="Ajuster à la taille de l'étiquette" style="min-height:0">⤢</button>
       <button class="sm i-c" title="Centrer horizontalement" style="min-height:0">⇔</button>
       <button class="sm i-d" title="Supprimer" style="min-height:0">✕</button>`;
     const q=c=>r.querySelector(c);
@@ -1240,6 +1253,7 @@ function renderImgs(){
     q(".i-x").oninput=()=>{ im.x=+q(".i-x").value||0; refresh(); };
     q(".i-y").oninput=()=>{ im.y=+q(".i-y").value||0; refresh(); };
     q(".i-thr").oninput=()=>{ im.thr=+q(".i-thr").value; im.src=encodeCanvas(imgOrig[im.id],true,im.thr); q("img").src=im.src; refresh(); };
+    q(".i-f").onclick=ev=>{ ev.stopPropagation(); fitImageToLabel(im); renderImgs(); refresh(); };
     q(".i-c").onclick=ev=>{ ev.stopPropagation(); const s=stock(), W=toMM(s.w,s.u), H=toMM(s.h,s.u); const rt=rotated(); const cw=rt?(autoActive()?nominalLen():H):W; im.x=+((cw-im.w)/2).toFixed(1); renderImgs(); refresh(); };
     q(".i-d").onclick=ev=>{ ev.stopPropagation(); design.images.splice(i,1); delete imgOrig[im.id]; renderImgs(); refresh(); };
     box.appendChild(r);
