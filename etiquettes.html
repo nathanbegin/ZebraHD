@@ -557,14 +557,18 @@ function autoHeight(idx){
   const r=probe.getBoundingClientRect();
   wrap.remove();
   const px=rt?r.width+1:r.height;
-  const ext=(design.images||[]).reduce((a,im)=>Math.max(a,(rt?im.x+im.w:im.y+imgH(im))+m),0);
+  const ext=(design.images||[]).reduce((a,im)=>{
+    const ang=(+im.rot||0)*Math.PI/180, c=Math.abs(Math.cos(ang)), sn=Math.abs(Math.sin(ang)), h=imgH(im);
+    const bw=im.w*c+h*sn, bh=im.w*sn+h*c, cx=im.x+im.w/2, cy=im.y+h/2;
+    return Math.max(a,(rt?cx+bw/2:cy+bh/2)+m);
+  },0);
   return Math.max(Math.ceil(px/96*MM*10)/10, +design.minLen||0, Math.ceil(ext*10)/10);
 }
 function maxAutoHeight(){ let h=0; for(let i=0;i<total();i++) h=Math.max(h,autoHeight(i)); return h; }
 const imgH=im=>im.w*(im.ih||1)/(im.iw||1);
 let selImg="";
 function imgsHTML(forPrint){
-  return (design.images||[]).map((im,i)=>`<img class="${forPrint?"":"limg"}" data-i="${i}" src="${im.src}" draggable="false" alt="" style="position:absolute;left:${im.x}mm;top:${im.y}mm;width:${im.w}mm;height:${imgH(im).toFixed(2)}mm;max-width:none;${(im.bw&&forPrint)?"image-rendering:pixelated;":""}${forPrint?"pointer-events:none;":(im.id===selImg?"outline:1px dashed #f96302;":"")}">`).join("");
+  return (design.images||[]).map((im,i)=>`<img class="${forPrint?"":"limg"}" data-i="${i}" src="${im.src}" draggable="false" alt="" style="position:absolute;left:${im.x}mm;top:${im.y}mm;width:${im.w}mm;height:${imgH(im).toFixed(2)}mm;max-width:none;transform:rotate(${+im.rot||0}deg);transform-origin:50% 50%;${(im.bw&&forPrint)?"image-rendering:pixelated;":""}${forPrint?"pointer-events:none;":(im.id===selImg?"outline:1px dashed #f96302;":"")}">`).join("");
 }
 function buildLabel(forPrint,idx=0,hOverride){
   const s=stock(), W=toMM(s.w,s.u), R=String((+design.rot+(forPrint&&prefs.rotOn?(+prefs.rotOff||0):0)+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
@@ -643,6 +647,7 @@ function refresh(){
       const sx=e.clientX, sy=e.clientY, ix=im.x, iy=im.y;
       const th=(+design.rot||0)*Math.PI/180, k=96/MM*($("zoom").value/100);
       img.style.outline="1px dashed #f96302";
+      document.querySelectorAll("#preview .hdl").forEach(h=>h.style.display="none");
       img.onpointermove=ev=>{
         const dx=ev.clientX-sx, dy=ev.clientY-sy;
         im.x=+(ix+(dx*Math.cos(th)+dy*Math.sin(th))/k).toFixed(1);
@@ -655,37 +660,69 @@ function refresh(){
   });
   (function(){
     const im=(design.images||[]).find(x=>x.id===selImg); if(!im) return;
-    const imgEl=document.querySelector(`#preview .limg[data-i="${design.images.indexOf(im)}"]`);
+    const idx=design.images.indexOf(im);
+    const imgEl=document.querySelector(`#preview .limg[data-i="${idx}"]`);
     const rotEl=document.querySelector("#preview .lbl > .rot"); if(!imgEl||!rotEl) return;
-    const k=96/MM*($("zoom").value/100), hs=12/k;
-    const th=(+design.rot||0)*Math.PI/180, ratio=(im.ih||1)/(im.iw||1);
-    const defs=[["nw",0,0,-1,-1,"nwse-resize"],["ne",1,0,1,-1,"nesw-resize"],["sw",0,1,-1,1,"nesw-resize"],["se",1,1,1,1,"nwse-resize"]];
-    const place=()=>{ defs.forEach(([n,fx,fy],j)=>{ const h=hs_[j]; h.style.left=(im.x+fx*im.w-hs/2)+"mm"; h.style.top=(im.y+fy*imgH(im)-hs/2)+"mm"; }); };
-    const hs_=[];
-    defs.forEach(([n,fx,fy,sx,sy,cur])=>{
-      const h=document.createElement("div");
-      h.className="hdl";
-      h.style.cssText=`position:absolute;width:${hs}mm;height:${hs}mm;background:#fff;border:2px solid #f96302;box-sizing:border-box;cursor:${cur};touch-action:none;z-index:6;border-radius:2px`;
-      hs_.push(h); rotEl.appendChild(h);
+    const k=96/MM*($("zoom").value/100), hs=12/k, th=(+design.rot||0)*Math.PI/180, ratio=(im.ih||1)/(im.iw||1);
+    const wpos=(lx,ly)=>{ const a=(+im.rot||0)*Math.PI/180, c=Math.cos(a), sn=Math.sin(a), cx=im.x+im.w/2, cy=im.y+imgH(im)/2; return [cx+lx*c-ly*sn, cy+lx*sn+ly*c]; };
+    const mkEl=css=>{ const h=document.createElement("div"); h.className="hdl"; h.style.cssText="position:absolute;box-sizing:border-box;touch-action:none;z-index:6;"+css; rotEl.appendChild(h); return h; };
+    const corners=[[-1,-1,"nwse-resize"],[1,-1,"nesw-resize"],[-1,1,"nesw-resize"],[1,1,"nwse-resize"]];
+    const sq=corners.map(([sx,sy,cur])=>mkEl(`width:${hs}mm;height:${hs}mm;background:#fff;border:2px solid #f96302;border-radius:2px;cursor:${cur}`));
+    const rotH=mkEl(`width:${hs*1.15}mm;height:${hs*1.15}mm;background:#f96302;border:2px solid #fff;border-radius:50%;cursor:grab;box-shadow:0 0 0 1px #f96302`);
+    rotH.title="Pivoter (Alt = angle libre)";
+    const delH=mkEl(`width:${hs*1.5}mm;height:${hs*1.5}mm;background:#dc2626;color:#fff;border:2px solid #fff;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font:bold ${hs*0.95}mm/1 Arial,sans-serif;box-shadow:0 0 0 1px #dc2626`);
+    delH.textContent="✕"; delH.title="Supprimer l'image";
+    const place=()=>{
+      const h=imgH(im);
+      corners.forEach(([sx,sy],j)=>{ const [x,y]=wpos(sx*im.w/2,sy*h/2); sq[j].style.left=(x-hs/2)+"mm"; sq[j].style.top=(y-hs/2)+"mm"; });
+      const [rx,ry]=wpos(0,-h/2-hs*2); rotH.style.left=(rx-hs*0.575)+"mm"; rotH.style.top=(ry-hs*0.575)+"mm";
+      const [dx,dy]=wpos(im.w/2+hs*1.1,-h/2-hs*1.1); delH.style.left=(dx-hs*0.75)+"mm"; delH.style.top=(dy-hs*0.75)+"mm";
+    };
+    const applyBox=()=>{ imgEl.style.width=im.w+"mm"; imgEl.style.height=imgH(im).toFixed(2)+"mm"; imgEl.style.left=im.x+"mm"; imgEl.style.top=im.y+"mm"; imgEl.style.transform=`rotate(${+im.rot||0}deg)`; };
+    const toLocal=(dx,dy)=>{
+      const cx=(dx*Math.cos(th)+dy*Math.sin(th))/k, cy=(-dx*Math.sin(th)+dy*Math.cos(th))/k;
+      const a=(+im.rot||0)*Math.PI/180;
+      return [cx*Math.cos(a)+cy*Math.sin(a), -cx*Math.sin(a)+cy*Math.cos(a)];
+    };
+    // redimensionnement proportionnel
+    sq.forEach((h,j)=>{
+      const [sx,sy]=corners[j];
       h.onpointerdown=e=>{
         e.preventDefault(); e.stopPropagation();
         try{ h.setPointerCapture(e.pointerId); }catch(_){}
-        const px=e.clientX, py=e.clientY, w0=im.w, x0=im.x, y0=im.y, h0=imgH(im);
+        const px=e.clientX, py=e.clientY, w0=im.w, x0=im.x, y0=im.y, h0=imgH(im), ccx=x0+w0/2, ccy=y0+h0/2;
+        const free=!(+im.rot||0);
         h.onpointermove=ev=>{
-          const dx=ev.clientX-px, dy=ev.clientY-py;
-          const cx=(dx*Math.cos(th)+dy*Math.sin(th))/k, cy=(-dx*Math.sin(th)+dy*Math.cos(th))/k;
-          const dw=(sx*cx+sy*cy/ratio)/2;
-          const w1=Math.max(2,Math.min(300,w0+dw)), h1=w1*ratio;
+          const [lx,ly]=toLocal(ev.clientX-px,ev.clientY-py);
+          const dw=(sx*lx+sy*ly/ratio)/2;
+          const w1=Math.max(2,Math.min(300,w0+(free?dw:2*dw))), h1=w1*ratio;
           im.w=+w1.toFixed(2);
-          im.x=+(sx<0?x0+(w0-w1):x0).toFixed(2);
-          im.y=+(sy<0?y0+(h0-h1):y0).toFixed(2);
-          imgEl.style.width=im.w+"mm"; imgEl.style.height=imgH(im).toFixed(2)+"mm";
-          imgEl.style.left=im.x+"mm"; imgEl.style.top=im.y+"mm";
-          place(); syncImgInputs(im);
+          if(free){ im.x=+(sx<0?x0+(w0-w1):x0).toFixed(2); im.y=+(sy<0?y0+(h0-h1):y0).toFixed(2); }
+          else { im.x=+(ccx-w1/2).toFixed(2); im.y=+(ccy-h1/2).toFixed(2); }
+          applyBox(); place(); syncImgInputs(im);
         };
         h.onpointerup=()=>{ h.onpointermove=null; h.onpointerup=null; save(); refresh(); renderImgs(); };
       };
     });
+    // pivot
+    rotH.onpointerdown=e=>{
+      e.preventDefault(); e.stopPropagation();
+      try{ rotH.setPointerCapture(e.pointerId); }catch(_){}
+      const r=imgEl.getBoundingClientRect(), ccx=r.left+r.width/2, ccy=r.top+r.height/2;
+      rotH.onpointermove=ev=>{
+        let a=Math.atan2(ev.clientY-ccy,ev.clientX-ccx)*180/Math.PI+90-(+design.rot||0);
+        a=((a%360)+360)%360; if(a>180) a-=360;
+        if(!ev.altKey) a=Math.round(a/15)*15;
+        im.rot=a; applyBox(); place(); syncImgInputs(im);
+      };
+      rotH.onpointerup=()=>{ rotH.onpointermove=null; rotH.onpointerup=null; save(); refresh(); renderImgs(); };
+    };
+    // suppression
+    delH.onpointerdown=e=>{
+      e.preventDefault(); e.stopPropagation();
+      design.images.splice(idx,1); delete imgOrig[im.id]; selImg="";
+      save(); refresh(); renderImgs();
+    };
     place();
   })();
   $("bcInfo").textContent=info;
@@ -1223,14 +1260,15 @@ function fitImageToLabel(im){
   const rt=rotated();                       // largeur du contenu = longueur (sens d'impression) si 0°/180°
   const cw=rt?H:W, ch=rt?W:H;
   const aw=Math.max(2,cw-2*m), ah=Math.max(2,ch-2*m), r=(im.ih||1)/(im.iw||1);
-  const w=Math.min(aw, ah/r);
+  const a=(+im.rot||0)*Math.PI/180, c=Math.abs(Math.cos(a)), sn=Math.abs(Math.sin(a));
+  const w=Math.min(aw/(c+r*sn), ah/(sn+r*c));
   im.w=+w.toFixed(2);
   im.x=+((cw-w)/2).toFixed(2);
   im.y=+((ch-w*r)/2).toFixed(2);
 }
 function syncImgInputs(im){
   const row=document.querySelector(`#imgList .irow[data-id="${im.id}"]`); if(!row) return;
-  row.querySelector(".i-x").value=im.x; row.querySelector(".i-y").value=im.y; row.querySelector(".i-w").value=+im.w.toFixed(1);
+  if(row.querySelector(".i-a")) row.querySelector(".i-a").value=Math.round(+im.rot||0); row.querySelector(".i-x").value=im.x; row.querySelector(".i-y").value=im.y; row.querySelector(".i-w").value=+im.w.toFixed(1);
 }
 function renderImgs(){
   const box=$("imgList"); if(!box) return; box.innerHTML="";
@@ -1239,6 +1277,9 @@ function renderImgs(){
     const r=document.createElement("div"); r.className="irow"+(im.id===selImg?" sel":""); r.dataset.id=im.id;
     r.innerHTML=`<img src="${im.src}" alt="">
       <label>Largeur mm<input type="number" class="i-w" min="2" max="300" step="0.5"></label>
+      <label>Angle °<input type="number" class="i-a" step="1" min="-360" max="360"></label>
+      <button class="sm i-rl" title="Pivoter de 90° vers la gauche" style="min-height:0">⟲</button>
+      <button class="sm i-rr" title="Pivoter de 90° vers la droite" style="min-height:0">⟳</button>
       <label>X mm<input type="number" class="i-x" step="0.5"></label>
       <label>Y mm<input type="number" class="i-y" step="0.5"></label>
       <label class="i-thrl">Seuil<input type="range" class="i-thr" min="10" max="245"></label>
@@ -1246,13 +1287,17 @@ function renderImgs(){
       <button class="sm i-c" title="Centrer horizontalement" style="min-height:0">⇔</button>
       <button class="sm i-d" title="Supprimer" style="min-height:0">✕</button>`;
     const q=c=>r.querySelector(c);
-    q(".i-w").value=im.w; q(".i-x").value=im.x; q(".i-y").value=im.y; q(".i-thr").value=im.thr||128;
+    q(".i-a").value=Math.round(+im.rot||0); q(".i-w").value=im.w; q(".i-x").value=im.x; q(".i-y").value=im.y; q(".i-thr").value=im.thr||128;
     q(".i-thrl").style.display=(im.bw&&imgOrig[im.id])?"flex":"none";
     r.onclick=e=>{ if(selImg!==im.id){ selImg=im.id; renderImgs(); refresh(); } };
     q(".i-w").oninput=()=>{ im.w=Math.max(2,+q(".i-w").value||15); refresh(); };
     q(".i-x").oninput=()=>{ im.x=+q(".i-x").value||0; refresh(); };
     q(".i-y").oninput=()=>{ im.y=+q(".i-y").value||0; refresh(); };
     q(".i-thr").oninput=()=>{ im.thr=+q(".i-thr").value; im.src=encodeCanvas(imgOrig[im.id],true,im.thr); q("img").src=im.src; refresh(); };
+    const setRot=v=>{ let a=((+v||0)%360+360)%360; if(a>180) a-=360; im.rot=a; q(".i-a").value=a; refresh(); };
+    q(".i-a").oninput=()=>setRot(q(".i-a").value);
+    q(".i-rl").onclick=ev=>{ ev.stopPropagation(); setRot((+im.rot||0)-90); };
+    q(".i-rr").onclick=ev=>{ ev.stopPropagation(); setRot((+im.rot||0)+90); };
     q(".i-f").onclick=ev=>{ ev.stopPropagation(); fitImageToLabel(im); renderImgs(); refresh(); };
     q(".i-c").onclick=ev=>{ ev.stopPropagation(); const s=stock(), W=toMM(s.w,s.u), H=toMM(s.h,s.u); const rt=rotated(); const cw=rt?(autoActive()?nominalLen():H):W; im.x=+((cw-im.w)/2).toFixed(1); renderImgs(); refresh(); };
     q(".i-d").onclick=ev=>{ ev.stopPropagation(); design.images.splice(i,1); delete imgOrig[im.id]; renderImgs(); refresh(); };
