@@ -23,7 +23,9 @@ header #logo{height:40px;max-width:160px;object-fit:contain;display:none}
   #colR{position:sticky;top:14px;align-self:start;height:calc(100vh - var(--hh) - 28px);min-height:340px;min-width:0}
   #colR #listCard{height:100%;margin:0;overflow:auto}
   .app.rc #colR #listCard{display:none}
-  .lt{position:absolute;left:-21px;top:50%;transform:translateY(-50%);width:26px;height:60px;border-radius:13px;border:1px solid var(--line);background:#fff;cursor:pointer;z-index:6;padding:0;font-size:16px;line-height:1;color:var(--acc);font-weight:bold;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .lt .lt-a{font-size:18px;line-height:1}
+  .lt .lt-t{writing-mode:vertical-rl;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .lt{position:absolute;left:-21px;top:50%;transform:translateY(-50%);width:28px;height:96px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:#fff;cursor:pointer;z-index:6;padding:0;font-size:16px;line-height:1;color:var(--acc);font-weight:bold;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 }
 @media(max-width:800px){ #colR,.lt{display:none} }
 .drv{background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:8px;font-size:12px;margin-top:8px;line-height:1.45}
@@ -294,7 +296,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div class="warn" id="overflow"></div>
     </div>
   </div>
-  <div id="colR"><button class="lt" id="listToggle" title="Masquer / afficher la liste d'impression">»</button></div>
+  <div id="colR"><button class="lt" id="listToggle" title="Masquer / afficher la liste d'impression"><span class="lt-a">»</span><span class="lt-t">Liste</span></button></div>
 </div>
 <div class="mbar"><button class="pri" id="btnPrint2">🖨️ Étiquette</button><button class="pri dark" id="btnPrint3">🖨️ Liste</button></div>
 
@@ -1549,9 +1551,9 @@ function placeList(){
   else if(c.parentElement===$("colR")) $("paperCard").parentElement.insertBefore(c,$("paperCard"));
 }
 mqDesk.addEventListener("change",()=>{ placeList(); refresh(); });
-function setRC(c){ document.querySelector(".app").classList.toggle("rc",c); $("listToggle").textContent=c?"«":"»"; $("listToggle").title=c?"Afficher la liste d'impression":"Masquer la liste d'impression"; try{localStorage.setItem("zl_rc",c?"1":"0");}catch(e){} setTimeout(refresh,30); }
+function setRC(c){ document.querySelector(".app").classList.toggle("rc",c); $("listToggle").querySelector(".lt-a").textContent=c?"«":"»"; $("listToggle").title=c?"Afficher la liste d'impression":"Masquer la liste d'impression"; try{localStorage.setItem("zl_rc",c?"1":"0");}catch(e){} setTimeout(refresh,30); }
 $("listToggle").onclick=()=>setRC(!document.querySelector(".app").classList.contains("rc"));
-try{ if(localStorage.getItem("zl_rc")==="1"){ document.querySelector(".app").classList.add("rc"); $("listToggle").textContent="«"; } }catch(e){}
+try{ if(localStorage.getItem("zl_rc")==="1"){ document.querySelector(".app").classList.add("rc"); $("listToggle").querySelector(".lt-a").textContent="«"; } }catch(e){}
 placeList();
 syncForm(); autoZoom(); refresh(); markClean();
 fillTplSel(); fillLstSel(workListId); renderWork(); setCloud("off"); cloudLoad();
