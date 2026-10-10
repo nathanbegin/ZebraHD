@@ -157,6 +157,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       </div>
       <div id="lstItems" style="margin-top:8px"></div>
       <div class="row" style="margin-top:6px"><button id="lstAddTpl">+ Modèle choisi</button><button id="lstAddCur">+ Aperçu actuel</button></div>
+      <div class="row" style="margin-top:6px"><button id="lstImport">⬇ Importer des étiquettes (texte / CSV)</button></div>
       <div class="row" style="margin-top:6px"><button id="lstSave">💾 Enregistrer</button><button id="lstSaveAs">Enregistrer sous…</button><button id="lstDel">Supprimer</button></div>
       <div class="row" style="margin-top:6px"><button id="lstTable">✎ Modifier en tableau</button></div>
       <div class="info" id="lstInfo">Chaque ligne garde son modèle, son papier et son nombre de copies. Les tailles différentes sont imprimées l'une après l'autre.</div>
@@ -290,10 +291,30 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </div>
 <div class="mbar"><button class="pri" id="btnPrint2">🖨️ Étiquette</button><button class="pri dark" id="btnPrint3">🖨️ Liste</button></div>
 
+<dialog id="impDlg" style="width:min(720px,96vw);max-height:92vh;overflow:auto">
+  <h3 style="margin-top:0">Importer des étiquettes</h3>
+  <div class="info" style="margin-bottom:6px">Collez une étiquette par ligne, ou chargez un fichier .csv / .txt. Les colonnes (séparées par tabulation, « ; » ou « | ») deviennent les lignes de texte de l'étiquette.</div>
+  <textarea id="impText" rows="8" placeholder="Salle A&#9;Poste 1&#10;Salle A&#9;Poste 2&#10;Salle B&#9;Poste 1" style="font-family:monospace"></textarea>
+  <div class="row" style="margin-top:6px;align-items:center"><button id="impFileBtn">📂 Charger un fichier…</button><input type="file" id="impFile" accept=".csv,.txt,text/plain,text/csv" style="display:none"><span class="info" id="impCount" style="margin:0"></span></div>
+  <div class="row" style="margin-top:6px">
+    <div><label class="f">Séparateur de colonnes</label><select id="impSep"><option value="auto">Automatique (tabulation, ; ou |)</option><option value="comma">Virgule</option><option value="none">Aucun (une seule ligne de texte)</option></select></div>
+    <div><label class="f">Copies de chaque</label><input type="number" id="impCopies" min="1" max="500" value="1"></div>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <div><label class="f">Modèle de mise en page</label><select id="impTpl"></select></div>
+    <div><label class="f">Papier</label><select id="impStock"></select></div>
+  </div>
+  <label class="chk" style="margin-top:6px"><input type="checkbox" id="impHead"> La première ligne est un en-tête (l'ignorer)</label>
+  <label class="chk" style="margin-top:4px"><input type="checkbox" id="impCode"> La dernière colonne est la valeur du code-barres</label>
+  <div class="info">Le papier peut ensuite être changé pour chaque ligne dans « Modifier en tableau ».</div>
+  <div class="warn" id="impErr"></div>
+  <div class="row" style="margin-top:10px"><button class="pri" id="impGo" style="font-size:14px;padding:8px">Importer dans la liste</button><button id="impClose">Annuler</button></div>
+</dialog>
 <dialog id="lstDlg">
   <h3 style="margin-top:0">Liste d'impression — tableau</h3>
-  <div class="info" style="margin-bottom:8px">Modifiez le papier, le texte (ligne 1), le code et les quantités de chaque ligne. Le reste vient du modèle.</div>
-  <div style="overflow-x:auto"><table id="lstTbl"><thead><tr><th>Aperçu</th><th>Modèle</th><th>Papier</th><th>Texte (ligne 1)</th><th>Code / préfixe</th><th>Départ</th><th>Qté série</th><th>Copies</th><th></th></tr></thead><tbody></tbody></table></div>
+  <div class="info" style="margin-bottom:8px">Modifiez le papier, le texte, le code et les quantités de chaque ligne. Le reste vient du modèle.</div>
+  <div class="row" style="margin-bottom:8px;align-items:flex-end"><div><label class="f">Papier pour toutes les lignes</label><select id="allStock"></select></div><div style="flex:0 0 auto"><button id="allApply">Appliquer à toutes</button></div></div>
+  <div style="overflow-x:auto"><table id="lstTbl"><thead><tr><th>Aperçu</th><th>Modèle</th><th>Papier</th><th>Texte (1 ligne par ligne)</th><th>Code / préfixe</th><th>Départ</th><th>Qté série</th><th>Copies</th><th></th></tr></thead><tbody></tbody></table></div>
   <div class="row" style="margin-top:10px"><button class="pri" id="lstDlgClose" style="font-size:14px;padding:8px">Fermer</button></div>
 </dialog>
 <dialog id="setDlg" style="width:min(680px,96vw);max-height:92vh;overflow:auto">
@@ -851,14 +872,22 @@ function fillLstSel(sel){
 function resolveItem(it){
   const t=it.tplId&&templates.find(x=>x.id===it.tplId);
   const src=t||it, ov=it.ov||{};
+  const label=it.label||(t?t.name:it.name);
+  if(!src.design||!Array.isArray(src.design.lines)){
+    const d0=JSON.parse(JSON.stringify(DEF_DESIGN));
+    return {design:d0, stock:null, name:label, live:false, missing:true};
+  }
   const st=stocks.find(x=>x.id===(ov.stockId||src.stockId))||null;
   const d=JSON.parse(JSON.stringify(src.design));
   d.bc=Object.assign({},DEF_DESIGN.bc,d.bc);
   const dd=Object.assign({},DEF_DESIGN,d), B=dd.bc;
-  if(ov.text!==undefined&&dd.lines[0]) dd.lines[0].text=ov.text;
+  if(Array.isArray(ov.lines)){
+    const base=dd.lines.length?dd.lines:[{text:"",size:12,bold:false,align:"left"}];
+    dd.lines=ov.lines.map((tx,i)=>Object.assign({},base[Math.min(i,base.length-1)],{text:tx}));
+  } else if(ov.text!==undefined&&dd.lines[0]) dd.lines[0].text=ov.text;
   if(ov.value!==undefined) B.value=ov.value;
   ["pre","suf","start","count"].forEach(k=>{ if(ov[k]!==undefined) B[k]=ov[k]; });
-  return {design:dd, stock:st, name:t?t.name:it.name, live:!!t};
+  return {design:dd, stock:st, name:label, live:!!t};
 }
 function withItem(it,fn){
   const r=resolveItem(it); if(!r.stock) return null;
@@ -946,7 +975,7 @@ function renderTable(){
     tr.innerHTML=`<td><div class="thc"></div></td>
       <td>${esc(r.name)}${r.live?"":"<br><span class='info'>(figée)</span>"}</td>
       <td><select class="c-stock"></select></td>
-      <td><input type="text" class="c-text"></td>
+      <td><textarea class="c-text" rows="2" style="min-width:150px;resize:vertical"></textarea></td>
       <td><input type="text" class="c-code"></td>
       <td><input type="number" class="c-start" min="0"></td>
       <td><input type="number" class="c-count" min="1" max="1000"></td>
@@ -957,14 +986,14 @@ function renderTable(){
     const sel=q(".c-stock");
     sel.innerHTML=stocks.map(x=>`<option value="${x.id}">${esc(x.name)} — ${dimTxt(x)}</option>`).join("");
     sel.value=r.stock?r.stock.id:"";
-    q(".c-text").value=r.design.lines[0]?r.design.lines[0].text:"";
+    q(".c-text").value=r.design.lines.map(l=>l.text).join("\n");
     q(".c-code").value=B.batch?B.pre:B.value;
     q(".c-start").value=B.start; q(".c-count").value=B.count; q(".c-copies").value=it.copies||1;
     q(".c-code").disabled=!B.on; q(".c-start").disabled=!(B.on&&B.batch); q(".c-count").disabled=!(B.on&&B.batch);
     q(".c-code").title=B.batch?"Préfixe de la série":"Valeur du code-barres";
     const changed=()=>{ save(); putThumb(q(".thc"),it); renderWork(); };
     sel.onchange=()=>{ ov.stockId=sel.value; changed(); };
-    q(".c-text").oninput=()=>{ ov.text=q(".c-text").value; changed(); };
+    q(".c-text").oninput=()=>{ ov.lines=q(".c-text").value.split("\n"); delete ov.text; changed(); };
     q(".c-code").oninput=()=>{ if(B.batch) ov.pre=q(".c-code").value; else ov.value=q(".c-code").value; changed(); };
     q(".c-start").oninput=()=>{ ov.start=+q(".c-start").value||0; changed(); };
     q(".c-count").oninput=()=>{ ov.count=Math.max(1,Math.min(1000,+q(".c-count").value||1)); changed(); };
@@ -975,7 +1004,15 @@ function renderTable(){
 }
 $("lstTable").onclick=()=>{
   if(!workItems.length){ alert("La liste est vide."); return; }
+  $("allStock").innerHTML=stocks.map(x=>`<option value="${x.id}">${esc(x.name)} — ${dimTxt(x)}</option>`).join("");
+  $("allStock").value=stockId;
   renderTable(); $("lstDlg").showModal();
+};
+$("allApply").onclick=()=>{
+  const v=$("allStock").value; if(!v) return;
+  if(!confirm("Appliquer ce papier à toutes les lignes de la liste ?")) return;
+  workItems.forEach(it=>{ it.ov=it.ov||{}; it.ov.stockId=v; });
+  save(); renderWork(); renderTable();
 };
 $("lstDlgClose").onclick=()=>{ $("lstDlg").close(); renderWork(); };
 $("lstAddTpl").onclick=()=>{
@@ -1151,6 +1188,79 @@ function renderImgs(){
     box.appendChild(r);
   });
 }
+
+/* ---------- Import d'étiquettes ---------- */
+function splitDelim(r,d){
+  const out=[]; let cur="", q=false;
+  for(let i=0;i<r.length;i++){
+    const ch=r[i];
+    if(ch==='"'){ if(q&&r[i+1]==='"'){ cur+='"'; i++; } else q=!q; }
+    else if(ch===d&&!q){ out.push(cur); cur=""; }
+    else cur+=ch;
+  }
+  out.push(cur); return out;
+}
+function parseImport(){
+  const sep=$("impSep").value, head=$("impHead").checked;
+  let rows=$("impText").value.replace(/\r/g,"").split("\n").filter(r=>r.trim()!=="");
+  if(head) rows=rows.slice(1);
+  return rows.map(r=>{
+    let cols;
+    if(sep==="none") cols=[r.trim()];
+    else if(sep==="comma") cols=splitDelim(r,",");
+    else { const d=r.includes("\t")?"\t":r.includes(";")?";":r.includes("|")?"|":null; cols=d?splitDelim(r,d):[r]; }
+    return cols.map(c=>c.trim());
+  });
+}
+function impBase(){
+  const v=$("impTpl").value;
+  if(v==="__cur"){ return {kind:"cur",name:"Aperçu actuel",design:JSON.parse(JSON.stringify(design)),stockId}; }
+  const bt=BUILTIN.find(x=>x.id===v); if(bt) return {kind:"builtin",name:bt.name,design:builtinDesign(bt),stockId};
+  const t=templates.find(x=>x.id===v); if(t) return {kind:"tpl",name:t.name,tplId:t.id,design:t.design,stockId:t.stockId};
+  return null;
+}
+function impUpdate(){
+  const n=parseImport().length; $("impCount").textContent=n?n+" étiquette"+(n>1?"s":"")+" détectée"+(n>1?"s":""):"";
+  const b=impBase(); const bcOn=!!(b&&b.design.bc&&b.design.bc.on);
+  $("impCode").disabled=!bcOn; if(!bcOn) $("impCode").checked=false;
+}
+$("lstImport").onclick=()=>{
+  $("impTpl").innerHTML='<option value="__cur">Aperçu actuel</option>'
+    +templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("")
+    +'<optgroup label="Gabarits fournis">'+BUILTIN.map(t=>`<option value="${t.id}">★ ${esc(t.name)}</option>`).join("")+'</optgroup>';
+  const sel=$("tplSel").value; if(sel&&[...$("impTpl").options].some(o=>o.value===sel)) $("impTpl").value=sel;
+  $("impStock").innerHTML='<option value="">Celui du modèle</option>'+stocks.map(x=>`<option value="${x.id}">${esc(x.name)} — ${dimTxt(x)}</option>`).join("");
+  $("impErr").textContent=""; impUpdate(); $("impDlg").showModal();
+};
+["impText","impSep","impHead","impTpl"].forEach(id=>{ $(id).addEventListener("input",impUpdate); $(id).addEventListener("change",impUpdate); });
+$("impFileBtn").onclick=()=>$("impFile").click();
+$("impFile").onchange=()=>{
+  const f=$("impFile").files[0]; $("impFile").value=""; if(!f) return;
+  f.text().then(t=>{ $("impText").value=t.replace(/^﻿/,""); if(/\.csv$/i.test(f.name)&&!/[\t;|]/.test(t)) $("impSep").value="comma"; impUpdate(); });
+};
+$("impClose").onclick=()=>$("impDlg").close();
+$("impGo").onclick=()=>{
+  const rows=parseImport(), base=impBase();
+  if(!rows.length){ $("impErr").textContent="Aucune étiquette à importer."; return; }
+  if(!base){ $("impErr").textContent="Choisissez un modèle de mise en page."; return; }
+  if(base.kind==="cur"&&(base.design.images||[]).length){ $("impErr").textContent="L'aperçu contient des images : enregistrez-le d'abord comme modèle, puis choisissez ce modèle."; return; }
+  const room=200-workItems.length;
+  if(room<=0){ $("impErr").textContent="La liste est pleine (200 lignes maximum)."; return; }
+  const useCode=$("impCode").checked&&!$("impCode").disabled;
+  const copies=Math.max(1,Math.min(500,+$("impCopies").value||1)), stk=$("impStock").value;
+  const take=rows.slice(0,room);
+  take.forEach(cols=>{
+    let code; let txt=cols.slice();
+    if(useCode&&txt.length>1) code=txt.pop(); else if(useCode&&txt.length===1){ code=txt[0]; }
+    const it={id:uid(),tplId:base.kind==="tpl"?base.tplId:null,name:base.name,label:(txt[0]||code||"").slice(0,60),
+      stockId:base.stockId,design:base.kind==="tpl"?{}:JSON.parse(JSON.stringify(base.design)),copies,ov:{lines:txt}};
+    if(code!==undefined) it.ov.value=code;
+    if(stk) it.ov.stockId=stk;
+    workItems.push(it);
+  });
+  renderWork(); save(); $("impDlg").close();
+  if(take.length<rows.length) alert("Seules les "+take.length+" premières étiquettes ont été importées (limite de 200 lignes par liste).");
+};
 
 /* ---------- Synchronisation Vercel (optionnelle) ---------- */
 let cloudOn=false, lastSync="", pushT=null;
