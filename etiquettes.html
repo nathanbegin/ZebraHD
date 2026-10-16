@@ -487,6 +487,21 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
   </div>
   <div class="row" id="pnlCloseRow" style="margin-top:10px"><button id="pnlClose2">Fermer</button></div>
 </dialog>
+<dialog id="tgtDlg" style="width:min(520px,96vw)">
+  <h3 style="margin-top:0">Où ajouter ces feuilles ?</h3>
+  <div class="info" id="tgtInfo" style="margin-bottom:8px"></div>
+  <div id="tgtCurRow" style="margin-bottom:8px"><label class="chk"><input type="radio" name="tgt" value="cur"> <span id="tgtCurLbl"></span></label></div>
+  <div id="tgtSavedRow" style="margin-bottom:8px">
+    <label class="chk"><input type="radio" name="tgt" value="saved"> À une autre liste enregistrée :</label>
+    <select id="tgtSaved" aria-label="Liste enregistrée" style="margin-top:4px"></select>
+  </div>
+  <div style="margin-bottom:8px">
+    <label class="chk"><input type="radio" name="tgt" value="new"> À une nouvelle liste :</label>
+    <input type="text" id="tgtName" placeholder="Nom de la nouvelle liste" aria-label="Nom de la nouvelle liste" style="margin-top:4px">
+  </div>
+  <div class="warn" id="tgtErr"></div>
+  <div class="row" style="margin-top:10px"><button class="pri" id="tgtOk" style="font-size:14px;padding:8px">Ajouter</button><button id="tgtCancel">Annuler</button></div>
+</dialog>
 <dialog id="seqDlg" style="width:min(560px,96vw);max-height:92vh;overflow:auto">
   <h3 style="margin-top:0">Impression par séquences</h3>
   <div class="info" style="margin-bottom:10px">Les lignes de même papier sont regroupées. Imprimez la séquence 1, changez ensuite le format de papier dans le pilote (Préférences d'impression → Options), puis imprimez la séquence suivante.</div>
@@ -1735,19 +1750,78 @@ function sheetDesign(cfg,circuits){
   d.sheet=Object.assign({},cfg,{on:true,circuits:JSON.parse(JSON.stringify(circuits))});
   return d;
 }
+let tgtItems=[];
+function workListDirty(){
+  if(!workItems.length) return false;
+  const cur=lists.find(x=>x.id===workListId);
+  return !cur||JSON.stringify(cur.items)!==JSON.stringify(workItems);
+}
+function listCountTxt(n){ return n+" ligne"+(n>1?"s":""); }
 $("pnlAdd").onclick=()=>{
   if(!pnl) return;
   const sel=pnlSelected(); if(!sel.length){ $("pnlErr").textContent="Sélectionnez au moins un circuit."; return; }
   const cfg=pnlCfg(), k=pnlStripCount(cfg), sid=ensureSheetStock(cfg.len,false);
   const chunks=[]; for(let i=0;i<sel.length;i+=k) chunks.push(sel.slice(i,i+k));
-  const room=200-workItems.length;
-  if(room<=0){ $("pnlErr").textContent="La liste est pleine (200 lignes maximum)."; return; }
-  chunks.slice(0,room).forEach(ch=>{
+  tgtItems=chunks.map(ch=>{
     const a=ch[0].id||ch[0].label, b=ch[ch.length-1].id||ch[ch.length-1].label;
-    workItems.push({id:uid(),tplId:null,name:"Disjoncteurs — "+pnl.name,label:ch.length>1?a+" → "+b:a,stockId:sid,design:sheetDesign(cfg,ch),copies:1});
+    return {id:uid(),tplId:null,name:"Disjoncteurs — "+pnl.name,label:ch.length>1?a+" → "+b:a,stockId:sid,design:sheetDesign(cfg,ch),copies:1};
   });
-  renderWork(); save(); $("pnlDlg").close();
-  if(chunks.length>room) alert("Seules "+room+" feuilles ont été ajoutées (limite de 200 lignes par liste).");
+  openTarget();
+};
+function openTarget(){
+  const cur=lists.find(x=>x.id===workListId), hasCur=workItems.length>0||!!cur;
+  $("tgtInfo").textContent=listCountTxt(tgtItems.length)+" (feuille"+(tgtItems.length>1?"s":"")+" de disjoncteurs) à ajouter.";
+  $("tgtCurRow").style.display=hasCur?"block":"none";
+  $("tgtCurLbl").textContent="À la liste existante en cours : « "+(cur?cur.name:"non enregistrée")+" » ("+listCountTxt(workItems.length)+")";
+  const others=lists.filter(x=>x.id!==workListId);
+  $("tgtSavedRow").style.display=others.length?"block":"none";
+  $("tgtSaved").innerHTML=others.map(x=>`<option value="${esc(x.id)}">${esc(x.name)} (${listCountTxt(x.items.length)})</option>`).join("");
+  let nm=pnl.name+" — disjoncteurs", n=2; const base=nm;
+  while(lists.some(x=>x.name===nm)) nm=base+" ("+(n++)+")";
+  $("tgtName").value=nm; $("tgtErr").textContent="";
+  document.querySelector('input[name="tgt"][value="'+(hasCur?"cur":"new")+'"]').checked=true;
+  $("tgtDlg").showModal();
+}
+$("tgtName").addEventListener("focus",()=>{ document.querySelector('input[name="tgt"][value="new"]').checked=true; });
+$("tgtSaved").addEventListener("focus",()=>{ document.querySelector('input[name="tgt"][value="saved"]').checked=true; });
+$("tgtCancel").onclick=()=>$("tgtDlg").close();
+$("tgtOk").onclick=()=>{
+  const mode=(document.querySelector('input[name="tgt"]:checked')||{}).value;
+  const err=m=>{ $("tgtErr").textContent=m; };
+  const cloneItems=a=>JSON.parse(JSON.stringify(a));
+  if(mode==="cur"){
+    const room=200-workItems.length;
+    if(room<=0){ err("La liste est pleine (200 lignes maximum)."); return; }
+    const add=tgtItems.slice(0,room);
+    workItems.push(...add);
+    const cur=lists.find(x=>x.id===workListId);
+    if(cur) cur.items=cloneItems(workItems);
+    $("tgtDlg").close(); $("pnlDlg").close();
+    editItemId=""; renderWork(); save();
+    if(add.length<tgtItems.length) alert("Seules "+add.length+" feuilles ont été ajoutées (limite de 200 lignes par liste).");
+  } else if(mode==="saved"){
+    const L=lists.find(x=>x.id===$("tgtSaved").value); if(!L){ err("Choisissez une liste."); return; }
+    if(workListDirty()&&!confirm("La liste en cours contient des modifications non enregistrées : elles seront remplacées par la liste « "+L.name+" ». Continuer ?")) return;
+    const room=200-L.items.length;
+    if(room<=0){ err("Cette liste est pleine (200 lignes maximum)."); return; }
+    const add=tgtItems.slice(0,room);
+    L.items=cloneItems(L.items).concat(add);
+    workItems=cloneItems(L.items); workListId=L.id; selItems.clear(); editItemId="";
+    $("tgtDlg").close(); $("pnlDlg").close();
+    fillLstSel(L.id); renderWork(); save();
+    if(add.length<tgtItems.length) alert("Seules "+add.length+" feuilles ont été ajoutées (limite de 200 lignes par liste).");
+  } else {
+    const name=$("tgtName").value.trim(); if(!name){ err("Entrez un nom pour la nouvelle liste."); return; }
+    if(lists.some(x=>x.name===name)){ err("Une liste porte déjà ce nom : choisissez-en un autre."); return; }
+    if(workListDirty()&&!confirm("La liste en cours contient des modifications non enregistrées : elles seront remplacées par la nouvelle liste. Continuer ?")) return;
+    const add=tgtItems.slice(0,200);
+    const L={id:"l"+uid(),name,items:cloneItems(add)};
+    lists.push(L);
+    workItems=cloneItems(add); workListId=L.id; selItems.clear(); editItemId="";
+    $("tgtDlg").close(); $("pnlDlg").close();
+    fillLstSel(L.id); renderWork(); save();
+    if(add.length<tgtItems.length) alert("Seules 200 feuilles ont été ajoutées (limite par liste).");
+  }
 };
 $("pnlUse").onclick=()=>{
   if(!pnl) return;
