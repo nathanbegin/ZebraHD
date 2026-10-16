@@ -206,6 +206,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
         </div>
         <label class="f" for="lbHeights">Hauteurs personnalisées (po)</label>
         <input type="text" id="lbHeights" placeholder="ex. 0.6 (→ 3 par feuille)  ou  0.5 0.5 1">
+        <label class="f" for="lbGap" title="Espace ajouté entre deux étiquettes voisines (0 = comme avant, ≈ 1 mm entre les cadres). Le trait de coupe passe au milieu ; les étiquettes deviennent un peu moins hautes.">Espacement vertical entre les étiquettes (mm)</label>
+        <input type="number" id="lbGap" min="0" max="8" step="0.5" title="Espace ajouté entre deux étiquettes voisines (0 = comme avant, ≈ 1 mm entre les cadres). Le trait de coupe passe au milieu ; les étiquettes deviennent un peu moins hautes.">
         <label class="f" for="lbFrame">Cadre autour de chaque étiquette</label>
         <select id="lbFrame"><option value="round">Cadre à coins arrondis</option><option value="square">Cadre carré</option><option value="none">Sans cadre</option></select>
         <label class="f" for="lbBadgePos">Position de l'encadré arrondi</label>
@@ -273,6 +275,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
         </div>
         <label class="f" for="shHeights">Ou hauteurs personnalisées (po, séparées par des virgules)</label>
         <input type="text" id="shHeights" placeholder="ex. 0.6 (→ 3 par feuille)  ou  0.5 0.5 1">
+        <label class="f" for="shGap" style="margin-top:6px" title="Espace ajouté entre deux étiquettes voisines (0 = comme avant, ≈ 1 mm entre les cadres). Le trait de coupe passe au milieu ; les étiquettes deviennent un peu moins hautes.">Espacement vertical entre les étiquettes (mm)</label>
+        <input type="number" id="shGap" min="0" max="8" step="0.5" title="Espace ajouté entre deux étiquettes voisines (0 = comme avant, ≈ 1 mm entre les cadres). Le trait de coupe passe au milieu ; les étiquettes deviennent un peu moins hautes.">
         <label class="f" for="shFrame" style="margin-top:6px">Cadre autour de chaque étiquette</label>
         <select id="shFrame"><option value="round">Cadre à coins arrondis</option><option value="square">Cadre carré</option><option value="none">Sans cadre</option></select>
         <label class="f" for="shBadgePos" style="margin-top:6px">Position de l'encadré arrondi</label>
@@ -522,6 +526,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div><label class="f" for="pnlLen">Longueur (po, min. 3)</label><input type="number" id="pnlLen" min="3" max="40" step="0.25" value="3"></div>
       <div><label class="f" for="pnlHeights">Hauteurs personnalisées (po)</label><input type="text" id="pnlHeights" placeholder="ex. 0.6 (→ 3 par feuille)  ou  0.5 0.5 1"></div>
     </div>
+    <label class="f" for="pnlGap" style="margin-top:6px" title="Espace ajouté entre deux étiquettes voisines (0 = comme avant, ≈ 1 mm entre les cadres). Le trait de coupe passe au milieu ; les étiquettes deviennent un peu moins hautes.">Espacement vertical entre les étiquettes (mm)</label>
+    <input type="number" id="pnlGap" min="0" max="8" step="0.5" value="0" title="Espace ajouté entre deux étiquettes voisines (0 = comme avant, ≈ 1 mm entre les cadres). Le trait de coupe passe au milieu ; les étiquettes deviennent un peu moins hautes.">
     <label class="f" for="pnlFrame" style="margin-top:6px">Cadre autour de chaque étiquette</label>
     <select id="pnlFrame"><option value="round">Cadre à coins arrondis</option><option value="square">Cadre carré</option><option value="none">Sans cadre</option></select>
     <label class="f" for="pnlBadgePos" style="margin-top:6px">Position de l'encadré arrondi</label>
@@ -831,7 +837,7 @@ const SAMPLE_CIRCUITS=[
   {id:"1A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Micro-ondes",slots:["1A"],tags:{devices:["Micro-ondes"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}},
   {id:"2A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Réfrigérateur — cuisine",slots:["2A"],tags:{devices:["Réfrigérateur"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}}
 ];
-const defaultSheet=()=>({on:false,n:3,heights:"",len:3,tall:true,badge:"amps",badgePos:"left",badgeR:"same",frame:"round",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
+const defaultSheet=()=>({on:false,n:3,heights:"",len:3,gap:0,tall:true,badge:"amps",badgePos:"left",badgeR:"same",frame:"round",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
 const _mc=document.createElement("canvas").getContext("2d");
 function tmeas(txt,bold,size){ _mc.font=(bold?"bold ":"")+"20px Arial, Helvetica, sans-serif"; return _mc.measureText(txt).width/20*size; }
 function ellipsize(txt,bold,sz,maxW){
@@ -903,7 +909,10 @@ function chipRows(tags,cs,tw){
 }
 // Calcule la disposition d'une section. Ordre des économies de place : espacements resserrés d'abord, puis tailles réduites
 // (jamais sous des minimums lisibles). R.ok = false si le contenu ne tient pas dans la hauteur.
+// Espacement vertical (mm) laissé entre deux étiquettes voisines ; le trait de coupe reste au milieu de cet espace.
+const gapMM=S=>Math.max(0,Math.min(8,+(S&&S.gap)||0));
 function layoutStrip(c,h,cw,S){
+  h=Math.max(2,h-gapMM(S));
   const fm=S.frame||"round", fr=fm!=="none";
   const hh=Math.min(h,17);                                   // hauteur de référence (≈ 0,667 po) pour les tailles
   const pad=Math.max(0.8,hh*0.07)+(fr?1:0), avail=h-2*pad, b=Math.min(hh-2*pad,avail), gapB=Math.max(1.5,hh*0.12);
@@ -938,6 +947,7 @@ function layoutStrip(c,h,cw,S){
 function stripSVG(c,y,h,cw,S,stat){
   const E=esc, ff='font-family="Arial, Helvetica, sans-serif"';
   const R=layoutStrip(c,h,cw,S), {pad,b,fr,fm,leftC,rightC,x0,tw,hh}=R, sw=Math.max(0.25,hh*0.02), ins=0.5;
+  const gv=gapMM(S); y+=gv/2; h=Math.max(2,h-gv);                 // l'étiquette est centrée dans sa section
   let g=fr?`<rect x="${ins}" y="${(y+ins).toFixed(2)}" width="${(cw-2*ins).toFixed(2)}" height="${(h-2*ins).toFixed(2)}" rx="${fm==="round"?Math.min(2.5,hh*0.14).toFixed(2):0}" fill="none" stroke="#000" stroke-width="${Math.max(0.25,Math.min(0.4,hh*0.02)).toFixed(2)}"/>`:"";
   const cy=y+h/2, bw=b-1.6;
   const drawBadge=(bx,cont)=>{
@@ -1651,6 +1661,7 @@ function renderLayoutBar(){
   const act=document.activeElement&&det.contains(document.activeElement)?document.activeElement.id:"";
   if(act!=="lbHeights") $("lbHeights").value=S.heights||"";
   if(act!=="lbLen") $("lbLen").value=S.len||3;
+  if(act!=="lbGap") $("lbGap").value=gapMM(S);
   $("lbN").value=String(S.n||3); $("lbBadge").value=S.badge||"amps"; $("lbBadgePos").value=S.badgePos||"left"; $("lbBadgeR").value=S.badgeR||"same"; $("lbFrame").value=S.frame||"round";
   [["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"],["tall","lbTall"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
 }
@@ -1666,6 +1677,8 @@ function applyLayout(patch){
 let lbT=null;
 $("lbN").onchange=()=>applyLayout({n:+$("lbN").value||3,heights:""});
 $("lbLen").onchange=()=>applyLayout({len:Math.max(3,+$("lbLen").value||3)});
+let lbGT=null;
+$("lbGap").oninput=()=>{ clearTimeout(lbGT); lbGT=setTimeout(()=>applyLayout({gap:gapMM({gap:$("lbGap").value})}),300); };
 $("lbHeights").oninput=()=>{ clearTimeout(lbT); lbT=setTimeout(()=>applyLayout({heights:$("lbHeights").value.trim()}),300); };
 $("lbBadge").onchange=()=>applyLayout({badge:$("lbBadge").value});
 $("lbBadgePos").onchange=()=>applyLayout({badgePos:$("lbBadgePos").value});
@@ -1889,7 +1902,7 @@ function renderSheetCard(){
   const S=design.sheet, on=!!(S&&S.on);
   $("shOn").checked=on; $("shBox").style.display=on?"block":"none"; $("rot").disabled=on;
   if(!on) return;
-  $("shN").value=String(S.n||3); $("shBadge").value=S.badge||"amps"; $("shBadgePos").value=S.badgePos||"left"; $("shBadgeR").value=S.badgeR||"same"; $("shFrame").value=S.frame||"round"; $("shHeights").value=S.heights||""; $("shLen").value=S.len||3;
+  $("shN").value=String(S.n||3); $("shBadge").value=S.badge||"amps"; $("shBadgePos").value=S.badgePos||"left"; $("shBadgeR").value=S.badgeR||"same"; $("shFrame").value=S.frame||"round"; $("shHeights").value=S.heights||""; $("shLen").value=S.len||3; $("shGap").value=gapMM(S);
   [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
   const nC=(S.circuits||[]).length, k=sheetHeights(S,toMM(stock().w,stock().u)).length;
   $("shCount").textContent=nC?`${k} étiquette${k>1?"s":""} par feuille. Circuits chargés : ${nC} (les ${Math.min(k,nC)} premiers sont affichés dans l'aperçu).`:"Aucun circuit chargé : un exemple est affiché. Utilisez « Charger un panneau ».";
@@ -1905,6 +1918,7 @@ $("shBadge").onchange=()=>{ sheetObj().badge=$("shBadge").value; refresh(); };
 $("shBadgePos").onchange=()=>{ sheetObj().badgePos=$("shBadgePos").value; refresh(); };
 $("shBadgeR").onchange=()=>{ sheetObj().badgeR=$("shBadgeR").value; refresh(); };
 $("shFrame").onchange=()=>{ sheetObj().frame=$("shFrame").value; refresh(); };
+$("shGap").oninput=()=>{ sheetObj().gap=gapMM({gap:$("shGap").value}); refresh(); };
 $("shClear").onclick=()=>{ sheetObj().circuits=[]; renderSheetCard(); refresh(); };
 
 /* ---------- Contenu individuel de chaque étiquette ---------- */
@@ -2013,7 +2027,7 @@ function normPanel(b){
 }
 function pnlStripCount(cfg){ return sheetHeights(cfg,50.8).length; }
 function pnlCfg(){
-  return {on:true,n:+$("pnlN").value||3,heights:$("pnlHeights").value.trim(),len:Math.max(3,+$("pnlLen").value||3),
+  return {on:true,n:+$("pnlN").value||3,heights:$("pnlHeights").value.trim(),len:Math.max(3,+$("pnlLen").value||3),gap:gapMM({gap:$("pnlGap").value}),
     badge:$("pnlBadge").value,badgePos:$("pnlBadgePos").value,badgeR:$("pnlBadgeR").value,frame:$("pnlFrame").value,chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked,tall:$("pnlTall").checked};
 }
 function pnlSelected(){ return [...$("pnlTbl").querySelectorAll("input[type=checkbox]")].filter(c=>c.checked).map(c=>pnl.circuits[+c.dataset.i]); }
@@ -2033,7 +2047,7 @@ function showPanel(p,msg){
   $("pnlTbl").querySelectorAll("input").forEach(c=>c.onchange=pnlUpdateCalc);
   $("pnlAll").checked=true;
   const S=design.sheet&&design.sheet.on?design.sheet:null;
-  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlBadgePos").value=S.badgePos||"left"; $("pnlBadgeR").value=S.badgeR||"same"; $("pnlFrame").value=S.frame||"round"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; $("pnlTall").checked=S.tall!==false; }
+  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlBadgePos").value=S.badgePos||"left"; $("pnlBadgeR").value=S.badgeR||"same"; $("pnlFrame").value=S.frame||"round"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlGap").value=gapMM(S); $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; $("pnlTall").checked=S.tall!==false; }
   $("pnlMsg").textContent=msg||""; $("pnlErr").textContent="";
   try{ localStorage.setItem("zl_panel",JSON.stringify(p)); }catch(e){}
   pnlUpdateCalc();
@@ -2104,7 +2118,7 @@ $("pnlClose").onclick=()=>$("pnlDlg").close();
 $("pnlClose2").onclick=()=>$("pnlDlg").close();
 $("pnlAll").onchange=()=>{ $("pnlTbl").querySelectorAll("input").forEach(c=>c.checked=$("pnlAll").checked); pnlUpdateCalc(); };
 $("pnlStatus").onchange=()=>{ const v=$("pnlStatus").value; $("pnlTbl").querySelectorAll("input").forEach(c=>{ c.checked=!v||pnl.circuits[+c.dataset.i].status===v; }); pnlUpdateCalc(); };
-["pnlN","pnlLen","pnlHeights","pnlTall","pnlChips","pnlRoom","pnlUsage","pnlSlots","pnlBadge","pnlBadgePos","pnlBadgeR","pnlFrame"].forEach(id=>{ $(id).addEventListener("input",pnlUpdateCalc); $(id).addEventListener("change",pnlUpdateCalc); });
+["pnlN","pnlLen","pnlGap","pnlHeights","pnlTall","pnlChips","pnlRoom","pnlUsage","pnlSlots","pnlBadge","pnlBadgePos","pnlBadgeR","pnlFrame"].forEach(id=>{ $(id).addEventListener("input",pnlUpdateCalc); $(id).addEventListener("change",pnlUpdateCalc); });
 function sheetDesign(cfg,circuits){
   const d=JSON.parse(JSON.stringify(DEF_DESIGN)); d.lines=[]; d.rot="0"; d.margin=0;
   d.sheet=Object.assign({},cfg,{on:true,circuits:JSON.parse(JSON.stringify(circuits))});

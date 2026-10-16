@@ -70,6 +70,7 @@ function cleanSheet(s) {
     n: Math.max(1, Math.min(8, +s.n || 3)),
     heights: str(s.heights, 80),
     len: Math.max(3, Math.min(40, +s.len || 3)),
+    gap: Math.max(0, Math.min(8, Math.round((+s.gap || 0) * 10) / 10)),
     badge: ["amps", "id", "both"].includes(s.badge) ? s.badge : "amps",
     badgePos: ["left", "right", "both", "none"].includes(s.badgePos) ? s.badgePos : "left",
     badgeR: ["same", "amps", "id", "both"].includes(s.badgeR) ? s.badgeR : "same",
