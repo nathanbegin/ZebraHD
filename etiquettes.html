@@ -186,6 +186,26 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <div style="flex:0 0 auto"><button id="bulkStockApply" title="Applique le papier aux lignes cochées (ou à toute la liste si aucune n'est cochée)">Appliquer</button></div>
         </div>
       </div>
+      <details id="lbDet" style="display:none;margin-top:8px" class="bulk" open>
+        <summary style="cursor:pointer;font-weight:bold;color:var(--acc)">🔌 Mise en page des feuilles de disjoncteurs</summary>
+        <div class="info" id="lbInfo" style="margin:6px 0"></div>
+        <div class="row">
+          <div><label class="f" for="lbN">Sections égales</label><select id="lbN"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+          <div><label class="f" for="lbLen">Longueur (po, min. 3)</label><input type="number" id="lbLen" min="3" max="40" step="0.25"></div>
+        </div>
+        <label class="f" for="lbHeights">Hauteurs personnalisées (po)</label>
+        <input type="text" id="lbHeights" placeholder="ex. 0.5, 0.5, 1  (vide = sections égales)">
+        <label class="f" for="lbBadge">Contenu de l'encadré arrondi</label>
+        <select id="lbBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
+        <div class="row" style="margin-top:6px;flex-wrap:wrap">
+          <label class="chk"><input type="checkbox" id="lbRoom"> Pièce</label>
+          <label class="chk"><input type="checkbox" id="lbUsage"> Usage</label>
+          <label class="chk"><input type="checkbox" id="lbSlots"> Positions</label>
+          <label class="chk"><input type="checkbox" id="lbChips"> Étiquettes (tags)</label>
+          <label class="chk"><input type="checkbox" id="lbCuts"> Traits de coupe</label>
+        </div>
+        <div class="info">Chaque changement regroupe de nouveau les circuits de la liste en feuilles : pas besoin de recharger le panneau.</div>
+      </details>
       <div id="lstItems" style="margin-top:8px"></div>
       <div class="row" style="margin-top:6px"><button id="lstAddTpl">+ Modèle choisi</button><button id="lstAddCur">+ Aperçu actuel</button></div>
       <div class="row" style="margin-top:6px"><button id="lstImport">⬇ Importer des étiquettes (texte / CSV)</button></div>
@@ -234,6 +254,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
         </div>
         <label class="f" for="shHeights">Ou hauteurs personnalisées (po, séparées par des virgules)</label>
         <input type="text" id="shHeights" placeholder="ex. 0.5, 0.5, 1  (vide = sections égales)">
+        <label class="f" for="shBadge" style="margin-top:6px">Contenu de l'encadré arrondi</label>
+        <select id="shBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
         <div class="row" style="margin-top:6px;flex-wrap:wrap">
           <label class="chk"><input type="checkbox" id="shRoom"> Pièce</label>
           <label class="chk"><input type="checkbox" id="shUsage"> Usage</label>
@@ -474,6 +496,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div><label class="f" for="pnlLen">Longueur (po, min. 3)</label><input type="number" id="pnlLen" min="3" max="40" step="0.25" value="3"></div>
       <div><label class="f" for="pnlHeights">Hauteurs personnalisées (po)</label><input type="text" id="pnlHeights" placeholder="ex. 0.5, 0.5, 1"></div>
     </div>
+    <label class="f" for="pnlBadge" style="margin-top:6px">Contenu de l'encadré arrondi</label>
+    <select id="pnlBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
     <div class="row" style="margin-top:6px;flex-wrap:wrap">
       <label class="chk"><input type="checkbox" id="pnlRoom" checked> Pièce</label>
       <label class="chk"><input type="checkbox" id="pnlUsage" checked> Usage</label>
@@ -750,7 +774,7 @@ const SAMPLE_CIRCUITS=[
   {id:"1A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Micro-ondes",slots:["1A"],tags:{devices:["Micro-ondes"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}},
   {id:"2A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Réfrigérateur — cuisine",slots:["2A"],tags:{devices:["Réfrigérateur"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}}
 ];
-const defaultSheet=()=>({on:false,n:3,heights:"",len:3,chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
+const defaultSheet=()=>({on:false,n:3,heights:"",len:3,badge:"amps",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
 const _mc=document.createElement("canvas").getContext("2d");
 function tmeas(txt,bold,size){ _mc.font=(bold?"bold ":"")+"20px Arial, Helvetica, sans-serif"; return _mc.measureText(txt).width/20*size; }
 function ellipsize(txt,bold,sz,maxW){
@@ -777,8 +801,16 @@ function stripSVG(c,y,h,cw,S,stat){
   const E=esc, ff='font-family="Arial, Helvetica, sans-serif"';
   const pad=Math.max(0.8,h*0.07), b=h-2*pad, sw=Math.max(0.25,h*0.02);
   let g=`<rect x="${pad.toFixed(2)}" y="${(y+pad).toFixed(2)}" width="${b.toFixed(2)}" height="${b.toFixed(2)}" rx="${(b*0.12).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}"/>`;
-  const amp=c.amps?c.amps+"A":"";
-  if(amp){ const as=Math.min(b*0.46,(b-1.6)/(tmeas(amp,true,1)||1)); g+=`<text x="${(pad+b/2).toFixed(2)}" y="${(y+pad+b/2+as*0.35).toFixed(2)}" font-size="${as.toFixed(2)}" font-weight="bold" text-anchor="middle" ${ff}>${E(amp)}</text>`; }
+  const amp=c.amps?c.amps+"A":"", bid=c.id||"", mode=S.badge||"amps", bw=b-1.6, cx=pad+b/2, cy=y+pad+b/2;
+  const bt=(txt,size,yy)=>`<text x="${cx.toFixed(2)}" y="${yy.toFixed(2)}" font-size="${size.toFixed(2)}" font-weight="bold" text-anchor="middle" ${ff}>${E(txt)}</text>`;
+  if(mode==="both"&&bid&&amp){
+    const s1=Math.min(b*0.34,bw/(tmeas(bid,true,1)||1)), s2=Math.min(b*0.24,bw/(tmeas(amp,true,1)||1));
+    const tot=s1*1.0+s2*1.05+b*0.04, top=cy-tot/2;
+    g+=bt(bid,s1,top+s1*0.8)+bt(amp,s2,top+s1*1.0+b*0.04+s2*0.85);
+  } else {
+    const txt=mode==="id"?(bid||amp):(amp||bid);
+    if(txt){ const as=Math.min(b*0.46,bw/(tmeas(txt,true,1)||1)); g+=bt(txt,as,cy+as*0.35); }
+  }
   const x0=pad+b+Math.max(1.5,h*0.12), tw=cw-x0-pad;
   if(tw<10) return g;
   const parts=[];
@@ -1413,6 +1445,58 @@ function moveItem(i,a){
   else if(a==="dn"&&i<workItems.length-1) [workItems[i+1],workItems[i]]=[workItems[i],workItems[i+1]];
 }
 const selItems=new Set();
+/* ----- feuilles de disjoncteurs : regroupement dynamique ----- */
+const isSheetItem=it=>!!(it&&it.design&&it.design.sheet&&it.design.sheet.on);
+const blockKey=it=>it.blk||it.name;
+function sheetBlockKeys(){ const k=[]; workItems.forEach(it=>{ if(isSheetItem(it)&&!k.includes(blockKey(it))) k.push(blockKey(it)); }); return k; }
+function chunkLabel(ch){ const a=ch[0].id||ch[0].label, b=ch[ch.length-1].id||ch[ch.length-1].label; return ch.length>1?a+" → "+b:a; }
+function reflowSheets(patch){
+  const keys=sheetBlockKeys(); if(!keys.length) return false;
+  keys.forEach(key=>{
+    const idx=[]; workItems.forEach((it,i)=>{ if(isSheetItem(it)&&blockKey(it)===key) idx.push(i); });
+    const first=workItems[idx[0]], circuits=[];
+    idx.forEach(i=>circuits.push(...workItems[i].design.sheet.circuits));
+    if(!circuits.length) return;
+    const cfg=Object.assign({},first.design.sheet,patch); delete cfg.circuits;
+    cfg.len=Math.max(3,+cfg.len||3);
+    const k=sheetHeights(cfg,50.8).length, sid=ensureSheetStock(cfg.len,false);
+    const blk=first.blk||key, copies=first.copies||1, name=first.name;
+    const fresh=[]; for(let i=0;i<circuits.length;i+=k){ const ch=circuits.slice(i,i+k); fresh.push({id:uid(),tplId:null,name,blk,label:chunkLabel(ch),stockId:sid,design:sheetDesign(cfg,ch),copies}); }
+    const rest=workItems.filter((_,i)=>!idx.includes(i));
+    rest.splice(idx[0],0,...fresh);
+    workItems=rest;
+  });
+  selItems.clear();
+  return true;
+}
+function renderLayoutBar(){
+  const det=$("lbDet"), keys=sheetBlockKeys();
+  det.style.display=keys.length?"block":"none";
+  if(!keys.length) return;
+  const first=workItems.find(it=>isSheetItem(it)&&blockKey(it)===keys[0]), S=first.design.sheet;
+  const nSheets=workItems.filter(isSheetItem).length, nC=workItems.filter(isSheetItem).reduce((a,it)=>a+it.design.sheet.circuits.length,0);
+  $("lbInfo").textContent=nC+" circuit"+(nC>1?"s":"")+" en "+nSheets+" feuille"+(nSheets>1?"s":"")+(keys.length>1?" ("+keys.length+" panneaux)":"")+".";
+  const act=document.activeElement&&det.contains(document.activeElement)?document.activeElement.id:"";
+  if(act!=="lbHeights") $("lbHeights").value=S.heights||"";
+  if(act!=="lbLen") $("lbLen").value=S.len||3;
+  $("lbN").value=String(S.n||3); $("lbBadge").value=S.badge||"amps";
+  [["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
+}
+function applyLayout(patch){
+  if(editItemId&&isSheetItem(workItems.find(x=>x.id===editItemId))&&isDirty()&&!confirm("La ligne en cours d'édition contient des modifications non enregistrées : elles seront perdues. Continuer ?")){ renderLayoutBar(); return; }
+  const ei=workItems.findIndex(x=>x.id===editItemId);
+  if(!reflowSheets(patch)) return;
+  if(editItemId&&!workItems.some(x=>x.id===editItemId)) editItemId="";
+  renderWork(); save();
+  // si une feuille était affichée dans l'aperçu, afficher la feuille correspondante après le regroupement
+  if(ei>=0&&workItems.length) loadItemForEdit(workItems[Math.min(ei,workItems.length-1)].id);
+}
+let lbT=null;
+$("lbN").onchange=()=>applyLayout({n:+$("lbN").value||3,heights:""});
+$("lbLen").onchange=()=>applyLayout({len:Math.max(3,+$("lbLen").value||3)});
+$("lbHeights").oninput=()=>{ clearTimeout(lbT); lbT=setTimeout(()=>applyLayout({heights:$("lbHeights").value.trim()}),300); };
+$("lbBadge").onchange=()=>applyLayout({badge:$("lbBadge").value});
+[["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"]].forEach(([k,id])=>{ $(id).onchange=()=>applyLayout({[k]:$(id).checked}); });
 function bulkTargets(){
   const t=workItems.filter(x=>selItems.has(x.id));
   return t.length?t:workItems;
@@ -1451,7 +1535,7 @@ function renderWork(){
   $("bulkStock").innerHTML='<option value="">Papier…</option>'+stocks.map(x=>`<option value="${x.id}">${esc(x.name)} — ${dimTxt(x)}</option>`).join("");
   updateBanner();
   const box=$("lstItems"); box.innerHTML="";
-  if(!workItems.length){ box.innerHTML='<div class="info">Liste vide. Ajoutez le modèle choisi ou l\'aperçu actuel.</div>'; refreshHints(); updateSelUI(); return; }
+  if(!workItems.length){ box.innerHTML='<div class="info">Liste vide. Ajoutez le modèle choisi ou l\'aperçu actuel.</div>'; refreshHints(); updateSelUI(); renderLayoutBar(); return; }
   workItems.forEach((it,i)=>{
     const r=resolveItem(it);
     const d=document.createElement("div"); d.className="it"+(it.id===editItemId?" sel":"");
@@ -1473,7 +1557,7 @@ function renderWork(){
     d.querySelectorAll("button").forEach(b=>b.onclick=()=>{ moveItem(i,b.dataset.a); renderWork(); save(); });
     box.appendChild(d);
   });
-  refreshHints(); updateSelUI();
+  refreshHints(); updateSelUI(); renderLayoutBar();
 }
 function renderTable(){
   const tb=$("lstTbl").querySelector("tbody"); tb.innerHTML="";
@@ -1626,7 +1710,7 @@ function renderSheetCard(){
   const S=design.sheet, on=!!(S&&S.on);
   $("shOn").checked=on; $("shBox").style.display=on?"block":"none"; $("rot").disabled=on;
   if(!on) return;
-  $("shN").value=String(S.n||3); $("shHeights").value=S.heights||""; $("shLen").value=S.len||3;
+  $("shN").value=String(S.n||3); $("shBadge").value=S.badge||"amps"; $("shHeights").value=S.heights||""; $("shLen").value=S.len||3;
   [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
   const nC=(S.circuits||[]).length, k=sheetHeights(S,toMM(stock().w,stock().u)).length;
   $("shCount").textContent=nC?`Circuits chargés : ${nC} (les ${Math.min(k,nC)} premiers sont affichés dans l'aperçu).`:"Aucun circuit chargé : un exemple est affiché. Utilisez « Charger un panneau ».";
@@ -1638,6 +1722,7 @@ $("shN").onchange=()=>{ const S=sheetObj(); S.n=+$("shN").value||3; renderSheetC
 $("shHeights").oninput=()=>{ sheetObj().heights=$("shHeights").value; renderSheetCard(); refresh(); };
 $("shLen").onchange=()=>{ const S=sheetObj(); S.len=Math.max(3,+$("shLen").value||3); ensureSheetStock(S.len); syncForm(); autoZoom(); refresh(); };
 [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).onchange=()=>{ sheetObj()[k]=$(id).checked; refresh(); }; });
+$("shBadge").onchange=()=>{ sheetObj().badge=$("shBadge").value; refresh(); };
 $("shClear").onclick=()=>{ sheetObj().circuits=[]; renderSheetCard(); refresh(); };
 
 /* ---------- Panneaux (JSON / API) ---------- */
@@ -1656,7 +1741,7 @@ function normPanel(b){
 function pnlStripCount(cfg){ return sheetHeights(cfg,50.8).length; }
 function pnlCfg(){
   return {on:true,n:+$("pnlN").value||3,heights:$("pnlHeights").value.trim(),len:Math.max(3,+$("pnlLen").value||3),
-    chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked};
+    badge:$("pnlBadge").value,chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked};
 }
 function pnlSelected(){ return [...$("pnlTbl").querySelectorAll("input[type=checkbox]")].filter(c=>c.checked).map(c=>pnl.circuits[+c.dataset.i]); }
 function pnlUpdateCalc(){
@@ -1673,7 +1758,7 @@ function showPanel(p,msg){
   $("pnlTbl").querySelectorAll("input").forEach(c=>c.onchange=pnlUpdateCalc);
   $("pnlAll").checked=true;
   const S=design.sheet&&design.sheet.on?design.sheet:null;
-  if(S){ $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; }
+  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; }
   $("pnlMsg").textContent=msg||""; $("pnlErr").textContent="";
   try{ localStorage.setItem("zl_panel",JSON.stringify(p)); }catch(e){}
   pnlUpdateCalc();
@@ -1762,10 +1847,8 @@ $("pnlAdd").onclick=()=>{
   const sel=pnlSelected(); if(!sel.length){ $("pnlErr").textContent="Sélectionnez au moins un circuit."; return; }
   const cfg=pnlCfg(), k=pnlStripCount(cfg), sid=ensureSheetStock(cfg.len,false);
   const chunks=[]; for(let i=0;i<sel.length;i+=k) chunks.push(sel.slice(i,i+k));
-  tgtItems=chunks.map(ch=>{
-    const a=ch[0].id||ch[0].label, b=ch[ch.length-1].id||ch[ch.length-1].label;
-    return {id:uid(),tplId:null,name:"Disjoncteurs — "+pnl.name,label:ch.length>1?a+" → "+b:a,stockId:sid,design:sheetDesign(cfg,ch),copies:1};
-  });
+  const blk="p"+uid();
+  tgtItems=chunks.map(ch=>({id:uid(),tplId:null,name:"Disjoncteurs — "+pnl.name,blk,label:chunkLabel(ch),stockId:sid,design:sheetDesign(cfg,ch),copies:1}));
   openTarget();
 };
 function openTarget(){

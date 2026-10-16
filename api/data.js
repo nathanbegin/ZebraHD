@@ -92,6 +92,7 @@ module.exports = async (req, res) => {
                 design: cleanDesign(i.design),
                 copies: Math.max(1, Math.min(500, +i.copies || 1)),
                 label: String(i.label || "").slice(0, 80),
+                blk: String(i.blk || "").slice(0, 40),
                 ov: cleanOv(i.ov),
               })),
           }));

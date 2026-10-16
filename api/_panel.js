@@ -54,6 +54,7 @@ function cleanSheet(s) {
     n: Math.max(1, Math.min(8, +s.n || 3)),
     heights: str(s.heights, 80),
     len: Math.max(3, Math.min(40, +s.len || 3)),
+    badge: ["amps", "id", "both"].includes(s.badge) ? s.badge : "amps",
     chips: s.chips !== false,
     slots: s.slots !== false,
     room: s.room !== false,
