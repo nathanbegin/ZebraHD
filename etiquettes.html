@@ -197,8 +197,13 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
         <input type="text" id="lbHeights" placeholder="ex. 0.6 (→ 3 par feuille)  ou  0.5 0.5 1">
         <label class="f" for="lbFrame">Cadre autour de chaque étiquette</label>
         <select id="lbFrame"><option value="round">Cadre à coins arrondis</option><option value="square">Cadre carré</option><option value="none">Sans cadre</option></select>
-        <label class="f" for="lbBadge">Contenu de l'encadré arrondi</label>
+        <label class="f" for="lbBadgePos">Position de l'encadré arrondi</label>
+        <select id="lbBadgePos"><option value="left">À gauche</option><option value="right">À droite</option><option value="both">À gauche et à droite</option><option value="none">Aucun</option></select>
+        <label class="f" for="lbBadge">Contenu de l'encadré arrondi (gauche)</label>
         <select id="lbBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
+        <label class="f" for="lbBadgeR">Encadré de droite (si « gauche et droite »)</label>
+        <select id="lbBadgeR"><option value="same">Identique à celui de gauche</option><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit</option><option value="both">Numéro + ampérage</option></select>
+        <div class="row" style="margin-top:8px"><button id="lbContent">✎ Contenu de chaque étiquette…</button></div>
         <div class="row" style="margin-top:6px;flex-wrap:wrap">
           <label class="chk"><input type="checkbox" id="lbRoom"> Pièce</label>
           <label class="chk"><input type="checkbox" id="lbUsage"> Usage</label>
@@ -258,8 +263,12 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
         <input type="text" id="shHeights" placeholder="ex. 0.6 (→ 3 par feuille)  ou  0.5 0.5 1">
         <label class="f" for="shFrame" style="margin-top:6px">Cadre autour de chaque étiquette</label>
         <select id="shFrame"><option value="round">Cadre à coins arrondis</option><option value="square">Cadre carré</option><option value="none">Sans cadre</option></select>
-        <label class="f" for="shBadge" style="margin-top:6px">Contenu de l'encadré arrondi</label>
+        <label class="f" for="shBadgePos" style="margin-top:6px">Position de l'encadré arrondi</label>
+        <select id="shBadgePos"><option value="left">À gauche</option><option value="right">À droite</option><option value="both">À gauche et à droite</option><option value="none">Aucun</option></select>
+        <label class="f" for="shBadge" style="margin-top:6px">Contenu de l'encadré arrondi (gauche)</label>
         <select id="shBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
+        <label class="f" for="shBadgeR" style="margin-top:6px">Encadré de droite (si « gauche et droite »)</label>
+        <select id="shBadgeR"><option value="same">Identique à celui de gauche</option><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit</option><option value="both">Numéro + ampérage</option></select>
         <div class="row" style="margin-top:6px;flex-wrap:wrap">
           <label class="chk"><input type="checkbox" id="shRoom"> Pièce</label>
           <label class="chk"><input type="checkbox" id="shUsage"> Usage</label>
@@ -503,8 +512,12 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
     </div>
     <label class="f" for="pnlFrame" style="margin-top:6px">Cadre autour de chaque étiquette</label>
     <select id="pnlFrame"><option value="round">Cadre à coins arrondis</option><option value="square">Cadre carré</option><option value="none">Sans cadre</option></select>
-    <label class="f" for="pnlBadge" style="margin-top:6px">Contenu de l'encadré arrondi</label>
+    <label class="f" for="pnlBadgePos" style="margin-top:6px">Position de l'encadré arrondi</label>
+    <select id="pnlBadgePos"><option value="left">À gauche</option><option value="right">À droite</option><option value="both">À gauche et à droite</option><option value="none">Aucun</option></select>
+    <label class="f" for="pnlBadge" style="margin-top:6px">Contenu de l'encadré arrondi (gauche)</label>
     <select id="pnlBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
+    <label class="f" for="pnlBadgeR" style="margin-top:6px">Encadré de droite (si « gauche et droite »)</label>
+    <select id="pnlBadgeR"><option value="same">Identique à celui de gauche</option><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit</option><option value="both">Numéro + ampérage</option></select>
     <div class="row" style="margin-top:6px;flex-wrap:wrap">
       <label class="chk"><input type="checkbox" id="pnlRoom" checked> Pièce</label>
       <label class="chk"><input type="checkbox" id="pnlUsage" checked> Usage</label>
@@ -533,6 +546,12 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
   </div>
   <div class="warn" id="tgtErr"></div>
   <div class="row" style="margin-top:10px"><button class="pri" id="tgtOk" style="font-size:14px;padding:8px">Ajouter</button><button id="tgtCancel">Annuler</button></div>
+</dialog>
+<dialog id="ctDlg" style="width:min(1180px,97vw);max-height:92vh;overflow:auto">
+  <h3 style="margin-top:0">✎ Contenu de chaque étiquette</h3>
+  <div class="info" style="margin-bottom:8px">Laissez « Par défaut » pour suivre les réglages généraux. Une ligne secondaire vidée est masquée ; le bouton ↺ rétablit l'étiquette. Les choix restent attachés au circuit même si vous changez le nombre de sections.</div>
+  <div style="overflow-x:auto"><table id="ctTbl"><thead><tr><th>Circuit</th><th>Titre</th><th>Ligne secondaire</th><th>Encadré (gauche)</th><th>Position</th><th>Encadré de droite</th><th>Étiquettes</th><th></th></tr></thead><tbody></tbody></table></div>
+  <div class="row" style="margin-top:10px"><button id="ctResetAll">↺ Tout réinitialiser</button><button class="pri" id="ctClose" style="font-size:14px;padding:8px">Fermer</button></div>
 </dialog>
 <dialog id="seqDlg" style="width:min(560px,96vw);max-height:92vh;overflow:auto">
   <h3 style="margin-top:0">Impression par séquences</h3>
@@ -782,7 +801,7 @@ const SAMPLE_CIRCUITS=[
   {id:"1A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Micro-ondes",slots:["1A"],tags:{devices:["Micro-ondes"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}},
   {id:"2A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Réfrigérateur — cuisine",slots:["2A"],tags:{devices:["Réfrigérateur"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}}
 ];
-const defaultSheet=()=>({on:false,n:3,heights:"",len:3,badge:"amps",frame:"round",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
+const defaultSheet=()=>({on:false,n:3,heights:"",len:3,badge:"amps",badgePos:"left",badgeR:"same",frame:"round",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
 const _mc=document.createElement("canvas").getContext("2d");
 function tmeas(txt,bold,size){ _mc.font=(bold?"bold ":"")+"20px Arial, Helvetica, sans-serif"; return _mc.measureText(txt).width/20*size; }
 function ellipsize(txt,bold,sz,maxW){
@@ -805,31 +824,61 @@ function layoutTitle(txt,maxW,maxS,minS,availH){
   if(s1>=minS) return {lines:[txt],s:s1};
   return {lines:[ellipsize(txt,true,minS,maxW)],s:minS};
 }
+function subText(c,S){
+  const parts=[];
+  if(S.room!==false&&c.room) parts.push(c.room);
+  if(S.usage!==false&&c.usage) parts.push(c.usage);
+  if(S.slots!==false&&c.slots&&c.slots.length) parts.push(c.slots.join(" / "));
+  return parts.join(" · ");
+}
+// Valeurs effectives d'une étiquette : réglages généraux de la feuille + surcharges propres au circuit (c.ov)
+function effSheet(c,S){
+  const o=c.ov||{}, has=v=>v!==undefined&&v!==null;
+  return {
+    pos:o.pos||S.badgePos||"left",
+    badge:o.badge||S.badge||"amps", badgeText:o.badgeText||"",
+    badgeR:o.badgeR||S.badgeR||"same", badgeTextR:o.badgeTextR||"",
+    title:has(o.title)&&String(o.title).trim()!==""?String(o.title):(c.label||c.id||""),
+    sub:has(o.sub)?String(o.sub):subText(c,S),
+    chips:has(o.chips)?!!o.chips:S.chips!==false
+  };
+}
+function badgeContent(c,mode,text){
+  const amp=c.amps?c.amps+"A":"", bid=c.id||"";
+  if(mode==="none") return null;
+  if(mode==="text") return text?{t1:text}:null;
+  if(mode==="both"&&bid&&amp) return {t1:bid,t2:amp};
+  const t=mode==="id"?(bid||amp):(amp||bid);
+  return t?{t1:t}:null;
+}
 function stripSVG(c,y,h,cw,S,stat){
   const E=esc, ff='font-family="Arial, Helvetica, sans-serif"';
   const fm=S.frame||"round", fr=fm!=="none", ins=0.5;
   const pad=Math.max(0.8,h*0.07)+(fr?1:0), b=h-2*pad, sw=Math.max(0.25,h*0.02);
   let g=fr?`<rect x="${ins}" y="${(y+ins).toFixed(2)}" width="${(cw-2*ins).toFixed(2)}" height="${(h-2*ins).toFixed(2)}" rx="${fm==="round"?Math.min(2.5,h*0.14).toFixed(2):0}" fill="none" stroke="#000" stroke-width="${Math.max(0.25,Math.min(0.4,h*0.02)).toFixed(2)}"/>`:"";
-  g+=`<rect x="${pad.toFixed(2)}" y="${(y+pad).toFixed(2)}" width="${b.toFixed(2)}" height="${b.toFixed(2)}" rx="${(b*0.12).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}"/>`;
-  const amp=c.amps?c.amps+"A":"", bid=c.id||"", mode=S.badge||"amps", bw=b-1.6, cx=pad+b/2, cy=y+pad+b/2;
-  const bt=(txt,size,yy)=>`<text x="${cx.toFixed(2)}" y="${yy.toFixed(2)}" font-size="${size.toFixed(2)}" font-weight="bold" text-anchor="middle" ${ff}>${E(txt)}</text>`;
-  if(mode==="both"&&bid&&amp){
-    const s1=Math.min(b*0.34,bw/(tmeas(bid,true,1)||1)), s2=Math.min(b*0.24,bw/(tmeas(amp,true,1)||1));
-    const tot=s1*1.0+s2*1.05+b*0.04, top=cy-tot/2;
-    g+=bt(bid,s1,top+s1*0.8)+bt(amp,s2,top+s1*1.0+b*0.04+s2*0.85);
-  } else {
-    const txt=mode==="id"?(bid||amp):(amp||bid);
-    if(txt){ const as=Math.min(b*0.46,bw/(tmeas(txt,true,1)||1)); g+=bt(txt,as,cy+as*0.35); }
-  }
-  const x0=pad+b+Math.max(1.5,h*0.12), tw=cw-x0-pad;
+  const e=effSheet(c,S), gap=Math.max(1.5,h*0.12), cy=y+pad+b/2, bw=b-1.6;
+  const leftC=(e.pos==="left"||e.pos==="both")?badgeContent(c,e.badge,e.badgeText):null;
+  const rMode=e.pos==="both"?(e.badgeR==="same"?e.badge:e.badgeR):e.badge;
+  const rText=e.pos==="both"?(e.badgeR==="same"?e.badgeText:e.badgeTextR):e.badgeText;
+  const rightC=(e.pos==="right"||e.pos==="both")?badgeContent(c,rMode,rText):null;
+  const drawBadge=(bx,cont)=>{
+    const cx=bx+b/2;
+    let o=`<rect x="${bx.toFixed(2)}" y="${(y+pad).toFixed(2)}" width="${b.toFixed(2)}" height="${b.toFixed(2)}" rx="${(b*0.12).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}"/>`;
+    const bt=(txt,size,yy)=>`<text x="${cx.toFixed(2)}" y="${yy.toFixed(2)}" font-size="${size.toFixed(2)}" font-weight="bold" text-anchor="middle" ${ff}>${E(txt)}</text>`;
+    if(cont.t2){
+      const s1=Math.min(b*0.34,bw/(tmeas(cont.t1,true,1)||1)), s2=Math.min(b*0.24,bw/(tmeas(cont.t2,true,1)||1));
+      const tot=s1*1.0+s2*1.05+b*0.04, top=cy-tot/2;
+      o+=bt(cont.t1,s1,top+s1*0.8)+bt(cont.t2,s2,top+s1*1.0+b*0.04+s2*0.85);
+    } else { const as=Math.min(b*0.46,bw/(tmeas(cont.t1,true,1)||1)); o+=bt(cont.t1,as,cy+as*0.35); }
+    return o;
+  };
+  if(leftC) g+=drawBadge(pad,leftC);
+  if(rightC) g+=drawBadge(cw-pad-b,rightC);
+  const x0=pad+(leftC?b+gap:0), tw=cw-pad-(rightC?b+gap:0)-x0;
   if(tw<10) return g;
-  const parts=[];
-  if(S.room!==false&&c.room) parts.push(c.room);
-  if(S.usage!==false&&c.usage) parts.push(c.usage);
-  if(S.slots!==false&&c.slots&&c.slots.length) parts.push(c.slots.join(" / "));
-  const subTxt=parts.join(" · "), title=c.label||c.id||"";
+  const subTxt=e.sub, title=e.title;
   const tg=c.tags||{}, tags=[];
-  if(S.chips!==false){ const seen=new Set(); [...(tg.locations||[]),...(tg.functions||[]),...(tg.devices||[])].forEach(t=>{ const k=String(t).toLowerCase(); if(t&&!seen.has(k)){ seen.add(k); tags.push(String(t)); } }); }
+  if(e.chips){ const seen=new Set(); [...(tg.locations||[]),...(tg.functions||[]),...(tg.devices||[])].forEach(t=>{ const k=String(t).toLowerCase(); if(t&&!seen.has(k)){ seen.add(k); tags.push(String(t)); } }); }
   const avail=h-2*pad;
   let f=1, L;
   for(let it=0;it<8;it++){
@@ -1502,7 +1551,7 @@ function renderLayoutBar(){
   const act=document.activeElement&&det.contains(document.activeElement)?document.activeElement.id:"";
   if(act!=="lbHeights") $("lbHeights").value=S.heights||"";
   if(act!=="lbLen") $("lbLen").value=S.len||3;
-  $("lbN").value=String(S.n||3); $("lbBadge").value=S.badge||"amps"; $("lbFrame").value=S.frame||"round";
+  $("lbN").value=String(S.n||3); $("lbBadge").value=S.badge||"amps"; $("lbBadgePos").value=S.badgePos||"left"; $("lbBadgeR").value=S.badgeR||"same"; $("lbFrame").value=S.frame||"round";
   [["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
 }
 function applyLayout(patch){
@@ -1519,6 +1568,8 @@ $("lbN").onchange=()=>applyLayout({n:+$("lbN").value||3,heights:""});
 $("lbLen").onchange=()=>applyLayout({len:Math.max(3,+$("lbLen").value||3)});
 $("lbHeights").oninput=()=>{ clearTimeout(lbT); lbT=setTimeout(()=>applyLayout({heights:$("lbHeights").value.trim()}),300); };
 $("lbBadge").onchange=()=>applyLayout({badge:$("lbBadge").value});
+$("lbBadgePos").onchange=()=>applyLayout({badgePos:$("lbBadgePos").value});
+$("lbBadgeR").onchange=()=>applyLayout({badgeR:$("lbBadgeR").value});
 $("lbFrame").onchange=()=>applyLayout({frame:$("lbFrame").value});
 [["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"]].forEach(([k,id])=>{ $(id).onchange=()=>applyLayout({[k]:$(id).checked}); });
 function bulkTargets(){
@@ -1734,7 +1785,7 @@ function renderSheetCard(){
   const S=design.sheet, on=!!(S&&S.on);
   $("shOn").checked=on; $("shBox").style.display=on?"block":"none"; $("rot").disabled=on;
   if(!on) return;
-  $("shN").value=String(S.n||3); $("shBadge").value=S.badge||"amps"; $("shFrame").value=S.frame||"round"; $("shHeights").value=S.heights||""; $("shLen").value=S.len||3;
+  $("shN").value=String(S.n||3); $("shBadge").value=S.badge||"amps"; $("shBadgePos").value=S.badgePos||"left"; $("shBadgeR").value=S.badgeR||"same"; $("shFrame").value=S.frame||"round"; $("shHeights").value=S.heights||""; $("shLen").value=S.len||3;
   [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
   const nC=(S.circuits||[]).length, k=sheetHeights(S,toMM(stock().w,stock().u)).length;
   $("shCount").textContent=nC?`${k} étiquette${k>1?"s":""} par feuille. Circuits chargés : ${nC} (les ${Math.min(k,nC)} premiers sont affichés dans l'aperçu).`:"Aucun circuit chargé : un exemple est affiché. Utilisez « Charger un panneau ».";
@@ -1747,8 +1798,67 @@ $("shHeights").oninput=()=>{ sheetObj().heights=$("shHeights").value; renderShee
 $("shLen").onchange=()=>{ const S=sheetObj(); S.len=Math.max(3,+$("shLen").value||3); ensureSheetStock(S.len); syncForm(); autoZoom(); refresh(); };
 [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).onchange=()=>{ sheetObj()[k]=$(id).checked; refresh(); }; });
 $("shBadge").onchange=()=>{ sheetObj().badge=$("shBadge").value; refresh(); };
+$("shBadgePos").onchange=()=>{ sheetObj().badgePos=$("shBadgePos").value; refresh(); };
+$("shBadgeR").onchange=()=>{ sheetObj().badgeR=$("shBadgeR").value; refresh(); };
 $("shFrame").onchange=()=>{ sheetObj().frame=$("shFrame").value; refresh(); };
 $("shClear").onclick=()=>{ sheetObj().circuits=[]; renderSheetCard(); refresh(); };
+
+/* ---------- Contenu individuel de chaque étiquette ---------- */
+function sheetEntries(){
+  const out=[]; let sheet=0;
+  workItems.forEach(it=>{ if(!isSheetItem(it)) return; sheet++; it.design.sheet.circuits.forEach(c=>out.push({it,c,S:it.design.sheet,sheet})); });
+  return out;
+}
+function setOv(c,k,v){
+  c.ov=c.ov||{};
+  if(v===undefined||v===null||v==="") delete c.ov[k]; else c.ov[k]=v;
+  if(!Object.keys(c.ov).length) delete c.ov;
+}
+let ctT=null;
+function ctCommit(){ clearTimeout(ctT); ctT=setTimeout(()=>{ renderWork(); save(); },250); }
+const BADGE_SEL='<option value="">Par défaut</option><option value="amps">Ampérage</option><option value="id">Numéro du circuit</option><option value="both">Numéro + ampérage</option><option value="text">Texte libre</option><option value="none">Aucun</option>';
+function renderCt(){
+  const tb=$("ctTbl").querySelector("tbody"); tb.innerHTML="";
+  sheetEntries().forEach(({c,S,sheet})=>{
+    const o=c.ov||{}, tr=document.createElement("tr");
+    tr.innerHTML=`<td style="white-space:nowrap"><b>${esc(c.id||"")}</b><div class="info" style="margin:0">feuille ${sheet}</div></td>
+      <td><input type="text" class="t-title"></td>
+      <td><input type="text" class="t-sub"></td>
+      <td style="min-width:130px"><select class="t-badge">${BADGE_SEL}</select><input type="text" class="t-btext" maxlength="12" placeholder="Texte" style="margin-top:3px"></td>
+      <td><select class="t-pos"><option value="">Par défaut</option><option value="left">À gauche</option><option value="right">À droite</option><option value="both">Gauche et droite</option><option value="none">Aucun</option></select></td>
+      <td style="min-width:130px"><select class="t-badger"><option value="">Par défaut</option><option value="same">Identique à gauche</option><option value="amps">Ampérage</option><option value="id">Numéro du circuit</option><option value="both">Numéro + ampérage</option><option value="text">Texte libre</option><option value="none">Aucun</option></select><input type="text" class="t-btextr" maxlength="12" placeholder="Texte" style="margin-top:3px"></td>
+      <td><select class="t-chips"><option value="">Par défaut</option><option value="1">Avec</option><option value="0">Sans</option></select></td>
+      <td><button class="sm t-reset" title="Rétablir cette étiquette" aria-label="Rétablir cette étiquette">↺</button></td>`;
+    const q=x=>tr.querySelector(x);
+    const eff=effSheet(c,S);
+    q(".t-title").value=eff.title; q(".t-sub").value=eff.sub;
+    q(".t-badge").value=o.badge||""; q(".t-btext").value=o.badgeText||""; q(".t-pos").value=o.pos||"";
+    q(".t-badger").value=o.badgeR||""; q(".t-btextr").value=o.badgeTextR||"";
+    q(".t-chips").value=o.chips===undefined?"":(o.chips?"1":"0");
+    const sync=()=>{ q(".t-btext").disabled=q(".t-badge").value!=="text"; q(".t-btextr").disabled=q(".t-badger").value!=="text"; };
+    sync();
+    q(".t-title").oninput=()=>{ const v=q(".t-title").value; setOv(c,"title",v===(c.label||c.id||"")?"":v); ctCommit(); };
+    q(".t-sub").oninput=()=>{ const v=q(".t-sub").value; const def=subText(c,S); c.ov=c.ov||{}; if(v===def) delete c.ov.sub; else c.ov.sub=v; if(!Object.keys(c.ov).length) delete c.ov; ctCommit(); };
+    q(".t-badge").onchange=()=>{ setOv(c,"badge",q(".t-badge").value); sync(); ctCommit(); };
+    q(".t-btext").oninput=()=>{ setOv(c,"badgeText",q(".t-btext").value); ctCommit(); };
+    q(".t-pos").onchange=()=>{ setOv(c,"pos",q(".t-pos").value); ctCommit(); };
+    q(".t-badger").onchange=()=>{ setOv(c,"badgeR",q(".t-badger").value); sync(); ctCommit(); };
+    q(".t-btextr").oninput=()=>{ setOv(c,"badgeTextR",q(".t-btextr").value); ctCommit(); };
+    q(".t-chips").onchange=()=>{ const v=q(".t-chips").value; setOv(c,"chips",v===""?undefined:v==="1"); ctCommit(); };
+    q(".t-reset").onclick=()=>{ delete c.ov; renderCt(); ctCommit(); };
+    tb.appendChild(tr);
+  });
+}
+$("lbContent").onclick=()=>{
+  if(editItemId&&isSheetItem(workItems.find(x=>x.id===editItemId))&&isDirty()&&!confirm("La ligne en cours d'édition contient des modifications non enregistrées : elles seront perdues. Continuer ?")) return;
+  if(!sheetEntries().length){ alert("Aucune feuille de disjoncteurs dans la liste."); return; }
+  renderCt(); $("ctDlg").showModal();
+};
+$("ctResetAll").onclick=()=>{ if(!confirm("Rétablir le contenu par défaut de toutes les étiquettes ?")) return; sheetEntries().forEach(({c})=>{ delete c.ov; }); renderCt(); ctCommit(); };
+$("ctClose").onclick=()=>{
+  $("ctDlg").close(); clearTimeout(ctT); renderWork(); save();
+  if(editItemId&&workItems.some(x=>x.id===editItemId)) loadItemForEdit(editItemId);
+};
 
 /* ---------- Panneaux (JSON / API) ---------- */
 let pnl=null;
@@ -1766,7 +1876,7 @@ function normPanel(b){
 function pnlStripCount(cfg){ return sheetHeights(cfg,50.8).length; }
 function pnlCfg(){
   return {on:true,n:+$("pnlN").value||3,heights:$("pnlHeights").value.trim(),len:Math.max(3,+$("pnlLen").value||3),
-    badge:$("pnlBadge").value,frame:$("pnlFrame").value,chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked};
+    badge:$("pnlBadge").value,badgePos:$("pnlBadgePos").value,badgeR:$("pnlBadgeR").value,frame:$("pnlFrame").value,chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked};
 }
 function pnlSelected(){ return [...$("pnlTbl").querySelectorAll("input[type=checkbox]")].filter(c=>c.checked).map(c=>pnl.circuits[+c.dataset.i]); }
 function pnlUpdateCalc(){
@@ -1783,7 +1893,7 @@ function showPanel(p,msg){
   $("pnlTbl").querySelectorAll("input").forEach(c=>c.onchange=pnlUpdateCalc);
   $("pnlAll").checked=true;
   const S=design.sheet&&design.sheet.on?design.sheet:null;
-  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlFrame").value=S.frame||"round"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; }
+  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlBadgePos").value=S.badgePos||"left"; $("pnlBadgeR").value=S.badgeR||"same"; $("pnlFrame").value=S.frame||"round"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; }
   $("pnlMsg").textContent=msg||""; $("pnlErr").textContent="";
   try{ localStorage.setItem("zl_panel",JSON.stringify(p)); }catch(e){}
   pnlUpdateCalc();

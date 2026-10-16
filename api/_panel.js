@@ -46,6 +46,21 @@ function slug(s) {
   return t || "panneau";
 }
 
+// Surcharges propres à un circuit (contenu individuel de l'étiquette).
+function cleanCircuitOv(o) {
+  if (!o || typeof o !== "object") return undefined;
+  const r = {};
+  const pick = (v, list) => (list.includes(v) ? v : undefined);
+  r.badge = pick(o.badge, ["amps", "id", "both", "text", "none"]);
+  r.badgeR = pick(o.badgeR, ["same", "amps", "id", "both", "text", "none"]);
+  r.pos = pick(o.pos, ["left", "right", "both", "none"]);
+  ["badgeText", "badgeTextR"].forEach((k) => { if (typeof o[k] === "string") r[k] = o[k].slice(0, 12); });
+  ["title", "sub"].forEach((k) => { if (typeof o[k] === "string") r[k] = o[k].slice(0, 200); });
+  if (typeof o.chips === "boolean") r.chips = o.chips;
+  Object.keys(r).forEach((k) => r[k] === undefined && delete r[k]);
+  return Object.keys(r).length ? r : undefined;
+}
+
 // Configuration de la feuille de disjoncteurs enregistrée dans un modèle ou une ligne de liste.
 function cleanSheet(s) {
   if (!s || typeof s !== "object") return undefined;
@@ -55,13 +70,17 @@ function cleanSheet(s) {
     heights: str(s.heights, 80),
     len: Math.max(3, Math.min(40, +s.len || 3)),
     badge: ["amps", "id", "both"].includes(s.badge) ? s.badge : "amps",
+    badgePos: ["left", "right", "both", "none"].includes(s.badgePos) ? s.badgePos : "left",
+    badgeR: ["same", "amps", "id", "both"].includes(s.badgeR) ? s.badgeR : "same",
     frame: ["round", "square", "none"].includes(s.frame) ? s.frame : "round",
     chips: s.chips !== false,
     slots: s.slots !== false,
     room: s.room !== false,
     usage: s.usage !== false,
     cuts: s.cuts !== false,
-    circuits: Array.isArray(s.circuits) ? s.circuits.slice(0, 400).map(cleanCircuit).filter(Boolean) : [],
+    circuits: Array.isArray(s.circuits)
+      ? s.circuits.slice(0, 400).map((c) => { const x = cleanCircuit(c); if (!x) return null; const ov = cleanCircuitOv(c && c.ov); if (ov) x.ov = ov; return x; }).filter(Boolean)
+      : [],
   };
 }
 
