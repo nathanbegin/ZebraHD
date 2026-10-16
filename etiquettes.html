@@ -189,6 +189,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <div id="lstItems" style="margin-top:8px"></div>
       <div class="row" style="margin-top:6px"><button id="lstAddTpl">+ Modèle choisi</button><button id="lstAddCur">+ Aperçu actuel</button></div>
       <div class="row" style="margin-top:6px"><button id="lstImport">⬇ Importer des étiquettes (texte / CSV)</button></div>
+      <div class="row" style="margin-top:6px"><button id="lstPanel">🔌 Disjoncteurs (JSON / site)</button></div>
       <div class="row" style="margin-top:6px"><button id="lstSave">💾 Enregistrer</button><button id="lstSaveAs">Enregistrer sous…</button><button id="lstDel">Supprimer</button></div>
       <div class="row" style="margin-top:6px"><button id="lstTable">✎ Modifier en tableau</button></div>
       <div class="info" id="lstInfo">Chaque ligne garde son modèle, son papier et son nombre de copies. Les tailles différentes sont imprimées l'une après l'autre.</div>
@@ -221,6 +222,30 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       </div>
       <label class="f" style="margin-top:10px">Rotation du contenu (texte et code-barres)</label>
       <select id="rot"><option value="0">0° (normal : texte parallèle à l'axe X)</option><option value="90">90° (vers la droite)</option><option value="180">180° (à l'envers)</option><option value="270">270° (vers la gauche)</option></select>
+    </div>
+
+    <div class="card" id="sheetCard">
+      <h2>Feuille de disjoncteurs</h2>
+      <label class="chk"><input type="checkbox" id="shOn"> Mode « feuille à découper » (ruban de 2 po verrouillé)</label>
+      <div id="shBox" style="display:none">
+        <div class="row" style="margin-top:6px">
+          <div><label class="f" for="shN">Sections égales</label><select id="shN"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+          <div><label class="f" for="shLen">Longueur (po, min. 3)</label><input type="number" id="shLen" min="3" max="40" step="0.25"></div>
+        </div>
+        <label class="f" for="shHeights">Ou hauteurs personnalisées (po, séparées par des virgules)</label>
+        <input type="text" id="shHeights" placeholder="ex. 0.5, 0.5, 1  (vide = sections égales)">
+        <div class="row" style="margin-top:6px;flex-wrap:wrap">
+          <label class="chk"><input type="checkbox" id="shRoom"> Pièce</label>
+          <label class="chk"><input type="checkbox" id="shUsage"> Usage</label>
+          <label class="chk"><input type="checkbox" id="shSlots"> Positions</label>
+          <label class="chk"><input type="checkbox" id="shChips"> Étiquettes (tags)</label>
+          <label class="chk"><input type="checkbox" id="shCuts"> Traits de coupe</label>
+        </div>
+        <div class="info" id="shCount"></div>
+        <div class="warn" id="shWarn"></div>
+        <div class="row" style="margin-top:6px"><button id="shLoad">🔌 Charger un panneau (JSON / site)…</button><button id="shClear">Vider les circuits</button></div>
+        <div class="info">La largeur du ruban (2 po) reste fixe : les sections se répartissent dans cette largeur et le texte suit le sens d'impression. La longueur peut dépasser 3 po.</div>
+      </div>
     </div>
 
     <div class="card" id="imgCard">
@@ -428,6 +453,39 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
   </div>
   <div class="row"><button class="pri" id="setClose" style="font-size:14px;padding:8px">Fermer</button></div>
 </dialog>
+<dialog id="pnlDlg" style="width:min(820px,96vw);max-height:92vh;overflow:auto">
+  <h3 style="margin-top:0">🔌 Étiquettes de disjoncteurs</h3>
+  <div class="info" style="margin-bottom:6px">Chargez un panneau envoyé par votre site (API) ou un fichier JSON exporté (format « GestionPanneauSiemens »).</div>
+  <div class="row" style="align-items:flex-end">
+    <div><label class="f" for="pnlServer">Panneaux du site</label><select id="pnlServer"></select></div>
+    <div style="flex:0 0 auto"><button id="pnlRefresh" title="Actualiser la liste des panneaux">↻</button></div>
+    <div style="flex:0 0 auto"><button id="pnlLoadSrv">Charger</button></div>
+  </div>
+  <div class="row" style="margin-top:6px"><button id="pnlFileBtn">📂 Charger un fichier JSON…</button><input type="file" id="pnlFile" accept=".json,application/json" style="display:none"><button id="pnlPasteBtn">📋 Coller du JSON…</button></div>
+  <textarea id="pnlPaste" rows="5" style="display:none;font-family:monospace;margin-top:6px" placeholder="Collez ici le contenu du fichier JSON"></textarea>
+  <div class="info" id="pnlMsg"></div>
+  <div id="pnlBody" style="display:none">
+    <h4 style="margin:10px 0 4px" id="pnlTitle"></h4>
+    <div class="row" style="align-items:center"><label class="chk"><input type="checkbox" id="pnlAll" checked> Tout sélectionner</label><div><select id="pnlStatus" aria-label="Sélectionner selon le statut"></select></div></div>
+    <div style="max-height:190px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin:6px 0"><table id="pnlTbl"><tbody></tbody></table></div>
+    <div class="row">
+      <div><label class="f" for="pnlN">Sections égales</label><select id="pnlN"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
+      <div><label class="f" for="pnlLen">Longueur (po, min. 3)</label><input type="number" id="pnlLen" min="3" max="40" step="0.25" value="3"></div>
+      <div><label class="f" for="pnlHeights">Hauteurs personnalisées (po)</label><input type="text" id="pnlHeights" placeholder="ex. 0.5, 0.5, 1"></div>
+    </div>
+    <div class="row" style="margin-top:6px;flex-wrap:wrap">
+      <label class="chk"><input type="checkbox" id="pnlRoom" checked> Pièce</label>
+      <label class="chk"><input type="checkbox" id="pnlUsage" checked> Usage</label>
+      <label class="chk"><input type="checkbox" id="pnlSlots" checked> Positions</label>
+      <label class="chk"><input type="checkbox" id="pnlChips" checked> Étiquettes (tags)</label>
+      <label class="chk"><input type="checkbox" id="pnlCuts" checked> Traits de coupe</label>
+    </div>
+    <div class="info" id="pnlCalc"></div>
+    <div class="warn" id="pnlErr"></div>
+    <div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="pri" id="pnlAdd" style="font-size:14px;padding:8px">Ajouter à la liste d'impression</button><button id="pnlUse">Voir la 1ʳᵉ feuille dans l'aperçu</button><button id="pnlClose">Fermer</button></div>
+  </div>
+  <div class="row" id="pnlCloseRow" style="margin-top:10px"><button id="pnlClose2">Fermer</button></div>
+</dialog>
 <dialog id="seqDlg" style="width:min(560px,96vw);max-height:92vh;overflow:auto">
   <h3 style="margin-top:0">Impression par séquences</h3>
   <div class="info" style="margin-bottom:10px">Les lignes de même papier sont regroupées. Imprimez la séquence 1, changez ensuite le format de papier dans le pilote (Préférences d'impression → Options), puis imprimez la séquence suivante.</div>
@@ -592,6 +650,7 @@ function codeValue(i){
 const total=()=>design.bc.on&&design.bc.batch?Math.max(1,Math.min(1000,+design.bc.count||1)):1;
 function contentHTML(idx,cw,m,cwRef,ch){
   if(design.calib) return {html:calibSVG(cw,ch),info:"",err:""};
+  if(sheetOn()) return sheetContent(cw,ch);
   const B=design.bc;
   let info="", err="", e=null, code="", html="", note="";
   if(B.on){ const nb=normalizeBC(B.type,codeValue(idx)); code=nb.value; note=nb.note; try{ e=encode(B.type,code); code=e.human; }catch(x){ err=String(x); } }
@@ -622,8 +681,9 @@ function contentHTML(idx,cw,m,cwRef,ch){
   }
   return {html,info,err};
 }
-const autoActive=()=>!!design.auto;
-const rotated=()=>design.rot==="0"||design.rot==="180"; // contenu dont la largeur est dans le sens d'impression
+const sheetOn=()=>!!(design.sheet&&design.sheet.on);
+const autoActive=()=>!!design.auto&&!sheetOn();
+const rotated=()=>sheetOn()||design.rot==="0"||design.rot==="180"; // contenu dont la largeur est dans le sens d'impression
 const nominalLen=()=>{const s=stock();return toMM(s.h,s.u);};
 function autoHeight(idx){
   const s=stock(), W=toMM(s.w,s.u), m=+design.margin||0, rt=rotated();
@@ -644,7 +704,7 @@ function autoHeight(idx){
   return Math.max(Math.ceil(px/96*MM*10)/10, +design.minLen||0, Math.ceil(ext*10)/10);
 }
 function maxAutoHeight(){ let h=0; for(let i=0;i<total();i++) h=Math.max(h,autoHeight(i)); return h; }
-const viewTheta=()=>prefs.readable?((+design.rot||0)-90):(+design.rot||0);
+const viewTheta=()=>{ const r=sheetOn()?0:(+design.rot||0); return prefs.readable?(r-90):r; };
 const imgH=im=>im.w*(im.ih||1)/(im.iw||1);
 let selImg="";
 const safeSrc=v=>/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(String(v||""))?v:"";
@@ -669,10 +729,131 @@ function calibSVG(w,h){
   g+=`<text x="${cx}" y="${h-ins-2}" font-size="1.8" text-anchor="middle" font-family="Arial">Cadre à ${ins} mm des bords</text>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(2)} ${h.toFixed(2)}" style="width:${w.toFixed(2)}mm;height:${h.toFixed(2)}mm;flex:none;display:block">${g}</svg>`;
 }
+const SAMPLE_CIRCUITS=[
+  {id:"15-17",amps:30,room:"Rez-de-chaussée",usage:"Électroménager",label:"Sécheuse",slots:["15A","15B","17A","17B"],tags:{devices:["Sécheuse"],functions:["Électroménager"],locations:["Rez-de-chaussée"]}},
+  {id:"1A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Micro-ondes",slots:["1A"],tags:{devices:["Micro-ondes"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}},
+  {id:"2A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Réfrigérateur — cuisine",slots:["2A"],tags:{devices:["Réfrigérateur"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}}
+];
+const defaultSheet=()=>({on:false,n:3,heights:"",len:3,chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
+const _mc=document.createElement("canvas").getContext("2d");
+function tmeas(txt,bold,size){ _mc.font=(bold?"bold ":"")+"20px Arial, Helvetica, sans-serif"; return _mc.measureText(txt).width/20*size; }
+function ellipsize(txt,bold,sz,maxW){
+  if(tmeas(txt,bold,sz)<=maxW) return txt;
+  let t=txt; while(t.length>1&&tmeas(t+"…",bold,sz)>maxW) t=t.slice(0,-1);
+  return t.trimEnd()+"…";
+}
+function wrapWords(txt,bold,sz,maxW){
+  const words=txt.split(/\s+/), lines=[]; let cur="";
+  for(const w of words){ const t=cur?cur+" "+w:w; if(!cur||tmeas(t,bold,sz)<=maxW) cur=t; else { lines.push(cur); cur=w; } }
+  if(cur) lines.push(cur); return lines;
+}
+function layoutTitle(txt,maxW,maxS,minS,availH){
+  const w1=tmeas(txt,true,1)||1, s1=Math.min(maxS,maxW/w1);
+  if(s1>=maxS*0.72) return {lines:[txt],s:s1};
+  for(let t=maxS*0.9;t>=Math.max(minS,s1*1.15);t-=0.05){
+    const L=wrapWords(txt,true,t,maxW);
+    if(L.length<=2&&L.every(l=>tmeas(l,true,t)<=maxW+0.01)&&L.length*t*1.12<=availH*0.62) return {lines:L,s:t};
+  }
+  if(s1>=minS) return {lines:[txt],s:s1};
+  return {lines:[ellipsize(txt,true,minS,maxW)],s:minS};
+}
+function stripSVG(c,y,h,cw,S,stat){
+  const E=esc, ff='font-family="Arial, Helvetica, sans-serif"';
+  const pad=Math.max(0.8,h*0.07), b=h-2*pad, sw=Math.max(0.25,h*0.02);
+  let g=`<rect x="${pad.toFixed(2)}" y="${(y+pad).toFixed(2)}" width="${b.toFixed(2)}" height="${b.toFixed(2)}" rx="${(b*0.12).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}"/>`;
+  const amp=c.amps?c.amps+"A":"";
+  if(amp){ const as=Math.min(b*0.46,(b-1.6)/(tmeas(amp,true,1)||1)); g+=`<text x="${(pad+b/2).toFixed(2)}" y="${(y+pad+b/2+as*0.35).toFixed(2)}" font-size="${as.toFixed(2)}" font-weight="bold" text-anchor="middle" ${ff}>${E(amp)}</text>`; }
+  const x0=pad+b+Math.max(1.5,h*0.12), tw=cw-x0-pad;
+  if(tw<10) return g;
+  const parts=[];
+  if(S.room!==false&&c.room) parts.push(c.room);
+  if(S.usage!==false&&c.usage) parts.push(c.usage);
+  if(S.slots!==false&&c.slots&&c.slots.length) parts.push(c.slots.join(" / "));
+  const subTxt=parts.join(" · "), title=c.label||c.id||"";
+  const tg=c.tags||{}, tags=[];
+  if(S.chips!==false){ const seen=new Set(); [...(tg.locations||[]),...(tg.functions||[]),...(tg.devices||[])].forEach(t=>{ const k=String(t).toLowerCase(); if(t&&!seen.has(k)){ seen.add(k); tags.push(String(t)); } }); }
+  const avail=h-2*pad;
+  let f=1, L;
+  for(let it=0;it<8;it++){
+    const tl=layoutTitle(title,tw,h*0.25*f,h*0.11*f,avail);
+    const ss=subTxt?Math.min(h*0.14*f,Math.max(h*0.085*f,tw/(tmeas(subTxt,false,1)||1))):0;
+    const cs=h*0.1*f, chH=cs*1.8, gap=h*0.06*f;
+    const total=tl.lines.length*tl.s*1.12+(subTxt?gap+ss*1.2:0)+(tags.length?gap+chH:0);
+    L={tl,ss,cs,chH,gap,total};
+    if(total<=avail+0.01) break;
+    f*=Math.min(0.97,avail/total*0.98);
+  }
+  let cur=y+(h-L.total)/2;
+  L.tl.lines.forEach(line=>{ g+=`<text x="${x0.toFixed(2)}" y="${(cur+L.tl.s*0.86).toFixed(2)}" font-size="${L.tl.s.toFixed(2)}" font-weight="bold" ${ff}>${E(line)}</text>`; cur+=L.tl.s*1.12; });
+  stat.minTitle=Math.min(stat.minTitle,L.tl.s);
+  if(subTxt){
+    cur+=L.gap; const shown=ellipsize(subTxt,false,L.ss,tw);
+    g+=`<text x="${x0.toFixed(2)}" y="${(cur+L.ss*0.86).toFixed(2)}" font-size="${L.ss.toFixed(2)}" ${ff}>${E(shown)}</text>`; cur+=L.ss*1.2;
+    stat.minSub=Math.min(stat.minSub,L.ss);
+  }
+  if(tags.length){
+    cur+=L.gap; let x=x0; const cs=L.cs, chH=L.chH, sk=Math.max(0.15,h*0.012);
+    stat.minSub=Math.min(stat.minSub,cs);
+    for(let i=0;i<tags.length;i++){
+      const lab=ellipsize(tags[i],false,cs,tw*0.45), w=tmeas(lab,false,cs)+cs*1.3;
+      if(x+w>x0+tw){
+        const rest=tags.length-i, mt="+"+rest, mw=tmeas(mt,false,cs)+cs*1.3;
+        if(x+mw<=x0+tw){ g+=`<rect x="${x.toFixed(2)}" y="${cur.toFixed(2)}" width="${mw.toFixed(2)}" height="${chH.toFixed(2)}" rx="${(chH/2).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sk.toFixed(2)}"/><text x="${(x+mw/2).toFixed(2)}" y="${(cur+chH/2+cs*0.34).toFixed(2)}" font-size="${cs.toFixed(2)}" text-anchor="middle" ${ff}>${E(mt)}</text>`; }
+        break;
+      }
+      g+=`<rect x="${x.toFixed(2)}" y="${cur.toFixed(2)}" width="${w.toFixed(2)}" height="${chH.toFixed(2)}" rx="${(chH/2).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sk.toFixed(2)}"/><text x="${(x+w/2).toFixed(2)}" y="${(cur+chH/2+cs*0.34).toFixed(2)}" font-size="${cs.toFixed(2)}" text-anchor="middle" ${ff}>${E(lab)}</text>`;
+      x+=w+cs*0.5;
+    }
+  }
+  return g;
+}
+function sheetHeights(S,ch){
+  const custom=String(S.heights||"").split(/[;\s]+/).join(",").split(",").map(v=>parseFloat(String(v).replace(",","."))).filter(v=>v>0);
+  let hs;
+  if(custom.length) hs=custom.map(v=>v*MM);
+  else { const n=Math.max(1,Math.min(8,+S.n||3)); hs=Array(n).fill(ch/n); }
+  const sum=hs.reduce((a,b)=>a+b,0);
+  if(sum>ch+0.01) hs=hs.map(h=>h*ch/sum);
+  return hs;
+}
+function sheetContent(cw,ch){
+  const S=design.sheet, real=(S.circuits||[]).length>0, circuits=real?S.circuits:SAMPLE_CIRCUITS;
+  const hs=sheetHeights(S,ch), stat={minTitle:99,minSub:99};
+  let g="", y=0;
+  hs.forEach((h,i)=>{
+    const c=circuits[i]; if(c) g+=stripSVG(c,y,h,cw,S,stat);
+    y+=h;
+    if(S.cuts!==false&&i<hs.length-1) g+=`<line x1="0" y1="${y.toFixed(2)}" x2="${cw.toFixed(2)}" y2="${y.toFixed(2)}" stroke="#000" stroke-width="0.15" stroke-dasharray="1.2 1"/>`;
+  });
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cw.toFixed(2)} ${ch.toFixed(2)}" style="width:${cw.toFixed(2)}mm;height:${ch.toFixed(2)}mm;flex:none;display:block" font-family="Arial, Helvetica, sans-serif">${g}</svg>`;
+  const pt=mm=>mm/0.3528;
+  let info="Feuille : "+hs.length+" section"+(hs.length>1?"s":"")+" de "+hs.map(h=>(h/MM).toFixed(3).replace(/0+$/,"").replace(/\.$/,"")+" po").filter((v,i,a)=>a.indexOf(v)===i).join(" / ")+" ; "+Math.min(hs.length,circuits.length)+" circuit"+(Math.min(hs.length,circuits.length)>1?"s":"")+" affiché"+(Math.min(hs.length,circuits.length)>1?"s":"")+". Titre le plus petit : "+(stat.minTitle<99?pt(stat.minTitle).toFixed(1)+" pt":"—")+".";
+  let err="";
+  if(!real) err="⚠ Aucun circuit chargé : un exemple est affiché.";
+  else if(stat.minTitle<99&&pt(stat.minTitle)<5.5) err="⚠ Titre très petit ("+pt(stat.minTitle).toFixed(1)+" pt) : augmentez la longueur de la feuille ou réduisez le nombre d'éléments.";
+  return {html:svg,info,err};
+}
+function ensureSheetStock(L,select){
+  L=Math.max(3,+L||3);
+  let st=stocks.find(x=>x.u==="in"&&Math.abs(x.w-2)<0.01&&Math.abs(x.h-L)<0.01);
+  if(!st){ st={id:"s"+Date.now()+uid(),name:`Disjoncteurs 2" × ${L}"`,w:2,h:L,u:"in",color:"#ffffff",adh:true}; stocks.push(st); }
+  if(select!==false) stockId=st.id;
+  fillStockSel();
+  return st.id;
+}
+function updateSheetWarn(){
+  const el=$("shWarn"); if(!el) return;
+  if(!sheetOn()){ el.textContent=""; return; }
+  const st=stock(), W=toMM(st.w,st.u), H=toMM(st.h,st.u), w=[];
+  if(Math.abs(W-50.8)>0.6) w.push("⚠ Le ruban doit faire 2 po de large (papier actuel : "+(W/MM).toFixed(2)+" po).");
+  if(H<76.2-0.3) w.push("⚠ Zone d'impression minimale du ruban : 3 po de long (papier actuel : "+(H/MM).toFixed(2)+" po).");
+  el.textContent=w.join(" ");
+  if(w.length){ const b=document.createElement("button"); b.className="sm"; b.textContent="Corriger"; b.style.marginLeft="6px"; b.onclick=()=>{ ensureSheetStock(design.sheet.len||3); refresh(); }; el.appendChild(b); }
+}
 function buildLabel(forPrint,idx=0,hOverride){
-  const s=stock(), W=toMM(s.w,s.u), R=String((+design.rot+(forPrint&&prefs.rotOn?(+prefs.rotOff||0):0)+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
+  const s=stock(), W=toMM(s.w,s.u), R=String((+(sheetOn()?0:design.rot)+(forPrint&&prefs.rotOn?(+prefs.rotOff||0):0)+270)%360); // 0° = texte parallèle au sens d'impression (axe X)
   const H=autoActive()?(hOverride||autoHeight(idx)):toMM(s.h,s.u);
-  const sw=R==="90"||R==="270", cw=sw?H:W, ch=sw?W:H, m=+design.margin||0;
+  const sw=R==="90"||R==="270", cw=sw?H:W, ch=sw?W:H, m=sheetOn()?0:(+design.margin||0);
   const el=document.createElement("div"); el.className="lbl";
   el.style.cssText=`width:${W}mm;height:${H}mm;`+(forPrint?"":`background:${s.color}`);
   const tf={"90":`translate(${W}mm,0) rotate(90deg)`,"180":`translate(${W}mm,${H}mm) rotate(180deg)`,"270":`translate(0,${H}mm) rotate(-90deg)`}[R];
@@ -720,6 +901,7 @@ function refresh(){
   $("stockInfo").innerHTML=`<span class="sw" style="background:${s.color}"></span> ${dimTxt(s)} (${toMM(s.w,s.u).toFixed(1)} × ${toMM(s.h,s.u).toFixed(1)} mm) · ${supTxt(s)} · règles en ${s.u==="in"?"pouces":"mm"}`;
   const {el,info,err,H,k}=buildLabel(false,0,autoActive()?maxAutoHeight():0);
   $("autoBox").style.display=design.auto?"block":"none";
+  updateSheetWarn();
   $("autoInfo").textContent = design.auto ? `Longueur calculée (sens d'impression) : ${H.toFixed(1)} mm (${(H/MM).toFixed(2)}") × largeur ${toMM(s.w,s.u).toFixed(1)} mm` : "";
   const p=$("preview"); p.innerHTML="";
   const u=s.u, Wmm=toMM(s.w,u);
@@ -893,7 +1075,7 @@ function renderLines(){
   });
 }
 function syncForm(){
-  fillStockSel(); renderLines(); renderImgs();
+  fillStockSel(); renderLines(); renderImgs(); renderSheetCard();
   $("bcOn").checked=design.bc.on; $("bcType").value=design.bc.type; $("bcValue").value=design.bc.value;
   $("bcH").value=design.bc.h; $("bcW").value=design.bc.w; $("bcHuman").checked=design.bc.human;
   const B=design.bc;
@@ -1025,6 +1207,12 @@ const BUILTIN=[
       {text:"Utilisateur : xxx",size:12,bold:false,align:"left"},
       {text:"Mot de passe : xxx",size:12,bold:false,align:"left"}],
     rot:"0",margin:1.5,copies:1,fill:true}},
+  {id:"b:disj3",name:"Gabarit Disjoncteurs — feuille 2″ × 3″ (3 étiquettes à découper)",design:{
+    lines:[],rot:"0",margin:0,copies:1,
+    sheet:{on:true,n:3,heights:"",len:3,chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]}}},
+  {id:"b:disj4",name:"Gabarit Disjoncteurs — feuille 2″ × 3″ (4 étiquettes de 0,5″)",design:{
+    lines:[],rot:"0",margin:0,copies:1,
+    sheet:{on:true,n:4,heights:"",len:3,chips:false,slots:true,room:true,usage:true,cuts:true,circuits:[]}}},
   {id:"b:it-simple",name:"Gabarit IT — équipement + IP",design:{
     lines:[
       {text:"NOM DE L'ÉQUIPEMENT",size:14,bold:true,align:"left"},
@@ -1109,7 +1297,7 @@ $("tplUpd").onclick=()=>{
 };
 function doTplLoad(){
   const bt=BUILTIN.find(x=>x.id===$("tplSel").value);
-  if(bt){ design=builtinDesign(bt); syncForm(); autoZoom(); refresh(); return; }
+  if(bt){ design=builtinDesign(bt); if(sheetOn()) ensureSheetStock(design.sheet.len||3); syncForm(); autoZoom(); refresh(); return; }
   const t=templates.find(x=>x.id===$("tplSel").value); if(!t) return;
   const d=JSON.parse(JSON.stringify(t.design));
   d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d);
@@ -1416,6 +1604,144 @@ function openSeq(groups){
   $("seqDlg").showModal();
 }
 $("seqClose").onclick=()=>$("seqDlg").close();
+
+/* ---------- Feuille de disjoncteurs : carte de réglages ---------- */
+function renderSheetCard(){
+  const S=design.sheet, on=!!(S&&S.on);
+  $("shOn").checked=on; $("shBox").style.display=on?"block":"none"; $("rot").disabled=on;
+  if(!on) return;
+  $("shN").value=String(S.n||3); $("shHeights").value=S.heights||""; $("shLen").value=S.len||3;
+  [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
+  const nC=(S.circuits||[]).length, k=sheetHeights(S,toMM(stock().w,stock().u)).length;
+  $("shCount").textContent=nC?`Circuits chargés : ${nC} (les ${Math.min(k,nC)} premiers sont affichés dans l'aperçu).`:"Aucun circuit chargé : un exemple est affiché. Utilisez « Charger un panneau ».";
+  $("rot").title="Désactivée : le mode feuille impose le texte dans le sens d'impression.";
+}
+const sheetObj=()=>{ if(!design.sheet) design.sheet=defaultSheet(); return design.sheet; };
+$("shOn").onchange=()=>{ const S=sheetObj(); S.on=$("shOn").checked; if(S.on) ensureSheetStock(S.len); syncForm(); autoZoom(); refresh(); };
+$("shN").onchange=()=>{ const S=sheetObj(); S.n=+$("shN").value||3; renderSheetCard(); refresh(); };
+$("shHeights").oninput=()=>{ sheetObj().heights=$("shHeights").value; renderSheetCard(); refresh(); };
+$("shLen").onchange=()=>{ const S=sheetObj(); S.len=Math.max(3,+$("shLen").value||3); ensureSheetStock(S.len); syncForm(); autoZoom(); refresh(); };
+[["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).onchange=()=>{ sheetObj()[k]=$(id).checked; refresh(); }; });
+$("shClear").onclick=()=>{ sheetObj().circuits=[]; renderSheetCard(); refresh(); };
+
+/* ---------- Panneaux (JSON / API) ---------- */
+let pnl=null;
+function normPanel(b){
+  const list=Array.isArray(b)?b:(b&&b.circuits); if(!Array.isArray(list)) return null;
+  const S=(v,n)=>String(v==null?"":v).slice(0,n), A=(v,n,m)=>Array.isArray(v)?v.slice(0,n).map(x=>S(x,m).trim()).filter(Boolean):[];
+  const circuits=list.slice(0,400).map(c=>{
+    if(!c||typeof c!=="object") return null; const t=c.tags&&typeof c.tags==="object"?c.tags:{};
+    const o={id:S(c.id,30),amps:Math.max(0,+c.amps||0),room:S(c.room,60),usage:S(c.usage,60),label:S(c.label||c.originalLabel,200),status:S(c.status,30),notes:S(c.notes,400),exceptions:S(c.exceptions,300),slots:A(c.slots,12,10),tags:{devices:A(t.devices,20,60),functions:A(t.functions,20,60),locations:A(t.locations,20,60)}};
+    return (o.id||o.label)?o:null;
+  }).filter(Boolean);
+  const o=Array.isArray(b)?{}:b;
+  return {name:(S(o.panel||o.name||"Panneau",80).trim()||"Panneau"),circuits};
+}
+function pnlStripCount(cfg){ return sheetHeights(cfg,50.8).length; }
+function pnlCfg(){
+  return {on:true,n:+$("pnlN").value||3,heights:$("pnlHeights").value.trim(),len:Math.max(3,+$("pnlLen").value||3),
+    chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked};
+}
+function pnlSelected(){ return [...$("pnlTbl").querySelectorAll("input[type=checkbox]")].filter(c=>c.checked).map(c=>pnl.circuits[+c.dataset.i]); }
+function pnlUpdateCalc(){
+  if(!pnl) return;
+  const cfg=pnlCfg(), k=pnlStripCount(cfg), n=pnlSelected().length, sheets=Math.ceil(n/k);
+  $("pnlCalc").textContent=n?`${n} circuit${n>1?"s":""} sélectionné${n>1?"s":""} → ${sheets} feuille${sheets>1?"s":""} de ${k} étiquette${k>1?"s":""} (2 po × ${cfg.len} po).`:"Aucun circuit sélectionné.";
+}
+function showPanel(p,msg){
+  pnl=p; $("pnlBody").style.display="block"; $("pnlCloseRow").style.display="none";
+  $("pnlTitle").textContent=p.name+" — "+p.circuits.length+" circuit"+(p.circuits.length>1?"s":"");
+  const sts=[...new Set(p.circuits.map(c=>c.status).filter(Boolean))];
+  $("pnlStatus").innerHTML='<option value="">Tous les statuts</option>'+sts.map(x=>`<option value="${esc(x)}">Seulement « ${esc(x)} »</option>`).join("");
+  $("pnlTbl").querySelector("tbody").innerHTML=p.circuits.map((c,i)=>`<tr><td style="width:28px"><input type="checkbox" data-i="${i}" checked aria-label="Inclure ${esc(c.id||c.label)}"></td><td><b>${esc(c.id)}</b></td><td>${c.amps?c.amps+" A":""}</td><td>${esc(c.label)}</td><td class="info" style="margin:0">${esc(c.status)}</td></tr>`).join("");
+  $("pnlTbl").querySelectorAll("input").forEach(c=>c.onchange=pnlUpdateCalc);
+  $("pnlAll").checked=true;
+  const S=design.sheet&&design.sheet.on?design.sheet:null;
+  if(S){ $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; }
+  $("pnlMsg").textContent=msg||""; $("pnlErr").textContent="";
+  try{ localStorage.setItem("zl_panel",JSON.stringify(p)); }catch(e){}
+  pnlUpdateCalc();
+}
+function loadPanelText(txt){
+  let o; try{ o=JSON.parse(txt); }catch(e){ $("pnlMsg").textContent="Ce fichier n'est pas un JSON valide."; return; }
+  const p=normPanel(o);
+  if(!p||!p.circuits.length){ $("pnlMsg").textContent="Aucun circuit trouvé dans ce JSON (attendu : « circuits »)."; return; }
+  showPanel(p,"Panneau chargé depuis le JSON.");
+}
+async function pnlRefreshServer(sel){
+  const s=$("pnlServer");
+  try{
+    const r=await fetch("api/panels",{cache:"no-store"});
+    if(!r.ok) throw new Error(r.status===503?"base non configurée":"HTTP "+r.status);
+    const list=await r.json();
+    s.innerHTML=list.length?list.map(x=>`<option value="${esc(x.id)}">${esc(x.name)} — ${x.count} circuits (${new Date(x.updatedAt).toLocaleDateString("fr-CA")})</option>`).join(""):'<option value="">Aucun panneau téléversé</option>';
+    if(sel&&list.some(x=>x.id===sel)) s.value=sel;
+    return list;
+  }catch(e){
+    s.innerHTML='<option value="">Site non disponible</option>';
+    $("pnlMsg").textContent="Liste des panneaux du site indisponible ("+e.message+"). Vous pouvez charger un fichier JSON.";
+    return [];
+  }
+}
+async function pnlLoadServer(id){
+  if(!id){ $("pnlMsg").textContent="Aucun panneau à charger."; return; }
+  try{
+    const r=await fetch("api/panels?id="+encodeURIComponent(id),{cache:"no-store"});
+    if(!r.ok) throw new Error(r.status===404?"panneau introuvable":"HTTP "+r.status);
+    const p=normPanel(await r.json());
+    if(!p||!p.circuits.length) throw new Error("données vides");
+    showPanel(p,"Panneau « "+p.name+" » chargé depuis le site.");
+  }catch(e){ $("pnlMsg").textContent="Chargement impossible : "+e.message; }
+}
+async function openPanelDlg(preId){
+  $("pnlMsg").textContent=""; $("pnlPaste").style.display="none";
+  $("pnlDlg").showModal();
+  if(!pnl){ try{ const c=JSON.parse(localStorage.getItem("zl_panel")||"null"); if(c&&c.circuits&&c.circuits.length) showPanel(c,"Dernier panneau chargé (copie locale)."); }catch(e){} }
+  const list=await pnlRefreshServer(preId);
+  if(preId&&list.some(x=>x.id===preId)) pnlLoadServer(preId);
+}
+$("lstPanel").onclick=()=>openPanelDlg();
+$("shLoad").onclick=()=>openPanelDlg();
+$("pnlRefresh").onclick=()=>pnlRefreshServer($("pnlServer").value);
+$("pnlLoadSrv").onclick=()=>pnlLoadServer($("pnlServer").value);
+$("pnlFileBtn").onclick=()=>$("pnlFile").click();
+$("pnlFile").onchange=()=>{ const f=$("pnlFile").files[0]; $("pnlFile").value=""; if(!f) return; f.text().then(t=>loadPanelText(t.replace(/^﻿/,""))); };
+$("pnlPasteBtn").onclick=()=>{ const t=$("pnlPaste"); t.style.display=t.style.display==="none"?"block":"none"; if(t.style.display==="block") t.focus(); };
+$("pnlPaste").addEventListener("input",()=>{ const v=$("pnlPaste").value.trim(); if(v.length>20&&/[\]}]\s*$/.test(v)) loadPanelText(v); });
+$("pnlClose").onclick=()=>$("pnlDlg").close();
+$("pnlClose2").onclick=()=>$("pnlDlg").close();
+$("pnlAll").onchange=()=>{ $("pnlTbl").querySelectorAll("input").forEach(c=>c.checked=$("pnlAll").checked); pnlUpdateCalc(); };
+$("pnlStatus").onchange=()=>{ const v=$("pnlStatus").value; $("pnlTbl").querySelectorAll("input").forEach(c=>{ c.checked=!v||pnl.circuits[+c.dataset.i].status===v; }); pnlUpdateCalc(); };
+["pnlN","pnlLen","pnlHeights"].forEach(id=>{ $(id).addEventListener("input",pnlUpdateCalc); $(id).addEventListener("change",pnlUpdateCalc); });
+function sheetDesign(cfg,circuits){
+  const d=JSON.parse(JSON.stringify(DEF_DESIGN)); d.lines=[]; d.rot="0"; d.margin=0;
+  d.sheet=Object.assign({},cfg,{on:true,circuits:JSON.parse(JSON.stringify(circuits))});
+  return d;
+}
+$("pnlAdd").onclick=()=>{
+  if(!pnl) return;
+  const sel=pnlSelected(); if(!sel.length){ $("pnlErr").textContent="Sélectionnez au moins un circuit."; return; }
+  const cfg=pnlCfg(), k=pnlStripCount(cfg), sid=ensureSheetStock(cfg.len,false);
+  const chunks=[]; for(let i=0;i<sel.length;i+=k) chunks.push(sel.slice(i,i+k));
+  const room=200-workItems.length;
+  if(room<=0){ $("pnlErr").textContent="La liste est pleine (200 lignes maximum)."; return; }
+  chunks.slice(0,room).forEach(ch=>{
+    const a=ch[0].id||ch[0].label, b=ch[ch.length-1].id||ch[ch.length-1].label;
+    workItems.push({id:uid(),tplId:null,name:"Disjoncteurs — "+pnl.name,label:ch.length>1?a+" → "+b:a,stockId:sid,design:sheetDesign(cfg,ch),copies:1});
+  });
+  renderWork(); save(); $("pnlDlg").close();
+  if(chunks.length>room) alert("Seules "+room+" feuilles ont été ajoutées (limite de 200 lignes par liste).");
+};
+$("pnlUse").onclick=()=>{
+  if(!pnl) return;
+  const sel=pnlSelected(); if(!sel.length){ $("pnlErr").textContent="Sélectionnez au moins un circuit."; return; }
+  const cfg=pnlCfg(), k=pnlStripCount(cfg);
+  guardDirty(()=>{
+    design=sheetDesign(cfg,sel.slice(0,k)); editItemId="";
+    ensureSheetStock(cfg.len); syncForm(); autoZoom(); refresh();
+    $("pnlDlg").close();
+  });
+};
 
 /* ---------- Images ---------- */
 const imgOrig={};
@@ -1832,6 +2158,7 @@ $("listToggle").onclick=()=>setRC(!document.querySelector(".app").classList.cont
 try{ if(localStorage.getItem("zl_rc")==="1"){ document.querySelector(".app").classList.add("rc"); $("listToggle").querySelector(".lt-a").textContent="«"; } }catch(e){}
 placeList();
 applyTheme(); $("viewRead").checked=!!prefs.readable;
+setTimeout(()=>{ const m=/[#&?]panel=([^&]+)/.exec(location.hash+"&"+location.search); if(m) openPanelDlg(decodeURIComponent(m[1])); },400);
 syncForm(); autoZoom(); refresh(); markClean(); a11yFix();
 fillTplSel(); fillLstSel(workListId); renderWork(); setCloud("off"); cloudLoad();
 let rzT; window.addEventListener("resize",()=>{ clearTimeout(rzT); rzT=setTimeout(()=>{ if(!zoomManual) refresh(); },120); });

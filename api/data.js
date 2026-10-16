@@ -5,6 +5,7 @@
 // Optionnelle : FIREBASE_DB_SECRET (secret de la base, si les règles ne sont pas publiques)
 const DB = (process.env.FIREBASE_DB_URL || "").trim().replace(/\/+$/, "");
 const SECRET = process.env.FIREBASE_DB_SECRET || "";
+const { cleanSheet } = require("./_panel.js");
 const MAX_BYTES = 800000;
 
 const dbUrl = () => DB + "/zebrahd.json" + (SECRET ? "?auth=" + encodeURIComponent(SECRET) : "");
@@ -38,6 +39,7 @@ function cleanOv(o) {
 
 function cleanDesign(d) {
   if (!d || typeof d !== "object") return {};
+  if (d.sheet) d.sheet = cleanSheet(d.sheet);
   if (Array.isArray(d.images)) {
     d.images = d.images
       .filter((im) => im && typeof im.src === "string" && /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(im.src))

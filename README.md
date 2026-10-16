@@ -26,3 +26,10 @@ La fonction serveur est dans `api/data.js`. Aucune protection d'accès : toute p
 - **Réglages avancés** : mode opératoire *Massicot* ; support *Transfert thermique* (papier + ruban) ou *Thermique direct* ; détection *Continu* (longueur automatique), *Détection Web* (étiquettes à espaces) ou *Marque* ; ajustements à 0 ; *Calibrer*.
 - **Tramage** : essayer « Aucun ».
 - **Chrome** : même papier, marges « Aucune », échelle 100 %.
+
+## Étiquettes de disjoncteurs (feuille à découper)
+
+- Mode « feuille » : ruban de **2 po verrouillé**, longueur **≥ 3 po** (zone minimale du ruban 3" × 2"), réparti en 2 à 6 sections égales
+  (3 sections ≈ 0,667 po, 4 sections = 0,5 po) ou en hauteurs personnalisées ; traits de coupe pour les ciseaux.
+- Chaque section : pastille d'ampérage, titre, ligne « pièce · usage · positions » et pastilles (tags).
+- Lecture d'un panneau depuis un fichier JSON (format `GestionPanneauSiemens`) ou depuis l'API : voir [docs/api-panneaux.md](docs/api-panneaux.md).
