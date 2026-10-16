@@ -57,6 +57,7 @@ function cleanCircuitOv(o) {
   ["badgeText", "badgeTextR"].forEach((k) => { if (typeof o[k] === "string") r[k] = o[k].slice(0, 12); });
   ["title", "sub"].forEach((k) => { if (typeof o[k] === "string") r[k] = o[k].slice(0, 200); });
   if (typeof o.chips === "boolean") r.chips = o.chips;
+  if (Array.isArray(o.hideTags)) { const h = o.hideTags.slice(0, 40).map((x) => str(x, 60).trim()).filter(Boolean); if (h.length) r.hideTags = h; }
   Object.keys(r).forEach((k) => r[k] === undefined && delete r[k]);
   return Object.keys(r).length ? r : undefined;
 }
@@ -74,6 +75,7 @@ function cleanSheet(s) {
     badgeR: ["same", "amps", "id", "both"].includes(s.badgeR) ? s.badgeR : "same",
     frame: ["round", "square", "none"].includes(s.frame) ? s.frame : "round",
     tall: s.tall !== false,
+    hideTags: Array.isArray(s.hideTags) ? s.hideTags.slice(0, 60).map((x) => str(x, 60).trim()).filter(Boolean) : undefined,
     hs: Array.isArray(s.hs) ? s.hs.slice(0, 12).map(Number).filter((n) => n > 0 && n <= 3) : undefined,
     chips: s.chips !== false,
     slots: s.slots !== false,
@@ -81,7 +83,7 @@ function cleanSheet(s) {
     usage: s.usage !== false,
     cuts: s.cuts !== false,
     circuits: Array.isArray(s.circuits)
-      ? s.circuits.slice(0, 400).map((c) => { const x = cleanCircuit(c); if (!x) return null; const ov = cleanCircuitOv(c && c.ov); if (ov) x.ov = ov; return x; }).filter(Boolean)
+      ? s.circuits.slice(0, 400).map((c) => { const x = cleanCircuit(c); if (!x) return null; const ov = cleanCircuitOv(c && c.ov); if (ov) x.ov = ov; if (c && Number.isFinite(+c.ord)) x.ord = Math.max(0, Math.min(9999, Math.floor(+c.ord))); return x; }).filter(Boolean)
       : [],
   };
 }

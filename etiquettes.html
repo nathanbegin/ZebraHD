@@ -67,6 +67,9 @@ dialog#lstDlg{width:min(1060px,96vw)}
 .it.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc);background:var(--hint)}
 .editb{background:var(--hint);border:1px solid var(--hintb);border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:13px;display:none;gap:6px;align-items:center;flex-wrap:wrap}
 .editb button{min-height:30px;padding:2px 8px;font-size:12px}
+.tgchip{font-size:11px;line-height:1.2;padding:2px 8px;border:1px solid var(--line);border-radius:11px;margin:2px 3px 2px 0;background:var(--card);color:var(--ink);cursor:pointer;min-height:0}
+.tgchip.off{text-decoration:line-through;opacity:.45;background:transparent}
+.tgchip.glob{border-style:dashed}
 .help{margin-top:8px;font-size:13px}
 .help summary{cursor:pointer;color:var(--acc);font-weight:bold}
 .help ol{padding-left:18px;margin:6px 0}
@@ -560,7 +563,8 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 <dialog id="ctDlg" style="width:min(1180px,97vw);max-height:92vh;overflow:auto">
   <h3 style="margin-top:0">✎ Contenu de chaque étiquette</h3>
   <div class="info" style="margin-bottom:8px">Laissez « Par défaut » pour suivre les réglages généraux. Une ligne secondaire vidée est masquée ; le bouton ↺ rétablit l'étiquette. Les choix restent attachés au circuit même si vous changez le nombre de sections.</div>
-  <div style="overflow-x:auto"><table id="ctTbl"><thead><tr><th>Circuit</th><th>Titre</th><th>Ligne secondaire</th><th>Encadré (gauche)</th><th>Position</th><th>Encadré de droite</th><th>Étiquettes</th><th></th></tr></thead><tbody></tbody></table></div>
+  <div class="row" style="margin-bottom:8px;align-items:flex-end"><div><label class="f" for="ctHide">Masquer partout ces tags (séparés par des virgules)</label><input type="text" id="ctHide" placeholder="ex. Étage, Sous-sol, Prises"></div></div>
+  <div style="overflow-x:auto"><table id="ctTbl"><thead><tr><th>Circuit</th><th>Titre</th><th>Ligne secondaire</th><th>Encadré (gauche)</th><th>Position</th><th>Encadré de droite</th><th>Étiquettes (tags)</th><th></th></tr></thead><tbody></tbody></table></div>
   <div class="row" style="margin-top:10px"><button id="ctResetAll">↺ Tout réinitialiser</button><button class="pri" id="ctClose" style="font-size:14px;padding:8px">Fermer</button></div>
 </dialog>
 <dialog id="seqDlg" style="width:min(560px,96vw);max-height:92vh;overflow:auto">
@@ -851,6 +855,16 @@ function layoutTitle(txt,maxW,maxS,minS,availH){
   if(s1>=minS) return {lines:[txt],s:s1};
   return {lines:[ellipsize(txt,true,minS,maxW)],s:minS,trunc:true};
 }
+// Tags d'un circuit (lieux, fonctions, appareils), sans doublons.
+function candidateTags(c){
+  const tg=c.tags||{}, seen=new Set(), out=[];
+  [...(tg.locations||[]),...(tg.functions||[]),...(tg.devices||[])].forEach(t=>{ const k=String(t).toLowerCase(); if(t&&!seen.has(k)){ seen.add(k); out.push(String(t)); } });
+  return out;
+}
+// Tags retirés de l'impression : réglage global de la feuille (S.hideTags) + choix propres au circuit (c.ov.hideTags)
+function hiddenTagSet(c,S){
+  return new Set([...(S.hideTags||[]),...((c.ov&&c.ov.hideTags)||[])].map(x=>String(x).trim().toLowerCase()).filter(Boolean));
+}
 function subText(c,S){
   const parts=[];
   if(S.room!==false&&c.room) parts.push(c.room);
@@ -891,23 +905,24 @@ function chipRows(tags,cs,tw){
 // (jamais sous des minimums lisibles). R.ok = false si le contenu ne tient pas dans la hauteur.
 function layoutStrip(c,h,cw,S){
   const fm=S.frame||"round", fr=fm!=="none";
-  const pad=Math.max(0.8,h*0.07)+(fr?1:0), b=h-2*pad, gapB=Math.max(1.5,h*0.12), avail=h-2*pad;
+  const hh=Math.min(h,17);                                   // hauteur de référence (≈ 0,667 po) pour les tailles
+  const pad=Math.max(0.8,hh*0.07)+(fr?1:0), avail=h-2*pad, b=Math.min(hh-2*pad,avail), gapB=Math.max(1.5,hh*0.12);
   const e=effSheet(c,S);
   const leftC=(e.pos==="left"||e.pos==="both")?badgeContent(c,e.badge,e.badgeText):null;
   const rMode=e.pos==="both"?(e.badgeR==="same"?e.badge:e.badgeR):e.badge;
   const rText=e.pos==="both"?(e.badgeR==="same"?e.badgeText:e.badgeTextR):e.badgeText;
   const rightC=(e.pos==="right"||e.pos==="both")?badgeContent(c,rMode,rText):null;
   const x0=pad+(leftC?b+gapB:0), tw=cw-pad-(rightC?b+gapB:0)-x0;
-  const tg=c.tags||{}, tags=[];
-  if(e.chips){ const seen=new Set(); [...(tg.locations||[]),...(tg.functions||[]),...(tg.devices||[])].forEach(t=>{ const k=String(t).toLowerCase(); if(t&&!seen.has(k)){ seen.add(k); tags.push(String(t)); } }); }
-  const R={pad,b,fr,fm,e,leftC,rightC,x0,tw,subTxt:e.sub,title:e.title,tags,avail,gapB,ok:false,fit:null};
+  const hide=hiddenTagSet(c,S);
+  const tags=e.chips?candidateTags(c).filter(t=>!hide.has(t.toLowerCase())):[];
+  const R={pad,b,fr,fm,e,leftC,rightC,x0,tw,subTxt:e.sub,title:e.title,tags,avail,gapB,hh,ok:false,fit:null};
   if(tw<10) return R;
   const MIN_T=2.2, MIN_S=1.7, MIN_C=1.5;
   const attempt=(f,gs,useMin)=>{
     const mT=useMin?MIN_T:0.8, mS=useMin?MIN_S:0.7, mC=useMin?MIN_C:0.6;
-    const tl=layoutTitle(R.title,tw,Math.max(mT,h*0.25*f),mT,avail);
-    let ss=0; if(R.subTxt) ss=Math.max(mS,Math.min(Math.max(mS,h*0.14*f),tw/(tmeas(R.subTxt,false,1)||1)));
-    const cs=Math.max(mC,h*0.1*f), chH=cs*1.8, rowGap=cs*0.3*gs, gap=h*0.06*f*gs, lineH=1.04+0.08*gs;
+    const tl=layoutTitle(R.title,tw,Math.max(mT,hh*0.25*f),mT,avail);
+    let ss=0; if(R.subTxt) ss=Math.max(mS,Math.min(Math.max(mS,hh*0.14*f),tw/(tmeas(R.subTxt,false,1)||1)));
+    const cs=Math.max(mC,hh*0.1*f), chH=cs*1.8, rowGap=cs*0.3*gs, gap=hh*0.06*f*gs, lineH=1.04+0.08*gs;
     const rows=tags.length?chipRows(tags,cs,tw):[];
     const chipsH=rows.length?rows.length*chH+(rows.length-1)*rowGap:0;
     const total=tl.trunc?Infinity:tl.lines.length*tl.s*lineH+(R.subTxt?gap+ss*1.2:0)+(rows.length?gap+chipsH:0);
@@ -922,12 +937,12 @@ function layoutStrip(c,h,cw,S){
 }
 function stripSVG(c,y,h,cw,S,stat){
   const E=esc, ff='font-family="Arial, Helvetica, sans-serif"';
-  const R=layoutStrip(c,h,cw,S), {pad,b,fr,fm,leftC,rightC,x0,tw}=R, sw=Math.max(0.25,h*0.02), ins=0.5;
-  let g=fr?`<rect x="${ins}" y="${(y+ins).toFixed(2)}" width="${(cw-2*ins).toFixed(2)}" height="${(h-2*ins).toFixed(2)}" rx="${fm==="round"?Math.min(2.5,h*0.14).toFixed(2):0}" fill="none" stroke="#000" stroke-width="${Math.max(0.25,Math.min(0.4,h*0.02)).toFixed(2)}"/>`:"";
-  const cy=y+pad+b/2, bw=b-1.6;
+  const R=layoutStrip(c,h,cw,S), {pad,b,fr,fm,leftC,rightC,x0,tw,hh}=R, sw=Math.max(0.25,hh*0.02), ins=0.5;
+  let g=fr?`<rect x="${ins}" y="${(y+ins).toFixed(2)}" width="${(cw-2*ins).toFixed(2)}" height="${(h-2*ins).toFixed(2)}" rx="${fm==="round"?Math.min(2.5,hh*0.14).toFixed(2):0}" fill="none" stroke="#000" stroke-width="${Math.max(0.25,Math.min(0.4,hh*0.02)).toFixed(2)}"/>`:"";
+  const cy=y+h/2, bw=b-1.6;
   const drawBadge=(bx,cont)=>{
     const cx=bx+b/2;
-    let o=`<rect x="${bx.toFixed(2)}" y="${(y+pad).toFixed(2)}" width="${b.toFixed(2)}" height="${b.toFixed(2)}" rx="${(b*0.12).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}"/>`;
+    let o=`<rect x="${bx.toFixed(2)}" y="${(cy-b/2).toFixed(2)}" width="${b.toFixed(2)}" height="${b.toFixed(2)}" rx="${(b*0.12).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}"/>`;
     const bt=(txt,size,yy)=>`<text x="${cx.toFixed(2)}" y="${yy.toFixed(2)}" font-size="${size.toFixed(2)}" font-weight="bold" text-anchor="middle" ${ff}>${E(txt)}</text>`;
     if(cont.t2){
       const s1=Math.min(b*0.34,bw/(tmeas(cont.t1,true,1)||1)), s2=Math.min(b*0.24,bw/(tmeas(cont.t2,true,1)||1));
@@ -950,7 +965,7 @@ function stripSVG(c,y,h,cw,S,stat){
     stat.minSub=Math.min(stat.minSub,L.ss);
   }
   if(L.rows.length){
-    cur+=L.gap; const cs=L.cs, chH=L.chH, sk=Math.max(0.15,h*0.012);
+    cur+=L.gap; const cs=L.cs, chH=L.chH, sk=Math.max(0.15,hh*0.012);
     stat.minSub=Math.min(stat.minSub,cs);
     L.rows.forEach((row,ri)=>{
       const ry=cur+ri*(chH+L.rowGap);
@@ -982,15 +997,16 @@ function planSheets(circuits,cfg){
   const hStd=Math.min(...base), normal=[], tall=[];
   circuits.forEach(c=>{ (layoutStrip(c,hStd,cw,cfg).ok?normal:tall).push(c); });
   chunk(normal);
-  let cur=[], sum=0;
-  const flush=()=>{ if(cur.length) sheets.push({circuits:cur.map(x=>x.c),hs:cur.map(x=>x.h)}); cur=[]; sum=0; };
+  // Rangement « premier espace libre » : une étiquette allongée peut combler le reste d'une feuille déjà commencée.
+  const bins=[];
   tall.forEach(c=>{
     let hr=hStd; while(hr<ch&&!layoutStrip(c,hr,cw,cfg).ok) hr+=0.05*MM;
     hr=Math.min(ch,hr); const hin=Math.round(Math.ceil(hr/MM/0.05-1e-6)*0.05*1000)/1000;
-    if(sum+hin*MM>ch+0.01) flush();
-    cur.push({c,h:hin}); sum+=hin*MM;
+    let bin=bins.find(x=>x.sum+hin*MM<=ch+0.01);
+    if(!bin){ bin={items:[],sum:0}; bins.push(bin); }
+    bin.items.push({c,h:hin}); bin.sum+=hin*MM;
   });
-  flush();
+  bins.forEach(bin=>sheets.push({circuits:bin.items.map(x=>x.c),hs:bin.items.map(x=>x.h)}));
   return sheets;
 }
 function makeSheetItems(circuits,cfg,meta){
@@ -1611,6 +1627,8 @@ function reflowSheets(patch){
     const first=workItems[idx[0]], circuits=[];
     idx.forEach(i=>circuits.push(...workItems[i].design.sheet.circuits));
     if(!circuits.length) return;
+    // ordre d'origine du panneau (les étiquettes allongées placées à la fin y retournent si elles tiennent de nouveau)
+    if(circuits.every(c=>Number.isFinite(c.ord))) circuits.sort((a,b)=>a.ord-b.ord);
     const cfg=Object.assign({},first.design.sheet,patch); delete cfg.circuits; delete cfg.hs;
     cfg.len=Math.max(3,+cfg.len||3);
     const sid=ensureSheetStock(cfg.len,false);
@@ -1629,7 +1647,7 @@ function renderLayoutBar(){
   if(!keys.length) return;
   const first=workItems.find(it=>isSheetItem(it)&&blockKey(it)===keys[0]), S=first.design.sheet;
   const nSheets=workItems.filter(isSheetItem).length, nC=workItems.filter(isSheetItem).reduce((a,it)=>a+it.design.sheet.circuits.length,0);
-  $("lbInfo").textContent=nC+" circuit"+(nC>1?"s":"")+" en "+nSheets+" feuille"+(nSheets>1?"s":"")+(keys.length>1?" ("+keys.length+" panneaux)":"")+" — "+sheetHeights(S,50.8).length+" étiquette"+(sheetHeights(S,50.8).length>1?"s":"")+" par feuille.";
+  $("lbInfo").textContent=nC+" circuit"+(nC>1?"s":"")+" en "+nSheets+" feuille"+(nSheets>1?"s":"")+(keys.length>1?" ("+keys.length+" panneaux)":"")+" — "+sheetHeights(S,50.8).length+" étiquette"+(sheetHeights(S,50.8).length>1?"s":"")+" par feuille."+(()=>{ const t=workItems.filter(i=>isSheetItem(i)&&i.design.sheet.hs).flatMap(i=>i.design.sheet.circuits.map(c=>c.id)); return t.length?" Allongées en fin de liste : "+t.join(", ")+".":""; })();
   const act=document.activeElement&&det.contains(document.activeElement)?document.activeElement.id:"";
   if(act!=="lbHeights") $("lbHeights").value=S.heights||"";
   if(act!=="lbLen") $("lbLen").value=S.len||3;
@@ -1913,7 +1931,7 @@ function renderCt(){
       <td style="min-width:130px"><select class="t-badge">${BADGE_SEL}</select><input type="text" class="t-btext" maxlength="12" placeholder="Texte" style="margin-top:3px"></td>
       <td><select class="t-pos"><option value="">Par défaut</option><option value="left">À gauche</option><option value="right">À droite</option><option value="both">Gauche et droite</option><option value="none">Aucun</option></select></td>
       <td style="min-width:130px"><select class="t-badger"><option value="">Par défaut</option><option value="same">Identique à gauche</option><option value="amps">Ampérage</option><option value="id">Numéro du circuit</option><option value="both">Numéro + ampérage</option><option value="text">Texte libre</option><option value="none">Aucun</option></select><input type="text" class="t-btextr" maxlength="12" placeholder="Texte" style="margin-top:3px"></td>
-      <td><select class="t-chips"><option value="">Par défaut</option><option value="1">Avec</option><option value="0">Sans</option></select></td>
+      <td style="min-width:240px;max-width:380px"><select class="t-chips"><option value="">Par défaut</option><option value="1">Avec</option><option value="0">Sans</option></select><div class="t-tg" style="margin-top:4px"></div><div class="info t-tgc" style="margin:2px 0 0"></div></td>
       <td><button class="sm t-reset" title="Rétablir cette étiquette" aria-label="Rétablir cette étiquette">↺</button></td>`;
     const q=x=>tr.querySelector(x);
     const eff=effSheet(c,S);
@@ -1931,6 +1949,27 @@ function renderCt(){
     q(".t-badger").onchange=()=>{ setOv(c,"badgeR",q(".t-badger").value); sync(); ctCommit(); };
     q(".t-btextr").oninput=()=>{ setOv(c,"badgeTextR",q(".t-btextr").value); ctCommit(); };
     q(".t-chips").onchange=()=>{ const v=q(".t-chips").value; setOv(c,"chips",v===""?undefined:v==="1"); ctCommit(); };
+    const drawTags=()=>{
+      const box=q(".t-tg"); box.innerHTML="";
+      const all=candidateTags(c), g=new Set((S.hideTags||[]).map(x=>String(x).trim().toLowerCase())), mine=new Set(((c.ov&&c.ov.hideTags)||[]).map(x=>String(x).toLowerCase()));
+      all.forEach(t=>{
+        const k=t.toLowerCase(), isG=g.has(k), off=isG||mine.has(k);
+        const b=document.createElement("button"); b.type="button"; b.className="tgchip"+(off?" off":"")+(isG?" glob":"");
+        b.textContent=t; b.setAttribute("aria-pressed",String(!off));
+        b.title=isG?"Masqué partout (retirez-le du champ « Masquer partout »)":(off?"Masqué : cliquer pour le réafficher":"Affiché : cliquer pour le retirer de l'impression");
+        b.onclick=()=>{
+          if(isG) return;
+          const cur=new Set(((c.ov&&c.ov.hideTags)||[]).map(x=>String(x)));
+          const found=[...cur].find(x=>x.toLowerCase()===k);
+          if(found) cur.delete(found); else cur.add(t);
+          setOv(c,"hideTags",cur.size?[...cur]:undefined); drawTags(); ctCommit();
+        };
+        box.appendChild(b);
+      });
+      const shown=all.filter(t=>!g.has(t.toLowerCase())&&!mine.has(t.toLowerCase())).length;
+      q(".t-tgc").textContent=all.length?shown+" / "+all.length+" affichés":"Aucun tag";
+    };
+    drawTags(); tr._drawTags=drawTags;
     q(".t-reset").onclick=()=>{ delete c.ov; renderCt(); ctCommit(); };
     tb.appendChild(tr);
   });
@@ -1938,9 +1977,20 @@ function renderCt(){
 $("lbContent").onclick=()=>{
   if(editItemId&&isSheetItem(workItems.find(x=>x.id===editItemId))&&isDirty()&&!confirm("La ligne en cours d'édition contient des modifications non enregistrées : elles seront perdues. Continuer ?")) return;
   if(!sheetEntries().length){ alert("Aucune feuille de disjoncteurs dans la liste."); return; }
+  const first=sheetEntries()[0].S; $("ctHide").value=(first.hideTags||[]).join(", ");
   renderCt(); $("ctDlg").showModal();
 };
-$("ctResetAll").onclick=()=>{ if(!confirm("Rétablir le contenu par défaut de toutes les étiquettes ?")) return; sheetEntries().forEach(({c})=>{ delete c.ov; }); renderCt(); ctCommit(); };
+let ctHT=null;
+$("ctHide").addEventListener("input",()=>{
+  clearTimeout(ctHT);
+  ctHT=setTimeout(()=>{
+    const list=$("ctHide").value.split(",").map(x=>x.trim()).filter(Boolean);
+    workItems.forEach(it=>{ if(isSheetItem(it)) it.design.sheet.hideTags=list.length?list:undefined; });
+    $("ctTbl").querySelectorAll("tbody tr").forEach(tr=>tr._drawTags&&tr._drawTags());
+    ctCommit();
+  },250);
+});
+$("ctResetAll").onclick=()=>{ if(!confirm("Rétablir le contenu par défaut de toutes les étiquettes (et réafficher tous les tags) ?")) return; sheetEntries().forEach(({c,S})=>{ delete c.ov; delete S.hideTags; }); $("ctHide").value=""; renderCt(); ctCommit(); };
 $("ctClose").onclick=()=>{
   $("ctDlg").close(); clearTimeout(ctT);
   reflowSheets({}); if(editItemId&&!workItems.some(x=>x.id===editItemId)) editItemId="";
@@ -1972,7 +2022,7 @@ function pnlUpdateCalc(){
   const cfg=pnlCfg(), k=pnlStripCount(cfg), sel=pnlSelected(), n=sel.length;
   if(!n){ $("pnlCalc").textContent="Aucun circuit sélectionné."; return; }
   const plan=planSheets(sel,cfg), tallS=plan.filter(p=>p.hs), tallC=tallS.reduce((a,p)=>a+p.circuits.length,0);
-  $("pnlCalc").textContent=`${n} circuit${n>1?"s":""} sélectionné${n>1?"s":""} → ${plan.length} feuille${plan.length>1?"s":""} (2 po × ${cfg.len} po)`+(tallC?`, dont ${tallS.length} feuille${tallS.length>1?"s":""} en fin de liste pour ${tallC} étiquette${tallC>1?"s":""} allongée${tallC>1?"s":""} (contenu trop chargé pour ${k} par feuille).`:` : ${k} étiquette${k>1?"s":""} par feuille.`);
+  $("pnlCalc").textContent=`${n} circuit${n>1?"s":""} sélectionné${n>1?"s":""} → ${plan.length} feuille${plan.length>1?"s":""} (2 po × ${cfg.len} po)`+(tallC?`, dont ${tallS.length} feuille${tallS.length>1?"s":""} en fin de liste pour ${tallC} étiquette${tallC>1?"s":""} allongée${tallC>1?"s":""} (${tallS.flatMap(p=>p.circuits.map(c=>c.id)).join(", ")} : contenu trop chargé pour ${k} par feuille).`:` : ${k} étiquette${k>1?"s":""} par feuille.`);
 }
 function showPanel(p,msg){
   pnl=p; $("pnlBody").style.display="block"; $("pnlCloseRow").style.display="none";
@@ -2069,7 +2119,7 @@ function workListDirty(){
 function listCountTxt(n){ return n+" ligne"+(n>1?"s":""); }
 $("pnlAdd").onclick=()=>{
   if(!pnl) return;
-  const sel=pnlSelected(); if(!sel.length){ $("pnlErr").textContent="Sélectionnez au moins un circuit."; return; }
+  const sel=pnlSelected().map(c=>Object.assign({},c,{ord:pnl.circuits.findIndex(x=>x.id===c.id&&x.label===c.label)})); if(!sel.length){ $("pnlErr").textContent="Sélectionnez au moins un circuit."; return; }
   const cfg=pnlCfg(), k=pnlStripCount(cfg), sid=ensureSheetStock(cfg.len,false);
   const blk="p"+uid();
   tgtItems=makeSheetItems(sel,cfg,{name:"Disjoncteurs — "+pnl.name,blk,stockId:sid,copies:1});
