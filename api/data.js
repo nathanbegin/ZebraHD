@@ -8,7 +8,9 @@ const SECRET = process.env.FIREBASE_DB_SECRET || "";
 const { cleanSheet } = require("./_panel.js");
 const MAX_BYTES = 800000;
 
-const dbUrl = () => DB + "/zebrahd.json" + (SECRET ? "?auth=" + encodeURIComponent(SECRET) : "");
+// Les données sont écrites sous zebrahd/data uniquement : zebrahd/panels (API des panneaux) reste intact.
+// (L'ancien emplacement zebrahd.data est le même nœud : aucune migration nécessaire.)
+const dbUrl = () => DB + "/zebrahd/data.json" + (SECRET ? "?auth=" + encodeURIComponent(SECRET) : "");
 
 function cleanStock(x) {
   if (!x || typeof x.name !== "string" || !(+x.w > 0) || !(+x.h > 0)) return null;
@@ -57,7 +59,7 @@ module.exports = async (req, res) => {
       if (!r.ok) throw new Error("HTTP " + r.status);
       const j = await r.json();
       // Les données sont stockées sous forme de texte JSON (évite que Firebase déforme les tableaux vides).
-      return res.status(200).json(j && typeof j.data === "string" ? JSON.parse(j.data) : { stocks: [], templates: [], lists: [] });
+      return res.status(200).json(typeof j === "string" ? JSON.parse(j) : { stocks: [], templates: [], lists: [] });
     }
     if (req.method === "PUT") {
       let b = req.body;
@@ -99,7 +101,7 @@ module.exports = async (req, res) => {
       const r = await fetch(dbUrl(), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: str }),
+        body: JSON.stringify(str),
       });
       if (!r.ok) throw new Error("HTTP " + r.status);
       return res.status(200).json({ ok: true });
