@@ -194,7 +194,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <div><label class="f" for="lbLen">Longueur (po, min. 3)</label><input type="number" id="lbLen" min="3" max="40" step="0.25"></div>
         </div>
         <label class="f" for="lbHeights">Hauteurs personnalisées (po)</label>
-        <input type="text" id="lbHeights" placeholder="ex. 0.5, 0.5, 1  (vide = sections égales)">
+        <input type="text" id="lbHeights" placeholder="ex. 0.6 (→ 3 par feuille)  ou  0.5 0.5 1">
         <label class="f" for="lbBadge">Contenu de l'encadré arrondi</label>
         <select id="lbBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
         <div class="row" style="margin-top:6px;flex-wrap:wrap">
@@ -204,7 +204,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <label class="chk"><input type="checkbox" id="lbChips"> Étiquettes (tags)</label>
           <label class="chk"><input type="checkbox" id="lbCuts"> Traits de coupe</label>
         </div>
-        <div class="info">Chaque changement regroupe de nouveau les circuits de la liste en feuilles : pas besoin de recharger le panneau.</div>
+        <div class="info">Une seule hauteur (ex. 0.6) : 2 po ÷ 0,6 → 3 étiquettes par feuille (partie entière). Chaque changement regroupe de nouveau les circuits de la liste : pas besoin de recharger le panneau.</div>
       </details>
       <div id="lstItems" style="margin-top:8px"></div>
       <div class="row" style="margin-top:6px"><button id="lstAddTpl">+ Modèle choisi</button><button id="lstAddCur">+ Aperçu actuel</button></div>
@@ -253,7 +253,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <div><label class="f" for="shLen">Longueur (po, min. 3)</label><input type="number" id="shLen" min="3" max="40" step="0.25"></div>
         </div>
         <label class="f" for="shHeights">Ou hauteurs personnalisées (po, séparées par des virgules)</label>
-        <input type="text" id="shHeights" placeholder="ex. 0.5, 0.5, 1  (vide = sections égales)">
+        <input type="text" id="shHeights" placeholder="ex. 0.6 (→ 3 par feuille)  ou  0.5 0.5 1">
         <label class="f" for="shBadge" style="margin-top:6px">Contenu de l'encadré arrondi</label>
         <select id="shBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
         <div class="row" style="margin-top:6px;flex-wrap:wrap">
@@ -263,6 +263,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <label class="chk"><input type="checkbox" id="shChips"> Étiquettes (tags)</label>
           <label class="chk"><input type="checkbox" id="shCuts"> Traits de coupe</label>
         </div>
+        <div class="info">Une seule hauteur (ex. 0.6) : 2 po ÷ 0,6 → 3 étiquettes par feuille (partie entière). Plusieurs valeurs : une par étiquette, de haut en bas.</div>
         <div class="info" id="shCount"></div>
         <div class="warn" id="shWarn"></div>
         <div class="row" style="margin-top:6px"><button id="shLoad">🔌 Charger un panneau (JSON / site)…</button><button id="shClear">Vider les circuits</button></div>
@@ -494,7 +495,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
     <div class="row">
       <div><label class="f" for="pnlN">Sections égales</label><select id="pnlN"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div>
       <div><label class="f" for="pnlLen">Longueur (po, min. 3)</label><input type="number" id="pnlLen" min="3" max="40" step="0.25" value="3"></div>
-      <div><label class="f" for="pnlHeights">Hauteurs personnalisées (po)</label><input type="text" id="pnlHeights" placeholder="ex. 0.5, 0.5, 1"></div>
+      <div><label class="f" for="pnlHeights">Hauteurs personnalisées (po)</label><input type="text" id="pnlHeights" placeholder="ex. 0.6 (→ 3 par feuille)  ou  0.5 0.5 1"></div>
     </div>
     <label class="f" for="pnlBadge" style="margin-top:6px">Contenu de l'encadré arrondi</label>
     <select id="pnlBadge"><option value="amps">Ampérage (15A)</option><option value="id">Numéro du circuit (1A, 15-17…)</option><option value="both">Numéro + ampérage</option></select>
@@ -505,6 +506,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <label class="chk"><input type="checkbox" id="pnlChips" checked> Étiquettes (tags)</label>
       <label class="chk"><input type="checkbox" id="pnlCuts" checked> Traits de coupe</label>
     </div>
+    <div class="info">Une seule hauteur (ex. 0.6) : 2 po ÷ 0,6 → 3 étiquettes par feuille (partie entière). Plusieurs valeurs : une par étiquette.</div>
     <div class="info" id="pnlCalc"></div>
     <div class="warn" id="pnlErr"></div>
     <div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="pri" id="pnlAdd" style="font-size:14px;padding:8px">Ajouter à la liste d'impression</button><button id="pnlUse">Voir la 1ʳᵉ feuille dans l'aperçu</button><button id="pnlClose">Fermer</button></div>
@@ -855,10 +857,23 @@ function stripSVG(c,y,h,cw,S,stat){
   }
   return g;
 }
+function parseHeights(str){
+  const out=[];
+  String(str||"").split(/[;\s]+/).forEach(tok=>{
+    tok=tok.replace(/^,+|,+$/g,""); if(!tok) return;
+    if(/^\d*[.,]?\d+$/.test(tok)) out.push(parseFloat(tok.replace(",",".")));        // 0.5  0,625  1
+    else tok.split(",").forEach(p=>{ const v=parseFloat(p.replace(",",".")); if(v>0) out.push(v); }); // 0.5,0.5,1
+  });
+  return out.filter(v=>v>0);
+}
 function sheetHeights(S,ch){
-  const custom=String(S.heights||"").split(/[;\s]+/).join(",").split(",").map(v=>parseFloat(String(v).replace(",","."))).filter(v=>v>0);
+  const custom=parseHeights(S.heights).map(v=>v*MM);
   let hs;
-  if(custom.length) hs=custom.map(v=>v*MM);
+  if(custom.length===1){
+    // une seule hauteur : la largeur du ruban est divisée par cette hauteur, on garde la partie entière
+    const n=Math.max(1,Math.min(12,Math.floor(ch/custom[0]+0.01)));
+    hs=Array(n).fill(custom[0]);
+  } else if(custom.length>1) hs=custom;
   else { const n=Math.max(1,Math.min(8,+S.n||3)); hs=Array(n).fill(ch/n); }
   const sum=hs.reduce((a,b)=>a+b,0);
   if(sum>ch+0.01) hs=hs.map(h=>h*ch/sum);
@@ -1475,7 +1490,7 @@ function renderLayoutBar(){
   if(!keys.length) return;
   const first=workItems.find(it=>isSheetItem(it)&&blockKey(it)===keys[0]), S=first.design.sheet;
   const nSheets=workItems.filter(isSheetItem).length, nC=workItems.filter(isSheetItem).reduce((a,it)=>a+it.design.sheet.circuits.length,0);
-  $("lbInfo").textContent=nC+" circuit"+(nC>1?"s":"")+" en "+nSheets+" feuille"+(nSheets>1?"s":"")+(keys.length>1?" ("+keys.length+" panneaux)":"")+".";
+  $("lbInfo").textContent=nC+" circuit"+(nC>1?"s":"")+" en "+nSheets+" feuille"+(nSheets>1?"s":"")+(keys.length>1?" ("+keys.length+" panneaux)":"")+" — "+sheetHeights(S,50.8).length+" étiquette"+(sheetHeights(S,50.8).length>1?"s":"")+" par feuille.";
   const act=document.activeElement&&det.contains(document.activeElement)?document.activeElement.id:"";
   if(act!=="lbHeights") $("lbHeights").value=S.heights||"";
   if(act!=="lbLen") $("lbLen").value=S.len||3;
@@ -1713,7 +1728,7 @@ function renderSheetCard(){
   $("shN").value=String(S.n||3); $("shBadge").value=S.badge||"amps"; $("shHeights").value=S.heights||""; $("shLen").value=S.len||3;
   [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
   const nC=(S.circuits||[]).length, k=sheetHeights(S,toMM(stock().w,stock().u)).length;
-  $("shCount").textContent=nC?`Circuits chargés : ${nC} (les ${Math.min(k,nC)} premiers sont affichés dans l'aperçu).`:"Aucun circuit chargé : un exemple est affiché. Utilisez « Charger un panneau ».";
+  $("shCount").textContent=nC?`${k} étiquette${k>1?"s":""} par feuille. Circuits chargés : ${nC} (les ${Math.min(k,nC)} premiers sont affichés dans l'aperçu).`:"Aucun circuit chargé : un exemple est affiché. Utilisez « Charger un panneau ».";
   $("rot").title="Désactivée : le mode feuille impose le texte dans le sens d'impression.";
 }
 const sheetObj=()=>{ if(!design.sheet) design.sheet=defaultSheet(); return design.sheet; };
