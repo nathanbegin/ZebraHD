@@ -139,6 +139,13 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 .rl{overflow:visible;display:block;color:var(--rule)}
 .corner{font-size:10px;line-height:1.2;color:var(--rule);font-weight:bold;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 4px 2px 0;white-space:nowrap}
 #printArea{display:none}
+#toast{position:fixed;left:0;right:0;top:0;margin:0;padding:0;border:0;background:transparent;pointer-events:none;overflow:visible;width:auto;height:auto;max-width:none;inset:0 0 auto 0}
+#toast:not(.show){display:none}
+#toast .t{display:flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:10px 16px;background:#15803d;color:#fff;font:bold 15px/1.3 Arial,Helvetica,sans-serif;text-align:center;box-shadow:0 3px 12px rgba(0,0,0,.35);transform:translateY(-100%);opacity:0;transition:transform .22s ease,opacity .22s ease}
+#toast.show .t{transform:none;opacity:1}
+#toast.err .t{background:#b91c1c}
+#toast.info .t{background:#1d4ed8}
+@media print{#toast{display:none!important}}
 @media print{
   html,body{margin:0;padding:0;background:#fff}
   .app,header,dialog,.mbar,.side{display:none!important}
@@ -151,6 +158,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 </style>
 </head>
 <body>
+<div id="toast" popover="manual" role="status" aria-live="polite" aria-atomic="true"><div class="t"></div></div>
 <a href="#side" class="sr">Aller à l'aperçu</a>
 <header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span><button class="gear" id="gear" title="Réglages">⚙</button></header>
 <div class="app">
@@ -210,6 +218,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <label class="chk"><input type="checkbox" id="lbSlots"> Positions</label>
           <label class="chk"><input type="checkbox" id="lbChips"> Étiquettes (tags)</label>
           <label class="chk"><input type="checkbox" id="lbCuts"> Traits de coupe</label>
+          <label class="chk"><input type="checkbox" id="lbTall" title="Les étiquettes dont le contenu ne tient pas dans la hauteur standard sont placées à la fin, avec une hauteur adaptée"> Allonger les étiquettes trop chargées</label>
         </div>
         <div class="info">Une seule hauteur (ex. 0.6) : 2 po ÷ 0,6 → 3 étiquettes par feuille (partie entière). Chaque changement regroupe de nouveau les circuits de la liste : pas besoin de recharger le panneau.</div>
       </details>
@@ -524,6 +533,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <label class="chk"><input type="checkbox" id="pnlSlots" checked> Positions</label>
       <label class="chk"><input type="checkbox" id="pnlChips" checked> Étiquettes (tags)</label>
       <label class="chk"><input type="checkbox" id="pnlCuts" checked> Traits de coupe</label>
+      <label class="chk"><input type="checkbox" id="pnlTall" checked title="Les étiquettes dont le contenu ne tient pas dans la hauteur standard sont placées à la fin, avec une hauteur adaptée"> Allonger les étiquettes trop chargées (placées à la fin)</label>
     </div>
     <div class="info">Une seule hauteur (ex. 0.6) : 2 po ÷ 0,6 → 3 étiquettes par feuille (partie entière). Plusieurs valeurs : une par étiquette.</div>
     <div class="info" id="pnlCalc"></div>
@@ -590,6 +600,22 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
+/* Bandeau de confirmation en haut de l'écran (visible quel que soit le défilement, au-dessus des fenêtres ouvertes) */
+let toastT=null, toastT2=null;
+function toast(msg,kind){
+  const el=document.getElementById("toast"); if(!el) return;
+  clearTimeout(toastT); clearTimeout(toastT2);
+  el.classList.remove("show","err","info");
+  if(kind) el.classList.add(kind);
+  el.firstElementChild.textContent=(kind==="err"?"⚠ ":kind==="info"?"ℹ ":"✔ ")+msg;
+  try{ if(el.matches(":popover-open")) el.hidePopover(); }catch(e){}
+  el.classList.add("show");
+  try{ if(el.showPopover) el.showPopover(); }catch(e){}
+  toastT=setTimeout(()=>{
+    el.classList.remove("show");
+    toastT2=setTimeout(()=>{ try{ if(el.matches(":popover-open")) el.hidePopover(); }catch(e){} },300);
+  },kind==="err"?5000:3000);
+}
 const MM = 25.4;
 
 /* ---------- Code-barres ---------- */
@@ -801,7 +827,7 @@ const SAMPLE_CIRCUITS=[
   {id:"1A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Micro-ondes",slots:["1A"],tags:{devices:["Micro-ondes"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}},
   {id:"2A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Réfrigérateur — cuisine",slots:["2A"],tags:{devices:["Réfrigérateur"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}}
 ];
-const defaultSheet=()=>({on:false,n:3,heights:"",len:3,badge:"amps",badgePos:"left",badgeR:"same",frame:"round",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
+const defaultSheet=()=>({on:false,n:3,heights:"",len:3,tall:true,badge:"amps",badgePos:"left",badgeR:"same",frame:"round",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
 const _mc=document.createElement("canvas").getContext("2d");
 function tmeas(txt,bold,size){ _mc.font=(bold?"bold ":"")+"20px Arial, Helvetica, sans-serif"; return _mc.measureText(txt).width/20*size; }
 function ellipsize(txt,bold,sz,maxW){
@@ -816,13 +842,14 @@ function wrapWords(txt,bold,sz,maxW){
 }
 function layoutTitle(txt,maxW,maxS,minS,availH){
   const w1=tmeas(txt,true,1)||1, s1=Math.min(maxS,maxW/w1);
-  if(s1>=maxS*0.72) return {lines:[txt],s:s1};
-  for(let t=maxS*0.9;t>=Math.max(minS,s1*1.15);t-=0.05){
+  if(s1>=Math.max(minS,maxS*0.72)) return {lines:[txt],s:s1};
+  const top=Math.max(maxS*0.9,minS), lo=Math.max(minS,Math.min(top,s1*1.15));
+  for(let t=top;t>=lo-1e-6;t-=0.05){
     const L=wrapWords(txt,true,t,maxW);
     if(L.length<=2&&L.every(l=>tmeas(l,true,t)<=maxW+0.01)&&L.length*t*1.12<=availH*0.62) return {lines:L,s:t};
   }
   if(s1>=minS) return {lines:[txt],s:s1};
-  return {lines:[ellipsize(txt,true,minS,maxW)],s:minS};
+  return {lines:[ellipsize(txt,true,minS,maxW)],s:minS,trunc:true};
 }
 function subText(c,S){
   const parts=[];
@@ -851,16 +878,53 @@ function badgeContent(c,mode,text){
   const t=mode==="id"?(bid||amp):(amp||bid);
   return t?{t1:t}:null;
 }
-function stripSVG(c,y,h,cw,S,stat){
-  const E=esc, ff='font-family="Arial, Helvetica, sans-serif"';
-  const fm=S.frame||"round", fr=fm!=="none", ins=0.5;
-  const pad=Math.max(0.8,h*0.07)+(fr?1:0), b=h-2*pad, sw=Math.max(0.25,h*0.02);
-  let g=fr?`<rect x="${ins}" y="${(y+ins).toFixed(2)}" width="${(cw-2*ins).toFixed(2)}" height="${(h-2*ins).toFixed(2)}" rx="${fm==="round"?Math.min(2.5,h*0.14).toFixed(2):0}" fill="none" stroke="#000" stroke-width="${Math.max(0.25,Math.min(0.4,h*0.02)).toFixed(2)}"/>`:"";
-  const e=effSheet(c,S), gap=Math.max(1.5,h*0.12), cy=y+pad+b/2, bw=b-1.6;
+function chipRows(tags,cs,tw){
+  const rows=[[]]; let x=0; const sp=cs*0.5;
+  tags.forEach(t=>{
+    const lab=ellipsize(t,false,cs,Math.max(cs*3,tw-cs*1.3)), w=tmeas(lab,false,cs)+cs*1.3;
+    if(x>0&&x+w>tw+0.01){ rows.push([]); x=0; }
+    rows[rows.length-1].push({lab,w,x}); x+=w+sp;
+  });
+  return rows;
+}
+// Calcule la disposition d'une section. Ordre des économies de place : espacements resserrés d'abord, puis tailles réduites
+// (jamais sous des minimums lisibles). R.ok = false si le contenu ne tient pas dans la hauteur.
+function layoutStrip(c,h,cw,S){
+  const fm=S.frame||"round", fr=fm!=="none";
+  const pad=Math.max(0.8,h*0.07)+(fr?1:0), b=h-2*pad, gapB=Math.max(1.5,h*0.12), avail=h-2*pad;
+  const e=effSheet(c,S);
   const leftC=(e.pos==="left"||e.pos==="both")?badgeContent(c,e.badge,e.badgeText):null;
   const rMode=e.pos==="both"?(e.badgeR==="same"?e.badge:e.badgeR):e.badge;
   const rText=e.pos==="both"?(e.badgeR==="same"?e.badgeText:e.badgeTextR):e.badgeText;
   const rightC=(e.pos==="right"||e.pos==="both")?badgeContent(c,rMode,rText):null;
+  const x0=pad+(leftC?b+gapB:0), tw=cw-pad-(rightC?b+gapB:0)-x0;
+  const tg=c.tags||{}, tags=[];
+  if(e.chips){ const seen=new Set(); [...(tg.locations||[]),...(tg.functions||[]),...(tg.devices||[])].forEach(t=>{ const k=String(t).toLowerCase(); if(t&&!seen.has(k)){ seen.add(k); tags.push(String(t)); } }); }
+  const R={pad,b,fr,fm,e,leftC,rightC,x0,tw,subTxt:e.sub,title:e.title,tags,avail,gapB,ok:false,fit:null};
+  if(tw<10) return R;
+  const MIN_T=2.2, MIN_S=1.7, MIN_C=1.5;
+  const attempt=(f,gs,useMin)=>{
+    const mT=useMin?MIN_T:0.8, mS=useMin?MIN_S:0.7, mC=useMin?MIN_C:0.6;
+    const tl=layoutTitle(R.title,tw,Math.max(mT,h*0.25*f),mT,avail);
+    let ss=0; if(R.subTxt) ss=Math.max(mS,Math.min(Math.max(mS,h*0.14*f),tw/(tmeas(R.subTxt,false,1)||1)));
+    const cs=Math.max(mC,h*0.1*f), chH=cs*1.8, rowGap=cs*0.3*gs, gap=h*0.06*f*gs, lineH=1.04+0.08*gs;
+    const rows=tags.length?chipRows(tags,cs,tw):[];
+    const chipsH=rows.length?rows.length*chH+(rows.length-1)*rowGap:0;
+    const total=tl.trunc?Infinity:tl.lines.length*tl.s*lineH+(R.subTxt?gap+ss*1.2:0)+(rows.length?gap+chipsH:0);
+    return {tl,ss,cs,chH,rowGap,gap,lineH,rows,chipsH,total,f,gs};
+  };
+  let best=null;
+  for(const gs of [1,0.55,0.25]){ const a=attempt(1,gs,true); if(a.total<=avail+0.01){ best=a; break; } }
+  for(let f=0.96;!best&&f>=0.3;f-=0.04){ const a=attempt(f,0.25,true); if(a.total<=avail+0.01) best=a; }
+  if(best){ R.ok=true; R.fit=best; return R; }
+  for(let f=1;f>=0.08;f-=0.04){ const a=attempt(f,0.25,false); if(a.total<=avail+0.01||f<0.1){ R.fit=a; break; } }
+  return R;
+}
+function stripSVG(c,y,h,cw,S,stat){
+  const E=esc, ff='font-family="Arial, Helvetica, sans-serif"';
+  const R=layoutStrip(c,h,cw,S), {pad,b,fr,fm,leftC,rightC,x0,tw}=R, sw=Math.max(0.25,h*0.02), ins=0.5;
+  let g=fr?`<rect x="${ins}" y="${(y+ins).toFixed(2)}" width="${(cw-2*ins).toFixed(2)}" height="${(h-2*ins).toFixed(2)}" rx="${fm==="round"?Math.min(2.5,h*0.14).toFixed(2):0}" fill="none" stroke="#000" stroke-width="${Math.max(0.25,Math.min(0.4,h*0.02)).toFixed(2)}"/>`:"";
+  const cy=y+pad+b/2, bw=b-1.6;
   const drawBadge=(bx,cont)=>{
     const cx=bx+b/2;
     let o=`<rect x="${bx.toFixed(2)}" y="${(y+pad).toFixed(2)}" width="${b.toFixed(2)}" height="${b.toFixed(2)}" rx="${(b*0.12).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}"/>`;
@@ -874,43 +938,27 @@ function stripSVG(c,y,h,cw,S,stat){
   };
   if(leftC) g+=drawBadge(pad,leftC);
   if(rightC) g+=drawBadge(cw-pad-b,rightC);
-  const x0=pad+(leftC?b+gap:0), tw=cw-pad-(rightC?b+gap:0)-x0;
-  if(tw<10) return g;
-  const subTxt=e.sub, title=e.title;
-  const tg=c.tags||{}, tags=[];
-  if(e.chips){ const seen=new Set(); [...(tg.locations||[]),...(tg.functions||[]),...(tg.devices||[])].forEach(t=>{ const k=String(t).toLowerCase(); if(t&&!seen.has(k)){ seen.add(k); tags.push(String(t)); } }); }
-  const avail=h-2*pad;
-  let f=1, L;
-  for(let it=0;it<8;it++){
-    const tl=layoutTitle(title,tw,h*0.25*f,h*0.11*f,avail);
-    const ss=subTxt?Math.min(h*0.14*f,Math.max(h*0.085*f,tw/(tmeas(subTxt,false,1)||1))):0;
-    const cs=h*0.1*f, chH=cs*1.8, gap=h*0.06*f;
-    const total=tl.lines.length*tl.s*1.12+(subTxt?gap+ss*1.2:0)+(tags.length?gap+chH:0);
-    L={tl,ss,cs,chH,gap,total};
-    if(total<=avail+0.01) break;
-    f*=Math.min(0.97,avail/total*0.98);
-  }
-  let cur=y+(h-L.total)/2;
-  L.tl.lines.forEach(line=>{ g+=`<text x="${x0.toFixed(2)}" y="${(cur+L.tl.s*0.86).toFixed(2)}" font-size="${L.tl.s.toFixed(2)}" font-weight="bold" ${ff}>${E(line)}</text>`; cur+=L.tl.s*1.12; });
+  if(tw<10||!R.fit) return g;
+  const L=R.fit;
+  if(!R.ok) stat.over=(stat.over||0)+1;
   stat.minTitle=Math.min(stat.minTitle,L.tl.s);
-  if(subTxt){
-    cur+=L.gap; const shown=ellipsize(subTxt,false,L.ss,tw);
+  let cur=y+(h-Math.min(L.total,R.avail))/2;
+  L.tl.lines.forEach(line=>{ g+=`<text x="${x0.toFixed(2)}" y="${(cur+L.tl.s*0.86).toFixed(2)}" font-size="${L.tl.s.toFixed(2)}" font-weight="bold" ${ff}>${E(line)}</text>`; cur+=L.tl.s*L.lineH; });
+  if(R.subTxt){
+    cur+=L.gap; const shown=ellipsize(R.subTxt,false,L.ss,tw);
     g+=`<text x="${x0.toFixed(2)}" y="${(cur+L.ss*0.86).toFixed(2)}" font-size="${L.ss.toFixed(2)}" ${ff}>${E(shown)}</text>`; cur+=L.ss*1.2;
     stat.minSub=Math.min(stat.minSub,L.ss);
   }
-  if(tags.length){
-    cur+=L.gap; let x=x0; const cs=L.cs, chH=L.chH, sk=Math.max(0.15,h*0.012);
+  if(L.rows.length){
+    cur+=L.gap; const cs=L.cs, chH=L.chH, sk=Math.max(0.15,h*0.012);
     stat.minSub=Math.min(stat.minSub,cs);
-    for(let i=0;i<tags.length;i++){
-      const lab=ellipsize(tags[i],false,cs,tw*0.45), w=tmeas(lab,false,cs)+cs*1.3;
-      if(x+w>x0+tw){
-        const rest=tags.length-i, mt="+"+rest, mw=tmeas(mt,false,cs)+cs*1.3;
-        if(x+mw<=x0+tw){ g+=`<rect x="${x.toFixed(2)}" y="${cur.toFixed(2)}" width="${mw.toFixed(2)}" height="${chH.toFixed(2)}" rx="${(chH/2).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sk.toFixed(2)}"/><text x="${(x+mw/2).toFixed(2)}" y="${(cur+chH/2+cs*0.34).toFixed(2)}" font-size="${cs.toFixed(2)}" text-anchor="middle" ${ff}>${E(mt)}</text>`; }
-        break;
-      }
-      g+=`<rect x="${x.toFixed(2)}" y="${cur.toFixed(2)}" width="${w.toFixed(2)}" height="${chH.toFixed(2)}" rx="${(chH/2).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sk.toFixed(2)}"/><text x="${(x+w/2).toFixed(2)}" y="${(cur+chH/2+cs*0.34).toFixed(2)}" font-size="${cs.toFixed(2)}" text-anchor="middle" ${ff}>${E(lab)}</text>`;
-      x+=w+cs*0.5;
-    }
+    L.rows.forEach((row,ri)=>{
+      const ry=cur+ri*(chH+L.rowGap);
+      row.forEach(ch=>{
+        const x=x0+ch.x;
+        g+=`<rect x="${x.toFixed(2)}" y="${ry.toFixed(2)}" width="${ch.w.toFixed(2)}" height="${chH.toFixed(2)}" rx="${(chH/2).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sk.toFixed(2)}"/><text x="${(x+ch.w/2).toFixed(2)}" y="${(ry+chH/2+cs*0.34).toFixed(2)}" font-size="${cs.toFixed(2)}" text-anchor="middle" ${ff}>${E(ch.lab)}</text>`;
+      });
+    });
   }
   return g;
 }
@@ -923,10 +971,38 @@ function parseHeights(str){
   });
   return out.filter(v=>v>0);
 }
+// Répartit les circuits en feuilles. Les circuits trop chargés pour la hauteur standard sont placés à la fin,
+// sur des feuilles où leur section est allongée juste assez pour que tout rentre (S.hs = hauteurs en po).
+function planSheets(circuits,cfg){
+  const ch=50.8, cw=Math.max(3,+cfg.len||3)*MM;
+  const base=sheetHeights(Object.assign({},cfg,{hs:undefined}),ch), k=base.length;
+  const custom=parseHeights(cfg.heights), sheets=[];
+  const chunk=list=>{ for(let i=0;i<list.length;i+=k) sheets.push({circuits:list.slice(i,i+k),hs:null}); };
+  if(cfg.tall===false||custom.length>1){ chunk(circuits); return sheets; }
+  const hStd=Math.min(...base), normal=[], tall=[];
+  circuits.forEach(c=>{ (layoutStrip(c,hStd,cw,cfg).ok?normal:tall).push(c); });
+  chunk(normal);
+  let cur=[], sum=0;
+  const flush=()=>{ if(cur.length) sheets.push({circuits:cur.map(x=>x.c),hs:cur.map(x=>x.h)}); cur=[]; sum=0; };
+  tall.forEach(c=>{
+    let hr=hStd; while(hr<ch&&!layoutStrip(c,hr,cw,cfg).ok) hr+=0.05*MM;
+    hr=Math.min(ch,hr); const hin=Math.round(Math.ceil(hr/MM/0.05-1e-6)*0.05*1000)/1000;
+    if(sum+hin*MM>ch+0.01) flush();
+    cur.push({c,h:hin}); sum+=hin*MM;
+  });
+  flush();
+  return sheets;
+}
+function makeSheetItems(circuits,cfg,meta){
+  return planSheets(circuits,cfg).map(pl=>({
+    id:uid(),tplId:null,name:meta.name,blk:meta.blk,label:chunkLabel(pl.circuits)+(pl.hs?" ↕":""),stockId:meta.stockId,
+    design:sheetDesign(Object.assign({},cfg,pl.hs?{hs:pl.hs}:{}),pl.circuits),copies:meta.copies||1}));
+}
 function sheetHeights(S,ch){
   const custom=parseHeights(S.heights).map(v=>v*MM);
   let hs;
-  if(custom.length===1){
+  if(Array.isArray(S.hs)&&S.hs.length) hs=S.hs.map(v=>v*MM);
+  else if(custom.length===1){
     // une seule hauteur : la largeur du ruban est divisée par cette hauteur, on garde la partie entière
     const n=Math.max(1,Math.min(12,Math.floor(ch/custom[0]+0.01)));
     hs=Array(n).fill(custom[0]);
@@ -950,6 +1026,7 @@ function sheetContent(cw,ch){
   let info="Feuille : "+hs.length+" section"+(hs.length>1?"s":"")+" de "+hs.map(h=>(h/MM).toFixed(3).replace(/0+$/,"").replace(/\.$/,"")+" po").filter((v,i,a)=>a.indexOf(v)===i).join(" / ")+" ; "+Math.min(hs.length,circuits.length)+" circuit"+(Math.min(hs.length,circuits.length)>1?"s":"")+" affiché"+(Math.min(hs.length,circuits.length)>1?"s":"")+". Titre le plus petit : "+(stat.minTitle<99?pt(stat.minTitle).toFixed(1)+" pt":"—")+".";
   let err="";
   if(!real) err="⚠ Aucun circuit chargé : un exemple est affiché.";
+  else if(stat.over) err="⚠ "+stat.over+" étiquette"+(stat.over>1?"s":"")+" trop chargée"+(stat.over>1?"s":"")+" pour cette hauteur : allongez-la (option « Allonger… »), augmentez la longueur de la feuille ou retirez des étiquettes (tags).";
   else if(stat.minTitle<99&&pt(stat.minTitle)<5.5) err="⚠ Titre très petit ("+pt(stat.minTitle).toFixed(1)+" pt) : augmentez la longueur de la feuille ou réduisez le nombre d'éléments.";
   return {html:svg,info,err};
 }
@@ -1261,6 +1338,7 @@ function renderStockTbl(){
     if(!confirm("Supprimer « "+s.name+" » ?")) return;
     stocks=stocks.filter(x=>x.id!==s.id); if(stockId===s.id) stockId=stocks[0].id;
     fillStockSel(); renderStockTbl(); refresh();
+    toast("Type de papier supprimé","info");
   });
 }
 function drawStockPrev(){
@@ -1313,6 +1391,7 @@ $("sSave").onclick=()=>{
   if(editId){ Object.assign(stocks.find(x=>x.id===editId),obj); }
   else { const id="s"+Date.now(); stocks.push({id,...obj}); stockId=id; }
   fillStockSel(); resetForm(); renderStockTbl(); autoZoom(); refresh();
+  toast("Type de papier enregistré");
 };
 
 /* ---------- Logo (en-tête) ---------- */
@@ -1392,6 +1471,7 @@ function saveTemplateAs(name,folder){
   const obj={name,folder,stockId,design:JSON.parse(JSON.stringify(design))};
   let id; if(ex){ Object.assign(ex,obj); id=ex.id; } else { id="t"+Date.now(); templates.push({id,...obj}); }
   fillTplSel(id); save(); markClean();
+  toast("Modèle « "+name+" » enregistré");
   return true;
 }
 $("tplSave").onclick=()=>{
@@ -1404,6 +1484,7 @@ $("tplMeta").onclick=()=>{
   askTplMeta("Renommer / classer le modèle", t.name, t.folder, (name,folder)=>{
     if(templates.some(x=>x!==t&&x.name===name)){ $("tplDlgErr").textContent="Un autre modèle porte déjà ce nom."; return false; }
     t.name=name; t.folder=folder; fillTplSel(t.id); save();
+    toast("Modèle « "+name+" » mis à jour");
   },"Appliquer");
 };
 $("tplUpd").onclick=()=>{
@@ -1413,7 +1494,7 @@ $("tplUpd").onclick=()=>{
   if(!confirm("Mettre à jour le modèle « "+t.name+" » avec les réglages actuels (papier, texte, code-barres) ?")) return;
   t.stockId=stockId; t.design=JSON.parse(JSON.stringify(design));
   save(); markClean();
-  alert("Modèle « "+t.name+" » mis à jour.");
+  toast("Modèle « "+t.name+" » mis à jour");
 };
 function doTplLoad(){
   const bt=BUILTIN.find(x=>x.id===$("tplSel").value);
@@ -1429,6 +1510,7 @@ $("tplDel").onclick=()=>{
   if(isBuiltin($("tplSel").value)){ alert("Les gabarits fournis ne peuvent pas être supprimés."); return; }
   const t=templates.find(x=>x.id===$("tplSel").value); if(!t||!confirm("Supprimer le modèle « "+t.name+" » ?")) return;
   templates=templates.filter(x=>x!==t); fillTplSel(); save();
+  toast("Modèle supprimé","info");
 };
 
 /* ---------- Listes d'impression ---------- */
@@ -1529,11 +1611,11 @@ function reflowSheets(patch){
     const first=workItems[idx[0]], circuits=[];
     idx.forEach(i=>circuits.push(...workItems[i].design.sheet.circuits));
     if(!circuits.length) return;
-    const cfg=Object.assign({},first.design.sheet,patch); delete cfg.circuits;
+    const cfg=Object.assign({},first.design.sheet,patch); delete cfg.circuits; delete cfg.hs;
     cfg.len=Math.max(3,+cfg.len||3);
-    const k=sheetHeights(cfg,50.8).length, sid=ensureSheetStock(cfg.len,false);
+    const sid=ensureSheetStock(cfg.len,false);
     const blk=first.blk||key, copies=first.copies||1, name=first.name;
-    const fresh=[]; for(let i=0;i<circuits.length;i+=k){ const ch=circuits.slice(i,i+k); fresh.push({id:uid(),tplId:null,name,blk,label:chunkLabel(ch),stockId:sid,design:sheetDesign(cfg,ch),copies}); }
+    const fresh=makeSheetItems(circuits,cfg,{name,blk,stockId:sid,copies});
     const rest=workItems.filter((_,i)=>!idx.includes(i));
     rest.splice(idx[0],0,...fresh);
     workItems=rest;
@@ -1552,7 +1634,7 @@ function renderLayoutBar(){
   if(act!=="lbHeights") $("lbHeights").value=S.heights||"";
   if(act!=="lbLen") $("lbLen").value=S.len||3;
   $("lbN").value=String(S.n||3); $("lbBadge").value=S.badge||"amps"; $("lbBadgePos").value=S.badgePos||"left"; $("lbBadgeR").value=S.badgeR||"same"; $("lbFrame").value=S.frame||"round";
-  [["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
+  [["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"],["tall","lbTall"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
 }
 function applyLayout(patch){
   if(editItemId&&isSheetItem(workItems.find(x=>x.id===editItemId))&&isDirty()&&!confirm("La ligne en cours d'édition contient des modifications non enregistrées : elles seront perdues. Continuer ?")){ renderLayoutBar(); return; }
@@ -1571,7 +1653,7 @@ $("lbBadge").onchange=()=>applyLayout({badge:$("lbBadge").value});
 $("lbBadgePos").onchange=()=>applyLayout({badgePos:$("lbBadgePos").value});
 $("lbBadgeR").onchange=()=>applyLayout({badgeR:$("lbBadgeR").value});
 $("lbFrame").onchange=()=>applyLayout({frame:$("lbFrame").value});
-[["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"]].forEach(([k,id])=>{ $(id).onchange=()=>applyLayout({[k]:$(id).checked}); });
+[["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"],["tall","lbTall"]].forEach(([k,id])=>{ $(id).onchange=()=>applyLayout({[k]:$(id).checked}); });
 function bulkTargets(){
   const t=workItems.filter(x=>selItems.has(x.id));
   return t.length?t:workItems;
@@ -1686,16 +1768,18 @@ $("allApply").onclick=()=>{
 $("lstDlgClose").onclick=()=>{ $("lstDlg").close(); renderWork(); };
 $("lstAddTpl").onclick=()=>{
   const bt=BUILTIN.find(x=>x.id===$("tplSel").value);
-  if(bt){ const d=builtinDesign(bt); workItems.push({id:uid(),tplId:null,name:bt.name,stockId,design:d,copies:1}); renderWork(); save(); return; }
+  if(bt){ const d=builtinDesign(bt); workItems.push({id:uid(),tplId:null,name:bt.name,stockId,design:d,copies:1}); renderWork(); save(); toast("Ligne ajoutée à la liste"); return; }
   const t=templates.find(x=>x.id===$("tplSel").value);
   if(!t){ alert("Choisissez d'abord un modèle dans la carte « Modèles »."); return; }
   workItems.push({id:uid(),tplId:t.id,name:t.name,stockId:t.stockId,design:JSON.parse(JSON.stringify(t.design)),copies:t.design.copies||1});
   renderWork(); save();
+  toast("Ligne ajoutée à la liste");
 };
 $("lstAddCur").onclick=()=>{
   const name=(prompt("Nom de cette ligne :","Aperçu actuel")||"").trim(); if(!name) return;
   workItems.push({id:uid(),tplId:null,name,stockId,design:JSON.parse(JSON.stringify(design)),copies:design.copies||1});
   renderWork(); save(); markClean();
+  toast("Ligne ajoutée à la liste");
 };
 $("lstLoad").onclick=()=>{
   const l=lists.find(x=>x.id===$("lstSel").value);
@@ -1715,6 +1799,7 @@ function saveList(asNew){
   }
   l.items=JSON.parse(JSON.stringify(workItems)); workListId=l.id;
   fillLstSel(l.id); save(); refreshHints();
+  toast("Liste « "+l.name+" » enregistrée");
 }
 $("lstSave").onclick=()=>saveList(false);
 $("lstSaveAs").onclick=()=>saveList(true);
@@ -1724,6 +1809,7 @@ $("lstDel").onclick=()=>{
   if(!confirm("Supprimer la liste « "+l.name+" » ?")) return;
   lists=lists.filter(x=>x!==l); if(workListId===l.id) workListId="";
   fillLstSel(); save(); refreshHints();
+  toast("Liste supprimée","info");
 };
 $("lstPrint").onclick=()=>{
   if(!workItems.length){ alert("La liste est vide."); return; }
@@ -1856,7 +1942,9 @@ $("lbContent").onclick=()=>{
 };
 $("ctResetAll").onclick=()=>{ if(!confirm("Rétablir le contenu par défaut de toutes les étiquettes ?")) return; sheetEntries().forEach(({c})=>{ delete c.ov; }); renderCt(); ctCommit(); };
 $("ctClose").onclick=()=>{
-  $("ctDlg").close(); clearTimeout(ctT); renderWork(); save();
+  $("ctDlg").close(); clearTimeout(ctT);
+  reflowSheets({}); if(editItemId&&!workItems.some(x=>x.id===editItemId)) editItemId="";
+  renderWork(); save();
   if(editItemId&&workItems.some(x=>x.id===editItemId)) loadItemForEdit(editItemId);
 };
 
@@ -1876,13 +1964,15 @@ function normPanel(b){
 function pnlStripCount(cfg){ return sheetHeights(cfg,50.8).length; }
 function pnlCfg(){
   return {on:true,n:+$("pnlN").value||3,heights:$("pnlHeights").value.trim(),len:Math.max(3,+$("pnlLen").value||3),
-    badge:$("pnlBadge").value,badgePos:$("pnlBadgePos").value,badgeR:$("pnlBadgeR").value,frame:$("pnlFrame").value,chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked};
+    badge:$("pnlBadge").value,badgePos:$("pnlBadgePos").value,badgeR:$("pnlBadgeR").value,frame:$("pnlFrame").value,chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked,tall:$("pnlTall").checked};
 }
 function pnlSelected(){ return [...$("pnlTbl").querySelectorAll("input[type=checkbox]")].filter(c=>c.checked).map(c=>pnl.circuits[+c.dataset.i]); }
 function pnlUpdateCalc(){
   if(!pnl) return;
-  const cfg=pnlCfg(), k=pnlStripCount(cfg), n=pnlSelected().length, sheets=Math.ceil(n/k);
-  $("pnlCalc").textContent=n?`${n} circuit${n>1?"s":""} sélectionné${n>1?"s":""} → ${sheets} feuille${sheets>1?"s":""} de ${k} étiquette${k>1?"s":""} (2 po × ${cfg.len} po).`:"Aucun circuit sélectionné.";
+  const cfg=pnlCfg(), k=pnlStripCount(cfg), sel=pnlSelected(), n=sel.length;
+  if(!n){ $("pnlCalc").textContent="Aucun circuit sélectionné."; return; }
+  const plan=planSheets(sel,cfg), tallS=plan.filter(p=>p.hs), tallC=tallS.reduce((a,p)=>a+p.circuits.length,0);
+  $("pnlCalc").textContent=`${n} circuit${n>1?"s":""} sélectionné${n>1?"s":""} → ${plan.length} feuille${plan.length>1?"s":""} (2 po × ${cfg.len} po)`+(tallC?`, dont ${tallS.length} feuille${tallS.length>1?"s":""} en fin de liste pour ${tallC} étiquette${tallC>1?"s":""} allongée${tallC>1?"s":""} (contenu trop chargé pour ${k} par feuille).`:` : ${k} étiquette${k>1?"s":""} par feuille.`);
 }
 function showPanel(p,msg){
   pnl=p; $("pnlBody").style.display="block"; $("pnlCloseRow").style.display="none";
@@ -1893,7 +1983,7 @@ function showPanel(p,msg){
   $("pnlTbl").querySelectorAll("input").forEach(c=>c.onchange=pnlUpdateCalc);
   $("pnlAll").checked=true;
   const S=design.sheet&&design.sheet.on?design.sheet:null;
-  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlBadgePos").value=S.badgePos||"left"; $("pnlBadgeR").value=S.badgeR||"same"; $("pnlFrame").value=S.frame||"round"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; }
+  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlBadgePos").value=S.badgePos||"left"; $("pnlBadgeR").value=S.badgeR||"same"; $("pnlFrame").value=S.frame||"round"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; $("pnlTall").checked=S.tall!==false; }
   $("pnlMsg").textContent=msg||""; $("pnlErr").textContent="";
   try{ localStorage.setItem("zl_panel",JSON.stringify(p)); }catch(e){}
   pnlUpdateCalc();
@@ -1964,7 +2054,7 @@ $("pnlClose").onclick=()=>$("pnlDlg").close();
 $("pnlClose2").onclick=()=>$("pnlDlg").close();
 $("pnlAll").onchange=()=>{ $("pnlTbl").querySelectorAll("input").forEach(c=>c.checked=$("pnlAll").checked); pnlUpdateCalc(); };
 $("pnlStatus").onchange=()=>{ const v=$("pnlStatus").value; $("pnlTbl").querySelectorAll("input").forEach(c=>{ c.checked=!v||pnl.circuits[+c.dataset.i].status===v; }); pnlUpdateCalc(); };
-["pnlN","pnlLen","pnlHeights"].forEach(id=>{ $(id).addEventListener("input",pnlUpdateCalc); $(id).addEventListener("change",pnlUpdateCalc); });
+["pnlN","pnlLen","pnlHeights","pnlTall","pnlChips","pnlRoom","pnlUsage","pnlSlots","pnlBadge","pnlBadgePos","pnlBadgeR","pnlFrame"].forEach(id=>{ $(id).addEventListener("input",pnlUpdateCalc); $(id).addEventListener("change",pnlUpdateCalc); });
 function sheetDesign(cfg,circuits){
   const d=JSON.parse(JSON.stringify(DEF_DESIGN)); d.lines=[]; d.rot="0"; d.margin=0;
   d.sheet=Object.assign({},cfg,{on:true,circuits:JSON.parse(JSON.stringify(circuits))});
@@ -1981,9 +2071,8 @@ $("pnlAdd").onclick=()=>{
   if(!pnl) return;
   const sel=pnlSelected(); if(!sel.length){ $("pnlErr").textContent="Sélectionnez au moins un circuit."; return; }
   const cfg=pnlCfg(), k=pnlStripCount(cfg), sid=ensureSheetStock(cfg.len,false);
-  const chunks=[]; for(let i=0;i<sel.length;i+=k) chunks.push(sel.slice(i,i+k));
   const blk="p"+uid();
-  tgtItems=chunks.map(ch=>({id:uid(),tplId:null,name:"Disjoncteurs — "+pnl.name,blk,label:chunkLabel(ch),stockId:sid,design:sheetDesign(cfg,ch),copies:1}));
+  tgtItems=makeSheetItems(sel,cfg,{name:"Disjoncteurs — "+pnl.name,blk,stockId:sid,copies:1});
   openTarget();
 };
 function openTarget(){
@@ -2016,6 +2105,7 @@ $("tgtOk").onclick=()=>{
     if(cur) cur.items=cloneItems(workItems);
     $("tgtDlg").close(); $("pnlDlg").close();
     editItemId=""; renderWork(); save();
+    toast(add.length+" feuille"+(add.length>1?"s":"")+" ajoutée"+(add.length>1?"s":"")+" à la liste"+(cur?" « "+cur.name+" »":""));
     if(add.length<tgtItems.length) alert("Seules "+add.length+" feuilles ont été ajoutées (limite de 200 lignes par liste).");
   } else if(mode==="saved"){
     const L=lists.find(x=>x.id===$("tgtSaved").value); if(!L){ err("Choisissez une liste."); return; }
@@ -2027,6 +2117,7 @@ $("tgtOk").onclick=()=>{
     workItems=cloneItems(L.items); workListId=L.id; selItems.clear(); editItemId="";
     $("tgtDlg").close(); $("pnlDlg").close();
     fillLstSel(L.id); renderWork(); save();
+    toast(add.length+" feuille"+(add.length>1?"s":"")+" ajoutée"+(add.length>1?"s":"")+" à la liste « "+L.name+" »");
     if(add.length<tgtItems.length) alert("Seules "+add.length+" feuilles ont été ajoutées (limite de 200 lignes par liste).");
   } else {
     const name=$("tgtName").value.trim(); if(!name){ err("Entrez un nom pour la nouvelle liste."); return; }
@@ -2038,15 +2129,16 @@ $("tgtOk").onclick=()=>{
     workItems=cloneItems(add); workListId=L.id; selItems.clear(); editItemId="";
     $("tgtDlg").close(); $("pnlDlg").close();
     fillLstSel(L.id); renderWork(); save();
+    toast("Nouvelle liste « "+name+" » créée ("+add.length+" feuille"+(add.length>1?"s":"")+")");
     if(add.length<tgtItems.length) alert("Seules 200 feuilles ont été ajoutées (limite par liste).");
   }
 };
 $("pnlUse").onclick=()=>{
   if(!pnl) return;
   const sel=pnlSelected(); if(!sel.length){ $("pnlErr").textContent="Sélectionnez au moins un circuit."; return; }
-  const cfg=pnlCfg(), k=pnlStripCount(cfg);
+  const cfg=pnlCfg(), pl=planSheets(sel,cfg)[0];
   guardDirty(()=>{
-    design=sheetDesign(cfg,sel.slice(0,k)); editItemId="";
+    design=sheetDesign(Object.assign({},cfg,pl.hs?{hs:pl.hs}:{}),pl.circuits); editItemId="";
     ensureSheetStock(cfg.len); syncForm(); autoZoom(); refresh();
     $("pnlDlg").close();
   });
@@ -2179,6 +2271,7 @@ function commitEdit(){
   it.tplId=null; it.design=JSON.parse(JSON.stringify(design)); it.stockId=stockId; it.ov={};
   const t0=design.lines[0]&&design.lines[0].text.trim(); if(t0) it.label=t0.slice(0,60);
   renderWork(); save(); markClean();
+  toast("Ligne mise à jour");
 }
 function loadItemForEdit(id){
   const it=workItems.find(x=>x.id===id); if(!it) return;
@@ -2281,6 +2374,7 @@ $("impGo").onclick=()=>{
     workItems.push(it);
   });
   renderWork(); save(); $("impDlg").close();
+  toast(take.length+" étiquette"+(take.length>1?"s":"")+" importée"+(take.length>1?"s":"")+" dans la liste");
   if(take.length<rows.length) alert("Seules les "+take.length+" premières étiquettes ont été importées (limite de 200 lignes par liste).");
 };
 
@@ -2435,6 +2529,7 @@ $("calApply").onclick=()=>{
   $("prOffOn").checked=true; $("prOx").value=ox; $("prOy").value=oy;
   $("calRes").textContent=`Décalage appliqué : X = ${ox} mm, Y = ${oy} mm. Réimprimez l'étiquette de calibrage pour vérifier (les écarts devraient être égaux).`;
   refresh(); renderWork();
+  toast("Décalage enregistré (X "+ox+" mm, Y "+oy+" mm)");
 };
 $("prOffOn").onchange=()=>{ prefs.offOn=$("prOffOn").checked; save(); refresh(); renderWork(); };
 $("prOx").oninput=()=>{ prefs.ox=+$("prOx").value||0; save(); refresh(); renderWork(); };

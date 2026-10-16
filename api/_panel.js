@@ -73,6 +73,8 @@ function cleanSheet(s) {
     badgePos: ["left", "right", "both", "none"].includes(s.badgePos) ? s.badgePos : "left",
     badgeR: ["same", "amps", "id", "both"].includes(s.badgeR) ? s.badgeR : "same",
     frame: ["round", "square", "none"].includes(s.frame) ? s.frame : "round",
+    tall: s.tall !== false,
+    hs: Array.isArray(s.hs) ? s.hs.slice(0, 12).map(Number).filter((n) => n > 0 && n <= 3) : undefined,
     chips: s.chips !== false,
     slots: s.slots !== false,
     room: s.room !== false,
