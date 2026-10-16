@@ -23,7 +23,7 @@ const ORIGINS = (process.env.PANELS_ALLOWED_ORIGINS || "https://gestion-panneau-
   .filter(Boolean);
 const MAX_BYTES = 400000;
 
-const dbUrl = (id) => DB + "/zebrahd_panels" + (id ? "/" + encodeURIComponent(id) : "") + ".json" + (SECRET ? "?auth=" + encodeURIComponent(SECRET) : "");
+const dbUrl = (id) => DB + "/zebrahd/panels" + (id ? "/" + encodeURIComponent(id) : "") + ".json" + (SECRET ? "?auth=" + encodeURIComponent(SECRET) : "");
 
 function keyOk(req) {
   if (!KEY) return false;
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
       const id = queryId(req);
       if (id) {
         const r = await fetch(dbUrl(slug(id)));
-        if (!r.ok) throw new Error("HTTP " + r.status);
+        if (!r.ok) throw new Error("Firebase HTTP " + r.status);
         const j = await r.json();
         if (!j || typeof j.data !== "string") return res.status(404).json({ error: "Panneau introuvable" });
         return res.status(200).json({ id: slug(id), updatedAt: j.updatedAt || 0, ...JSON.parse(j.data) });
@@ -106,6 +106,7 @@ module.exports = async (req, res) => {
     res.setHeader("Allow", "GET, POST, PUT, DELETE, OPTIONS");
     return res.status(405).end();
   } catch (e) {
-    return res.status(500).json({ error: "Erreur base de données" });
+    console.error("[panels] Firebase request failed", { method: req.method, status: String(e?.message||"unknown").slice(0,100) });
+    return res.status(502).json({ error: /^Firebase HTTP (401|403)/.test(String(e?.message)) ? "Firebase refuse l’accès : vérifiez les règles du chemin zebrahd/panels." : "Échec de l’accès Firebase pour les panneaux.", detail: /^Firebase HTTP [0-9]{3}$/.test(String(e?.message)) ? e.message : undefined });
   }
 };
