@@ -11,7 +11,7 @@ module.exports=async(req,res)=>{
  try{
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
   let r;
-  try{r=await fetch('https://gestion-panneau-siemens.vercel.app/api/panel-live?id='+encodeURIComponent(id)',{method:'GET',headers:{Authorization:'Bearer '+key,Accept:'application/json'},cache:'no-store',signal:controller.signal});}
+  try{r=await fetch('https://gestion-panneau-siemens.vercel.app/api/panel-live?id='+encodeURIComponent(id),{method:'GET',headers:{Authorization:'Bearer '+key,Accept:'application/json'},cache:'no-store',signal:controller.signal});}
   finally{clearTimeout(timer);}
   const json=await r.json().catch(()=>null);
   if(!r.ok)return res.status(r.status===401?401:502).json({error:r.status===401?'Clé d’accès incorrecte.':json?.error||'Le panneau ne répond pas.'});
