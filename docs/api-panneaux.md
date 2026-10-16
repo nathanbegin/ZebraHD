@@ -82,3 +82,8 @@ module.exports = async (req, res) => {
 
 Si le projet est protégé par « Vercel Authentication », les appels d'un autre site reçoivent une page de connexion
 au lieu de la réponse de l'API. Utiliser le domaine de production personnalisé, ou désactiver la protection pour ce projet.
+
+## Lecture directe privée par UID (nouveau)
+Dans « 🔌 Disjoncteurs », renseigner l'UID `siemens-eq` et la clé privée de connexion à GestionPanneauSiemens, puis cliquer « Charger en direct ». Le navigateur envoie temporairement ces valeurs au proxy ZebraHD `POST /api/panel-live`, qui appelle `GET https://gestion-panneau-siemens.vercel.app/api/panel-live?id=siemens-eq` avec `Authorization: Bearer <clé privée du panneau>`. Le serveur du panneau lit les circuits sauvegardés dans Neon; aucune copie Firebase n'est créée dans ce parcours. La clé n'est ni mémorisée ni placée dans le lien.
+
+Cette lecture exige une authentification : connaître l'UID seul ne suffit pas. Vérifier la protection Vercel entre serveurs : si le domaine du panneau est protégé par Vercel Authentication, utiliser un domaine personnalisé autorisé pour cette route, sans ouvrir publiquement les données. Les anciens `GET /api/panels` de ZebraHD restent publics et fournissent les copies déjà téléversées via l'ancien parcours.
