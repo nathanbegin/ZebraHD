@@ -461,6 +461,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
     <div style="flex:0 0 auto"><button id="pnlRefresh" title="Actualiser la liste des panneaux">↻</button></div>
     <div style="flex:0 0 auto"><button id="pnlLoadSrv">Charger</button></div>
   </div>
+  <div class="row" style="margin-top:8px;align-items:flex-end"><div><label class="f" for="pnlLiveId">UID du panneau (direct)</label><input type="text" id="pnlLiveId" value="siemens-eq" autocomplete="off"></div><div><label class="f" for="pnlLiveKey">Clé d’accès privée</label><input type="password" id="pnlLiveKey" autocomplete="off" placeholder="Clé GestionPanneauSiemens"></div><div style="flex:0 0 auto"><button id="pnlLiveLoad">↻ Charger en direct</button></div></div><p class="info">Lecture de la dernière version enregistrée dans GestionPanneauSiemens. La clé est utilisée une seule fois, sans être mémorisée.</p>
   <div class="row" style="margin-top:6px"><button id="pnlFileBtn">📂 Charger un fichier JSON…</button><input type="file" id="pnlFile" accept=".json,application/json" style="display:none"><button id="pnlPasteBtn">📋 Coller du JSON…</button></div>
   <textarea id="pnlPaste" rows="5" style="display:none;font-family:monospace;margin-top:6px" placeholder="Collez ici le contenu du fichier JSON"></textarea>
   <div class="info" id="pnlMsg"></div>
@@ -1700,6 +1701,22 @@ async function openPanelDlg(preId){
   const list=await pnlRefreshServer(preId);
   if(preId&&list.some(x=>x.id===preId)) pnlLoadServer(preId);
 }
+async function pnlLoadLive(){
+ const id=$("pnlLiveId").value.trim(),key=$("pnlLiveKey").value;
+ $("pnlLiveKey").value="";
+ if(!id||!key){$("pnlMsg").textContent="Entrez l’UID et la clé privée du panneau.";return;}
+ $("pnlLiveLoad").disabled=true;$("pnlMsg").textContent="Lecture en direct…";
+ try{
+  const r=await fetch("api/panel-live",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,key}),cache:"no-store"});
+  const data=await r.json().catch(()=>null);
+  if(!r.ok)throw Error(data?.error||"HTTP "+r.status);
+  const p=normPanel(data);
+  if(!p||!p.circuits.length)throw Error("Aucun circuit reçu.");
+  showPanel(p,"Version en direct du panneau « "+id+" » (révision "+data.revision+").");
+ }catch(e){$("pnlMsg").textContent="Lecture directe impossible : "+e.message;}
+ finally{$("pnlLiveLoad").disabled=false;}
+}
+$("pnlLiveLoad").onclick=pnlLoadLive;
 $("lstPanel").onclick=()=>openPanelDlg();
 $("shLoad").onclick=()=>openPanelDlg();
 $("pnlRefresh").onclick=()=>pnlRefreshServer($("pnlServer").value);
