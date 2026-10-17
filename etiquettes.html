@@ -223,6 +223,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <label class="chk"><input type="checkbox" id="lbSlots"> Positions</label>
           <label class="chk"><input type="checkbox" id="lbChips"> Étiquettes (tags)</label>
           <label class="chk"><input type="checkbox" id="lbCuts"> Traits de coupe</label>
+          <label class="chk" title="Écrit en petit, en haut de l'encadré arrondi, ce que la valeur représente : CIRCUIT (numéro du circuit) ou AMP (ampérage). Évite de confondre le circuit 15A avec 15 ampères."><input type="checkbox" id="lbCap"> Mention CIRCUIT / AMP</label>
           <label class="chk"><input type="checkbox" id="lbTall" title="Les étiquettes dont le contenu ne tient pas dans la hauteur standard sont placées à la fin, avec une hauteur adaptée"> Allonger les étiquettes trop chargées</label>
         </div>
         <div class="info">Une seule hauteur (ex. 0.6) : 2 po ÷ 0,6 → 3 étiquettes par feuille (partie entière). Chaque changement regroupe de nouveau les circuits de la liste : pas besoin de recharger le panneau.</div>
@@ -291,6 +292,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
           <label class="chk"><input type="checkbox" id="shSlots"> Positions</label>
           <label class="chk"><input type="checkbox" id="shChips"> Étiquettes (tags)</label>
           <label class="chk"><input type="checkbox" id="shCuts"> Traits de coupe</label>
+          <label class="chk" title="Écrit en petit, en haut de l'encadré arrondi, ce que la valeur représente : CIRCUIT (numéro du circuit) ou AMP (ampérage). Évite de confondre le circuit 15A avec 15 ampères."><input type="checkbox" id="shCap"> Mention CIRCUIT / AMP</label>
         </div>
         <div class="info">Une seule hauteur (ex. 0.6) : 2 po ÷ 0,6 → 3 étiquettes par feuille (partie entière). Plusieurs valeurs : une par étiquette, de haut en bas.</div>
         <div class="info" id="shCount"></div>
@@ -542,6 +544,7 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
       <label class="chk"><input type="checkbox" id="pnlSlots" checked> Positions</label>
       <label class="chk"><input type="checkbox" id="pnlChips" checked> Étiquettes (tags)</label>
       <label class="chk"><input type="checkbox" id="pnlCuts" checked> Traits de coupe</label>
+      <label class="chk" title="Écrit en petit, en haut de l'encadré arrondi, ce que la valeur représente : CIRCUIT (numéro du circuit) ou AMP (ampérage). Évite de confondre le circuit 15A avec 15 ampères."><input type="checkbox" id="pnlCap" checked> Mention CIRCUIT / AMP</label>
       <label class="chk"><input type="checkbox" id="pnlTall" checked title="Les étiquettes dont le contenu ne tient pas dans la hauteur standard sont placées à la fin, avec une hauteur adaptée"> Allonger les étiquettes trop chargées (placées à la fin)</label>
     </div>
     <div class="info">Une seule hauteur (ex. 0.6) : 2 po ÷ 0,6 → 3 étiquettes par feuille (partie entière). Plusieurs valeurs : une par étiquette.</div>
@@ -837,7 +840,7 @@ const SAMPLE_CIRCUITS=[
   {id:"1A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Micro-ondes",slots:["1A"],tags:{devices:["Micro-ondes"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}},
   {id:"2A",amps:15,room:"Rez-de-chaussée",usage:"Électroménager",label:"Réfrigérateur — cuisine",slots:["2A"],tags:{devices:["Réfrigérateur"],functions:["Électroménager"],locations:["Rez-de-chaussée","Cuisine"]}}
 ];
-const defaultSheet=()=>({on:false,n:3,heights:"",len:3,gap:0,tall:true,badge:"amps",badgePos:"left",badgeR:"same",frame:"round",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
+const defaultSheet=()=>({on:false,n:3,heights:"",len:3,gap:0,cap:true,tall:true,badge:"amps",badgePos:"left",badgeR:"same",frame:"round",chips:true,slots:true,room:true,usage:true,cuts:true,circuits:[]});
 const _mc=document.createElement("canvas").getContext("2d");
 function tmeas(txt,bold,size){ _mc.font=(bold?"bold ":"")+"20px Arial, Helvetica, sans-serif"; return _mc.measureText(txt).width/20*size; }
 function ellipsize(txt,bold,sz,maxW){
@@ -887,16 +890,19 @@ function effSheet(c,S){
     badgeR:o.badgeR||S.badgeR||"same", badgeTextR:o.badgeTextR||"",
     title:has(o.title)&&String(o.title).trim()!==""?String(o.title):(c.label||c.id||""),
     sub:has(o.sub)?String(o.sub):subText(c,S),
-    chips:has(o.chips)?!!o.chips:S.chips!==false
+    chips:has(o.chips)?!!o.chips:S.chips!==false,
+    cap:S.cap!==false
   };
 }
-function badgeContent(c,mode,text){
+// Contenu d'un encadré arrondi. cap = petite légende au-dessus de la valeur (CIRCUIT ou AMP) pour ne pas confondre
+// le numéro d'un circuit (ex. 15A) avec un ampérage (15 A).
+function badgeContent(c,mode,text,cap){
   const amp=c.amps?c.amps+"A":"", bid=c.id||"";
   if(mode==="none") return null;
   if(mode==="text") return text?{t1:text}:null;
-  if(mode==="both"&&bid&&amp) return {t1:bid,t2:amp};
-  const t=mode==="id"?(bid||amp):(amp||bid);
-  return t?{t1:t}:null;
+  if(mode==="both"&&bid&&amp) return {t1:bid,t2:amp,cap:cap?"CIRCUIT":""};
+  const isId=mode==="id"?!!bid:!amp, t=isId?bid:amp;
+  return t?{t1:t,cap:cap?(isId?"CIRCUIT":"AMP"):""}:null;
 }
 function chipRows(tags,cs,tw){
   const rows=[[]]; let x=0; const sp=cs*0.5;
@@ -917,10 +923,10 @@ function layoutStrip(c,h,cw,S){
   const hh=Math.min(h,17);                                   // hauteur de référence (≈ 0,667 po) pour les tailles
   const pad=Math.max(0.8,hh*0.07)+(fr?1:0), avail=h-2*pad, b=Math.min(hh-2*pad,avail), gapB=Math.max(1.5,hh*0.12);
   const e=effSheet(c,S);
-  const leftC=(e.pos==="left"||e.pos==="both")?badgeContent(c,e.badge,e.badgeText):null;
+  const leftC=(e.pos==="left"||e.pos==="both")?badgeContent(c,e.badge,e.badgeText,e.cap):null;
   const rMode=e.pos==="both"?(e.badgeR==="same"?e.badge:e.badgeR):e.badge;
   const rText=e.pos==="both"?(e.badgeR==="same"?e.badgeText:e.badgeTextR):e.badgeText;
-  const rightC=(e.pos==="right"||e.pos==="both")?badgeContent(c,rMode,rText):null;
+  const rightC=(e.pos==="right"||e.pos==="both")?badgeContent(c,rMode,rText,e.cap):null;
   const x0=pad+(leftC?b+gapB:0), tw=cw-pad-(rightC?b+gapB:0)-x0;
   const hide=hiddenTagSet(c,S);
   const tags=e.chips?candidateTags(c).filter(t=>!hide.has(t.toLowerCase())):[];
@@ -954,11 +960,18 @@ function stripSVG(c,y,h,cw,S,stat){
     const cx=bx+b/2;
     let o=`<rect x="${bx.toFixed(2)}" y="${(cy-b/2).toFixed(2)}" width="${b.toFixed(2)}" height="${b.toFixed(2)}" rx="${(b*0.12).toFixed(2)}" fill="none" stroke="#000" stroke-width="${sw.toFixed(2)}"/>`;
     const bt=(txt,size,yy)=>`<text x="${cx.toFixed(2)}" y="${yy.toFixed(2)}" font-size="${size.toFixed(2)}" font-weight="bold" text-anchor="middle" ${ff}>${E(txt)}</text>`;
+    // légende (CIRCUIT / AMP) en petit, en haut de l'encadré ; la valeur est centrée dans l'espace restant
+    let zc=cy, zh=b;
+    if(cont.cap){
+      const capS=Math.min(b*0.16,bw/(tmeas(cont.cap,true,1)||1)), top0=cy-b/2+b*0.07, capH=capS*1.2;
+      o+=bt(cont.cap,capS,top0+capS*0.85);
+      zh=b-(top0-(cy-b/2))-capH-b*0.03; zc=cy+b/2-zh/2-b*0.03;
+    }
     if(cont.t2){
-      const s1=Math.min(b*0.34,bw/(tmeas(cont.t1,true,1)||1)), s2=Math.min(b*0.24,bw/(tmeas(cont.t2,true,1)||1));
-      const tot=s1*1.0+s2*1.05+b*0.04, top=cy-tot/2;
+      const s1=Math.min(b*0.34,zh*0.5,bw/(tmeas(cont.t1,true,1)||1)), s2=Math.min(b*0.24,zh*0.36,bw/(tmeas(cont.t2,true,1)||1));
+      const tot=s1*1.0+s2*1.05+b*0.04, top=zc-tot/2;
       o+=bt(cont.t1,s1,top+s1*0.8)+bt(cont.t2,s2,top+s1*1.0+b*0.04+s2*0.85);
-    } else { const as=Math.min(b*0.46,bw/(tmeas(cont.t1,true,1)||1)); o+=bt(cont.t1,as,cy+as*0.35); }
+    } else { const as=Math.min(b*0.46,zh*0.7,bw/(tmeas(cont.t1,true,1)||1)); o+=bt(cont.t1,as,zc+as*0.35); }
     return o;
   };
   if(leftC) g+=drawBadge(pad,leftC);
@@ -1663,7 +1676,7 @@ function renderLayoutBar(){
   if(act!=="lbLen") $("lbLen").value=S.len||3;
   if(act!=="lbGap") $("lbGap").value=gapMM(S);
   $("lbN").value=String(S.n||3); $("lbBadge").value=S.badge||"amps"; $("lbBadgePos").value=S.badgePos||"left"; $("lbBadgeR").value=S.badgeR||"same"; $("lbFrame").value=S.frame||"round";
-  [["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"],["tall","lbTall"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
+  [["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"],["cap","lbCap"],["tall","lbTall"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
 }
 function applyLayout(patch){
   if(editItemId&&isSheetItem(workItems.find(x=>x.id===editItemId))&&isDirty()&&!confirm("La ligne en cours d'édition contient des modifications non enregistrées : elles seront perdues. Continuer ?")){ renderLayoutBar(); return; }
@@ -1684,7 +1697,7 @@ $("lbBadge").onchange=()=>applyLayout({badge:$("lbBadge").value});
 $("lbBadgePos").onchange=()=>applyLayout({badgePos:$("lbBadgePos").value});
 $("lbBadgeR").onchange=()=>applyLayout({badgeR:$("lbBadgeR").value});
 $("lbFrame").onchange=()=>applyLayout({frame:$("lbFrame").value});
-[["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"],["tall","lbTall"]].forEach(([k,id])=>{ $(id).onchange=()=>applyLayout({[k]:$(id).checked}); });
+[["room","lbRoom"],["usage","lbUsage"],["slots","lbSlots"],["chips","lbChips"],["cuts","lbCuts"],["cap","lbCap"],["tall","lbTall"]].forEach(([k,id])=>{ $(id).onchange=()=>applyLayout({[k]:$(id).checked}); });
 function bulkTargets(){
   const t=workItems.filter(x=>selItems.has(x.id));
   return t.length?t:workItems;
@@ -1903,7 +1916,7 @@ function renderSheetCard(){
   $("shOn").checked=on; $("shBox").style.display=on?"block":"none"; $("rot").disabled=on;
   if(!on) return;
   $("shN").value=String(S.n||3); $("shBadge").value=S.badge||"amps"; $("shBadgePos").value=S.badgePos||"left"; $("shBadgeR").value=S.badgeR||"same"; $("shFrame").value=S.frame||"round"; $("shHeights").value=S.heights||""; $("shLen").value=S.len||3; $("shGap").value=gapMM(S);
-  [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
+  [["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"],["cap","shCap"]].forEach(([k,id])=>{ $(id).checked=S[k]!==false; });
   const nC=(S.circuits||[]).length, k=sheetHeights(S,toMM(stock().w,stock().u)).length;
   $("shCount").textContent=nC?`${k} étiquette${k>1?"s":""} par feuille. Circuits chargés : ${nC} (les ${Math.min(k,nC)} premiers sont affichés dans l'aperçu).`:"Aucun circuit chargé : un exemple est affiché. Utilisez « Charger un panneau ».";
   $("rot").title="Désactivée : le mode feuille impose le texte dans le sens d'impression.";
@@ -1913,7 +1926,7 @@ $("shOn").onchange=()=>{ const S=sheetObj(); S.on=$("shOn").checked; if(S.on) en
 $("shN").onchange=()=>{ const S=sheetObj(); S.n=+$("shN").value||3; renderSheetCard(); refresh(); };
 $("shHeights").oninput=()=>{ sheetObj().heights=$("shHeights").value; renderSheetCard(); refresh(); };
 $("shLen").onchange=()=>{ const S=sheetObj(); S.len=Math.max(3,+$("shLen").value||3); ensureSheetStock(S.len); syncForm(); autoZoom(); refresh(); };
-[["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"]].forEach(([k,id])=>{ $(id).onchange=()=>{ sheetObj()[k]=$(id).checked; refresh(); }; });
+[["room","shRoom"],["usage","shUsage"],["slots","shSlots"],["chips","shChips"],["cuts","shCuts"],["cap","shCap"]].forEach(([k,id])=>{ $(id).onchange=()=>{ sheetObj()[k]=$(id).checked; refresh(); }; });
 $("shBadge").onchange=()=>{ sheetObj().badge=$("shBadge").value; refresh(); };
 $("shBadgePos").onchange=()=>{ sheetObj().badgePos=$("shBadgePos").value; refresh(); };
 $("shBadgeR").onchange=()=>{ sheetObj().badgeR=$("shBadgeR").value; refresh(); };
@@ -2028,7 +2041,7 @@ function normPanel(b){
 function pnlStripCount(cfg){ return sheetHeights(cfg,50.8).length; }
 function pnlCfg(){
   return {on:true,n:+$("pnlN").value||3,heights:$("pnlHeights").value.trim(),len:Math.max(3,+$("pnlLen").value||3),gap:gapMM({gap:$("pnlGap").value}),
-    badge:$("pnlBadge").value,badgePos:$("pnlBadgePos").value,badgeR:$("pnlBadgeR").value,frame:$("pnlFrame").value,chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked,tall:$("pnlTall").checked};
+    badge:$("pnlBadge").value,badgePos:$("pnlBadgePos").value,badgeR:$("pnlBadgeR").value,frame:$("pnlFrame").value,chips:$("pnlChips").checked,slots:$("pnlSlots").checked,room:$("pnlRoom").checked,usage:$("pnlUsage").checked,cuts:$("pnlCuts").checked,cap:$("pnlCap").checked,tall:$("pnlTall").checked};
 }
 function pnlSelected(){ return [...$("pnlTbl").querySelectorAll("input[type=checkbox]")].filter(c=>c.checked).map(c=>pnl.circuits[+c.dataset.i]); }
 function pnlUpdateCalc(){
@@ -2047,7 +2060,7 @@ function showPanel(p,msg){
   $("pnlTbl").querySelectorAll("input").forEach(c=>c.onchange=pnlUpdateCalc);
   $("pnlAll").checked=true;
   const S=design.sheet&&design.sheet.on?design.sheet:null;
-  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlBadgePos").value=S.badgePos||"left"; $("pnlBadgeR").value=S.badgeR||"same"; $("pnlFrame").value=S.frame||"round"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlGap").value=gapMM(S); $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; $("pnlTall").checked=S.tall!==false; }
+  if(S){ $("pnlBadge").value=S.badge||"amps"; $("pnlBadgePos").value=S.badgePos||"left"; $("pnlBadgeR").value=S.badgeR||"same"; $("pnlFrame").value=S.frame||"round"; $("pnlN").value=String(S.n||3); $("pnlHeights").value=S.heights||""; $("pnlLen").value=S.len||3; $("pnlGap").value=gapMM(S); $("pnlRoom").checked=S.room!==false; $("pnlUsage").checked=S.usage!==false; $("pnlSlots").checked=S.slots!==false; $("pnlChips").checked=S.chips!==false; $("pnlCuts").checked=S.cuts!==false; $("pnlCap").checked=S.cap!==false; $("pnlTall").checked=S.tall!==false; }
   $("pnlMsg").textContent=msg||""; $("pnlErr").textContent="";
   try{ localStorage.setItem("zl_panel",JSON.stringify(p)); }catch(e){}
   pnlUpdateCalc();

@@ -83,6 +83,7 @@ function cleanSheet(s) {
     room: s.room !== false,
     usage: s.usage !== false,
     cuts: s.cuts !== false,
+    cap: s.cap !== false,
     circuits: Array.isArray(s.circuits)
       ? s.circuits.slice(0, 400).map((c) => { const x = cleanCircuit(c); if (!x) return null; const ov = cleanCircuitOv(c && c.ov); if (ov) x.ov = ov; if (c && Number.isFinite(+c.ord)) x.ord = Math.max(0, Math.min(9999, Math.floor(+c.ord))); return x; }).filter(Boolean)
       : [],
