@@ -36,6 +36,6 @@ La fonction serveur est dans `api/data.js`. Aucune protection d'accès : toute p
 
 ## Étiquettes de gallons de peinture
 
-- Gabarit fourni **Peinture — identification de gallon** (papier 2 po × 3 po, créé au besoin) : nom de la couleur, code (et nom anglais), marque et produit, fini, base, code produit, date de mélange, format, formule de teinte, pièces et surfaces, code-barres Code 128 du code couleur.
+- Gabarit fourni **Peinture — identification de gallon** (papier 2 po × 3 po, créé au besoin) : la **surface peinte** (MURS, PLAFOND, PORTES · MOULURES…) en gros en haut, puis le nom de la couleur, le code (et nom anglais), la marque et le produit, le fini, la base, le code produit, la date de mélange, le format, la formule de teinte et la **liste complète des pièces** où la peinture est appliquée (sur autant de lignes que nécessaire). Pas de code-barres.
 - Bouton **🎨 Registre de peinture (JSON)** de la liste d'impression : charge un registre exporté (`houses` → `rooms` → `surfaces`) depuis un fichier ou du texte collé.
   Une étiquette par peinture distincte (pièces regroupées) ou par pièce et surface ; filtres par type de surface et « en stock » ; code produit, base, format, date de mélange, formule et nom anglais sont retrouvés dans les notes.
