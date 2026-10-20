@@ -295,6 +295,7 @@ html.locked{overflow:hidden}
       <div class="row" style="margin-top:6px"><button id="lstAddTpl">+ Modèle choisi</button><button id="lstAddCur">+ Aperçu actuel</button></div>
       <div class="row" style="margin-top:6px"><button id="lstImport">⬇ Importer des étiquettes (texte / CSV)</button></div>
       <div class="row" style="margin-top:6px"><button id="lstPanel">🔌 Disjoncteurs (JSON / site)</button></div>
+      <div class="row" style="margin-top:6px"><button id="lstPaint">🎨 Registre de peinture (JSON)</button></div>
       <div class="row" style="margin-top:6px"><button id="lstSave">💾 Enregistrer</button><button id="lstSaveAs">Enregistrer sous…</button><button id="lstDel">Supprimer</button></div>
       <div class="row" style="margin-top:6px"><button id="lstTable">✎ Modifier en tableau</button></div>
       <div class="info" id="lstInfo">Chaque ligne garde son modèle, son papier et son nombre de copies. Les tailles différentes sont imprimées l'une après l'autre.</div>
@@ -616,6 +617,28 @@ html.locked{overflow:hidden}
     <div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="pri" id="pnlAdd" style="font-size:14px;padding:8px">Ajouter à la liste d'impression</button><button id="pnlUse">Voir la 1ʳᵉ feuille dans l'aperçu</button><button id="pnlClose">Fermer</button></div>
   </div>
   <div class="row" id="pnlCloseRow" style="margin-top:10px"><button id="pnlClose2">Fermer</button></div>
+</dialog>
+<dialog id="pntDlg" style="width:min(720px,96vw)">
+  <h3 style="margin-top:0">🎨 Étiquettes de gallons de peinture</h3>
+  <div class="info" style="margin-bottom:6px">Chargez un registre de peinture exporté (JSON : maisons → pièces → surfaces). Chaque peinture devient une étiquette avec son code-barres.</div>
+  <div class="row"><button id="pntFileBtn">📂 Charger un fichier JSON…</button><input type="file" id="pntFile" accept=".json,application/json" style="display:none"><button id="pntPasteBtn">📋 Coller du JSON…</button></div>
+  <textarea id="pntPaste" rows="5" style="display:none;font-family:monospace;margin-top:6px" placeholder="Collez ici le contenu du fichier JSON"></textarea>
+  <div class="info" id="pntMsg"></div>
+  <div id="pntBody" style="display:none">
+    <div class="row">
+      <div id="pntHouseBox"><label class="f" for="pntHouse">Maison</label><select id="pntHouse"></select></div>
+      <div><label class="f" for="pntMode">Étiquettes</label><select id="pntMode"><option value="paint">Une par peinture distincte (pièces regroupées)</option><option value="surface">Une par pièce et par surface</option></select></div>
+    </div>
+    <div class="row" style="margin-top:6px;flex-wrap:wrap" id="pntKinds" role="group" aria-label="Surfaces"></div>
+    <label class="chk" style="margin-top:4px"><input type="checkbox" id="pntStock"> Seulement les peintures en stock</label>
+    <div class="row" style="align-items:center;margin-top:6px"><label class="chk"><input type="checkbox" id="pntAll" checked> Tout sélectionner</label></div>
+    <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:6px;margin:6px 0"><table id="pntTbl"><tbody></tbody></table></div>
+    <div class="row"><div><label class="f" for="pntCopies">Copies par étiquette</label><input type="number" id="pntCopies" min="1" max="99" value="1"></div></div>
+    <div class="info" id="pntCalc"></div>
+    <div class="warn" id="pntErr"></div>
+    <div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="pri" id="pntAdd" style="font-size:14px;padding:8px">Ajouter à la liste d'impression</button><button id="pntUse">Voir la 1ʳᵉ étiquette dans l'aperçu</button><button id="pntClose">Fermer</button></div>
+  </div>
+  <div class="row" id="pntCloseRow" style="margin-top:10px"><button id="pntClose2">Fermer</button></div>
 </dialog>
 <dialog id="tgtDlg" style="width:min(520px,96vw)">
   <h3 style="margin-top:0">Où ajouter ces feuilles ?</h3>
@@ -1522,13 +1545,13 @@ const BUILTIN=[
   // stock : papier proposé (créé au besoin) quand on charge le gabarit
   {id:"b:peinture",name:"Gabarit Peinture — identification de gallon (2″ × 3″)",stock:{name:'Peinture 2" × 3"',w:2,h:3,u:"in"},design:{
     lines:[
-      {text:"NOM DE LA COULEUR",size:18,bold:true,align:"left"},
-      {text:"Code : SW 7067",size:13,bold:true,align:"left"},
-      {text:"Produit : Régal Select",size:10,bold:false,align:"left"},
-      {text:"Fini : Satin   ·   Base : 2",size:10,bold:false,align:"left"},
-      {text:"Pièce : Salon   ·   1 gal (3,78 L)",size:10,bold:false,align:"left"},
-      {text:"Mélangée le : 2026-10-20",size:10,bold:false,align:"left"}],
-    bc:{on:true,type:"code128",value:"SW7067",human:true,h:8,w:90,hSize:8},
+      {text:"Blanc Albâtre",size:18,bold:true,align:"left"},
+      {text:"OC-118 · Snowfall White",size:13,bold:true,align:"left"},
+      {text:"Benjamin Moore — Régal 100 % acrylique",size:9,bold:false,align:"left"},
+      {text:"Fini : Satin/Perle · Base 1 · K5501X3",size:10,bold:false,align:"left"},
+      {text:"Mélange : 2023-03-28 · 3,785 L",size:10,bold:false,align:"left"},
+      {text:"Portes, moulures — Entrée avant +3",size:9,bold:false,align:"left"}],
+    bc:{on:true,type:"code128",value:"OC-118",human:true,h:8,w:90,hSize:8},
     rot:"0",margin:2,copies:1,fill:true,frameOn:true,frameT:0.5,frameIn:1,frameR:2}}
 ];
 // Retrouve (ou crée) le type de papier d'un gabarit fourni ; select=false pour ne pas changer le papier courant.
@@ -2219,7 +2242,7 @@ function sheetDesign(cfg,circuits){
   d.sheet=Object.assign({},cfg,{on:true,circuits:JSON.parse(JSON.stringify(circuits))});
   return d;
 }
-let tgtItems=[];
+let tgtItems=[], tgtCtx={what:"feuilles de disjoncteurs",unit:"feuille",listName:"Disjoncteurs",close:()=>{}};
 function workListDirty(){
   if(!workItems.length) return false;
   const cur=lists.find(x=>x.id===workListId);
@@ -2232,17 +2255,18 @@ $("pnlAdd").onclick=()=>{
   const cfg=pnlCfg(), k=pnlStripCount(cfg), sid=ensureSheetStock(cfg.len,false);
   const blk="p"+uid();
   tgtItems=makeSheetItems(sel,cfg,{name:"Disjoncteurs — "+pnl.name,blk,stockId:sid,copies:1});
+  tgtCtx={what:"feuilles de disjoncteurs",unit:"feuille",listName:pnl.name+" — disjoncteurs",close:()=>$("pnlDlg").close()};
   openTarget();
 };
 function openTarget(){
   const cur=lists.find(x=>x.id===workListId), hasCur=workItems.length>0||!!cur;
-  $("tgtInfo").textContent=listCountTxt(tgtItems.length)+" (feuille"+(tgtItems.length>1?"s":"")+" de disjoncteurs) à ajouter.";
+  $("tgtInfo").textContent=listCountTxt(tgtItems.length)+" ("+tgtCtx.what+") à ajouter.";
   $("tgtCurRow").style.display=hasCur?"block":"none";
   $("tgtCurLbl").textContent="À la liste existante en cours : « "+(cur?cur.name:"non enregistrée")+" » ("+listCountTxt(workItems.length)+")";
   const others=lists.filter(x=>x.id!==workListId);
   $("tgtSavedRow").style.display=others.length?"block":"none";
   $("tgtSaved").innerHTML=others.map(x=>`<option value="${esc(x.id)}">${esc(x.name)} (${listCountTxt(x.items.length)})</option>`).join("");
-  let nm=pnl.name+" — disjoncteurs", n=2; const base=nm;
+  let nm=tgtCtx.listName, n=2; const base=nm;
   while(lists.some(x=>x.name===nm)) nm=base+" ("+(n++)+")";
   $("tgtName").value=nm; $("tgtErr").textContent="";
   document.querySelector('input[name="tgt"][value="'+(hasCur?"cur":"new")+'"]').checked=true;
@@ -2255,6 +2279,7 @@ $("tgtOk").onclick=()=>{
   const mode=(document.querySelector('input[name="tgt"]:checked')||{}).value;
   const err=m=>{ $("tgtErr").textContent=m; };
   const cloneItems=a=>JSON.parse(JSON.stringify(a));
+  const plurU=n=>n+" "+tgtCtx.unit+(n>1?"s":""), agr=n=>n>1?"s":"";
   if(mode==="cur"){
     const room=200-workItems.length;
     if(room<=0){ err("La liste est pleine (200 lignes maximum)."); return; }
@@ -2262,10 +2287,10 @@ $("tgtOk").onclick=()=>{
     workItems.push(...add);
     const cur=lists.find(x=>x.id===workListId);
     if(cur) cur.items=cloneItems(workItems);
-    $("tgtDlg").close(); $("pnlDlg").close();
+    $("tgtDlg").close(); tgtCtx.close();
     editItemId=""; renderWork(); save();
-    toast(add.length+" feuille"+(add.length>1?"s":"")+" ajoutée"+(add.length>1?"s":"")+" à la liste"+(cur?" « "+cur.name+" »":""));
-    if(add.length<tgtItems.length) alert("Seules "+add.length+" feuilles ont été ajoutées (limite de 200 lignes par liste).");
+    toast(plurU(add.length)+" ajoutée"+agr(add.length)+" à la liste"+(cur?" « "+cur.name+" »":""));
+    if(add.length<tgtItems.length) alert("Seules "+plurU(add.length)+" ont été ajoutées (limite de 200 lignes par liste).");
   } else if(mode==="saved"){
     const L=lists.find(x=>x.id===$("tgtSaved").value); if(!L){ err("Choisissez une liste."); return; }
     if(workListDirty()&&!confirm("La liste en cours contient des modifications non enregistrées : elles seront remplacées par la liste « "+L.name+" ». Continuer ?")) return;
@@ -2274,10 +2299,10 @@ $("tgtOk").onclick=()=>{
     const add=tgtItems.slice(0,room);
     L.items=cloneItems(L.items).concat(add);
     workItems=cloneItems(L.items); workListId=L.id; selItems.clear(); editItemId="";
-    $("tgtDlg").close(); $("pnlDlg").close();
+    $("tgtDlg").close(); tgtCtx.close();
     fillLstSel(L.id); renderWork(); save();
-    toast(add.length+" feuille"+(add.length>1?"s":"")+" ajoutée"+(add.length>1?"s":"")+" à la liste « "+L.name+" »");
-    if(add.length<tgtItems.length) alert("Seules "+add.length+" feuilles ont été ajoutées (limite de 200 lignes par liste).");
+    toast(plurU(add.length)+" ajoutée"+agr(add.length)+" à la liste « "+L.name+" »");
+    if(add.length<tgtItems.length) alert("Seules "+plurU(add.length)+" ont été ajoutées (limite de 200 lignes par liste).");
   } else {
     const name=$("tgtName").value.trim(); if(!name){ err("Entrez un nom pour la nouvelle liste."); return; }
     if(lists.some(x=>x.name===name)){ err("Une liste porte déjà ce nom : choisissez-en un autre."); return; }
@@ -2286,10 +2311,10 @@ $("tgtOk").onclick=()=>{
     const L={id:"l"+uid(),name,items:cloneItems(add)};
     lists.push(L);
     workItems=cloneItems(add); workListId=L.id; selItems.clear(); editItemId="";
-    $("tgtDlg").close(); $("pnlDlg").close();
+    $("tgtDlg").close(); tgtCtx.close();
     fillLstSel(L.id); renderWork(); save();
-    toast("Nouvelle liste « "+name+" » créée ("+add.length+" feuille"+(add.length>1?"s":"")+")");
-    if(add.length<tgtItems.length) alert("Seules 200 feuilles ont été ajoutées (limite par liste).");
+    toast("Nouvelle liste « "+name+" » créée ("+plurU(add.length)+")");
+    if(add.length<tgtItems.length) alert("Seules 200 "+tgtCtx.unit+"s ont été ajoutées (limite par liste).");
   }
 };
 $("pnlUse").onclick=()=>{
@@ -2300,6 +2325,143 @@ $("pnlUse").onclick=()=>{
     design=sheetDesign(Object.assign({},cfg,pl.hs?{hs:pl.hs}:{}),pl.circuits); editItemId="";
     ensureSheetStock(cfg.len); syncForm(); autoZoom(); refresh();
     $("pnlDlg").close();
+  });
+};
+
+/* ---------- Registre de peinture : étiquettes de gallons ---------- */
+let pnt=null, pntRows=[];
+const KIND_FR={murs:"Murs",plafond:"Plafond",portes:"Portes",moulures:"Moulures"};
+const kindFr=k=>KIND_FR[k]||(k?k.charAt(0).toUpperCase()+k.slice(1):"Autre");
+const MOIS={janvier:1,"février":2,fevrier:2,mars:3,avril:4,mai:5,juin:6,juillet:7,"août":8,aout:8,septembre:9,octobre:10,novembre:11,"décembre":12,decembre:12};
+const pntStr=(v,n)=>String(v==null?"":v).replace(/\s+/g," ").trim().slice(0,n||200);
+function normPaint(o){
+  const hs=o&&Array.isArray(o.houses)?o.houses:(o&&Array.isArray(o.rooms)?[o]:null);
+  if(!hs||!hs.length) return null;
+  const houses=hs.slice(0,20).map((h,i)=>({
+    id:pntStr(h&&h.id||("h"+i),40), name:pntStr(h&&h.name||("Maison "+(i+1)),80),
+    rooms:(Array.isArray(h&&h.rooms)?h.rooms:[]).slice(0,200).map(r=>({
+      name:pntStr(r&&r.name,80),
+      surfaces:(Array.isArray(r&&r.surfaces)?r.surfaces:[]).slice(0,60).map(sf=>({
+        kind:pntStr(sf&&sf.kind,30).toLowerCase(), brand:pntStr(sf&&sf.brand,60), model:pntStr(sf&&sf.model,80), finish:pntStr(sf&&sf.finish,40),
+        colorCode:pntStr(sf&&sf.colorCode,30), colorName:pntStr(sf&&sf.colorName,80), hex:/^#[0-9a-f]{6}$/i.test(sf&&sf.hex)?sf.hex:"",
+        notes:pntStr(sf&&sf.notes,1500), inStock:!!(sf&&sf.inStock), lastApplied:pntStr(sf&&sf.lastApplied,20)
+      })).filter(sf=>sf.colorName||sf.colorCode)
+    }))
+  }));
+  return {houses,currentId:houses.some(h=>h.id===String(o.currentId))?String(o.currentId):houses[0].id};
+}
+// Informations retrouvées dans les notes de la surface (code produit, base, format, date de mélange, formule, nom anglais)
+function paintFacts(sf){
+  const n=sf.notes||"", f={}; let m;
+  if((m=n.match(/\bK\d{3,4}(?:-\d{1,2}X?|X\d)?/))) f.code=m[0];
+  if((m=n.match(/\bbase\s+(\d{1,4}(?:\s+[^·(]+?)?)\s*(?=·|\(|$)/i))) f.base=m[1].trim();
+  if((m=n.match(/(\d+(?:[.,]\d+)?)\s*(mL|L)\b/))) f.size=m[1].replace(".",",")+" "+m[2];
+  if((m=n.match(/préparé le\s+(\d{1,2})(?:er)?\s+([A-Za-zÀ-ÿ]+)\s+(\d{4})/i))&&MOIS[m[2].toLowerCase()]) f.mixed=m[3]+"-"+String(MOIS[m[2].toLowerCase()]).padStart(2,"0")+"-"+m[1].padStart(2,"0");
+  if((m=n.match(/formule\s*:\s*([^·]+)/i))) f.formula=m[1].trim();
+  if((m=n.match(/Nom anglais\s*:\s*([^·]+)/i))) f.en=m[1].trim();
+  if(!f.mixed&&sf.lastApplied) f.applied=sf.lastApplied;
+  return f;
+}
+function pntGroups(){
+  if(!pnt) return [];
+  const h=pnt.houses.find(x=>x.id===$("pntHouse").value)||pnt.houses[0];
+  const kinds=new Set([...$("pntKinds").querySelectorAll("input:checked")].map(c=>c.value));
+  const onlyStock=$("pntStock").checked, perSurface=$("pntMode").value==="surface";
+  const map=new Map(), out=[];
+  h.rooms.forEach(r=>r.surfaces.forEach(sf=>{
+    if(!kinds.has(sf.kind)||(onlyStock&&!sf.inStock)) return;
+    const key=perSurface?null:[sf.brand,sf.model,sf.finish,sf.colorCode,sf.colorName].join("|").toLowerCase();
+    let g=key?map.get(key):null;
+    if(!g){ g={colorName:sf.colorName,colorCode:sf.colorCode,brand:sf.brand,model:sf.model,finish:sf.finish,hex:sf.hex,kinds:[],rooms:[],facts:{},n:0,house:h.name}; out.push(g); if(key) map.set(key,g); }
+    g.n++; if(!g.kinds.includes(sf.kind)) g.kinds.push(sf.kind); if(r.name&&!g.rooms.includes(r.name)) g.rooms.push(r.name);
+    const f=paintFacts(sf); Object.keys(f).forEach(k=>{ if(!g.facts[k]) g.facts[k]=f[k]; });
+  }));
+  return out;
+}
+const pntClip=(t,n)=>t.length>n?t.slice(0,n-1).trimEnd()+"…":t;
+const pntPt=(t,base,maxCh,min)=>Math.max(min,Math.round(Math.min(base,base*maxCh/Math.max(1,t.length))*2)/2);
+function paintLines(g){
+  const L=[], add=(text,base,maxCh,min,bold)=>{ if(text) L.push({text,size:pntPt(text,base,maxCh,min),bold:!!bold,align:"left"}); };
+  add(g.colorName||g.colorCode,18,22,11,true);
+  add([g.colorName?g.colorCode:"",g.facts.en].filter(Boolean).join(" · "),13,30,9,true);
+  add([g.brand,g.model].filter(Boolean).join(" — "),10,38,7);
+  add([g.finish&&"Fini : "+g.finish,g.facts.base&&"Base "+g.facts.base,g.facts.code].filter(Boolean).join(" · "),10,38,7);
+  add([g.facts.mixed?"Mélange : "+g.facts.mixed:(g.facts.applied?"Appliquée (est.) : "+g.facts.applied:""),g.facts.size].filter(Boolean).join(" · "),10,38,7);
+  if(g.facts.formula) add("Formule : "+g.facts.formula,7,62,5);
+  const rooms=g.rooms.length>3?g.rooms.slice(0,2).join(", ")+" +"+(g.rooms.length-2):g.rooms.join(", ");
+  add(pntClip([g.kinds.map(kindFr).join(", "),rooms].filter(Boolean).join(" — "),52),9,44,6);
+  return L;
+}
+function paintDesign(g,copies){
+  const d=builtinDesign(BUILTIN.find(x=>x.id==="b:peinture"));
+  d.lines=paintLines(g);
+  const v=String(g.colorCode||g.colorName||"PEINTURE").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\x20-\x7e]/g,"");
+  d.bc.value=v||"PEINTURE"; d.copies=copies||1;
+  return d;
+}
+function pntSelected(){ return [...$("pntTbl").querySelectorAll("input[type=checkbox]")].filter(c=>c.checked).map(c=>pntRows[+c.dataset.i]); }
+function pntCalc(){
+  const sel=pntSelected(), n=sel.length, c=Math.max(1,+$("pntCopies").value||1);
+  $("pntCalc").textContent=n?n+" étiquette"+(n>1?"s":"")+" sélectionnée"+(n>1?"s":"")+(c>1?" × "+c+" copies":"")+" (2 po × 3 po).":"Aucune étiquette sélectionnée.";
+  $("pntErr").textContent="";
+}
+function pntRender(){
+  pntRows=pntGroups();
+  $("pntTbl").querySelector("tbody").innerHTML=pntRows.length?pntRows.map((g,i)=>{
+    const sw=g.hex?`<span style="display:inline-block;width:16px;height:16px;border:1px solid #888;border-radius:3px;background:${esc(g.hex)};vertical-align:middle" aria-hidden="true"></span>`:"";
+    const where=[g.kinds.map(kindFr).join(", "),g.rooms.length>3?g.rooms.slice(0,3).join(", ")+" +"+(g.rooms.length-3):g.rooms.join(", ")].filter(Boolean).join(" — ");
+    return `<tr><td style="width:28px"><input type="checkbox" data-i="${i}" checked aria-label="Inclure ${esc(g.colorName||g.colorCode)}"></td><td style="width:24px">${sw}</td><td><b>${esc(g.colorName||g.colorCode)}</b> <span class="info" style="margin:0">${esc(g.colorCode)}</span><div class="info" style="margin:0">${esc([g.brand,g.model,g.finish].filter(Boolean).join(" · "))}</div></td><td class="info" style="margin:0">${esc(where)}</td></tr>`;
+  }).join(""):'<tr><td class="info">Aucune peinture avec ces filtres.</td></tr>';
+  $("pntTbl").querySelectorAll("input").forEach(c=>c.onchange=()=>{ pntCalc(); });
+  $("pntAll").checked=true; pntCalc();
+}
+function showPaint(p,msg){
+  pnt=p; $("pntBody").style.display="block"; $("pntCloseRow").style.display="none";
+  $("pntHouse").innerHTML=p.houses.map(h=>`<option value="${esc(h.id)}">${esc(h.name)}</option>`).join("");
+  $("pntHouse").value=p.currentId; $("pntHouseBox").style.display=p.houses.length>1?"block":"none";
+  const order=["murs","plafond","portes","moulures"], seen=new Set();
+  p.houses.forEach(h=>h.rooms.forEach(r=>r.surfaces.forEach(sf=>seen.add(sf.kind))));
+  const kinds=[...order.filter(k=>seen.has(k)),...[...seen].filter(k=>!order.includes(k))];
+  $("pntKinds").innerHTML=kinds.map(k=>`<label class="chk"><input type="checkbox" value="${esc(k)}" checked> ${esc(kindFr(k))}</label>`).join("");
+  $("pntKinds").querySelectorAll("input").forEach(c=>c.onchange=pntRender);
+  $("pntMsg").textContent=msg||""; $("pntErr").textContent="";
+  try{ localStorage.setItem("zl_paint",JSON.stringify(p)); }catch(e){}
+  pntRender();
+}
+function loadPaintText(txt){
+  let o; try{ o=JSON.parse(txt); }catch(e){ $("pntMsg").textContent="Ce fichier n'est pas un JSON valide."; return; }
+  const p=normPaint(o);
+  if(!p||!p.houses.some(h=>h.rooms.some(r=>r.surfaces.length))){ $("pntMsg").textContent="Aucune surface peinte trouvée dans ce JSON (attendu : « houses » → « rooms » → « surfaces »)."; return; }
+  showPaint(p,"Registre chargé : "+p.houses.map(h=>h.name+" ("+h.rooms.reduce((a,r)=>a+r.surfaces.length,0)+" surfaces)").join(", ")+".");
+}
+$("lstPaint").onclick=()=>{
+  $("pntMsg").textContent=""; $("pntPaste").style.display="none"; $("pntDlg").showModal();
+  if(!pnt){ try{ const c=normPaint(JSON.parse(localStorage.getItem("zl_paint")||"null")); if(c) showPaint(c,"Dernier registre chargé (copie locale)."); }catch(e){} }
+};
+$("pntFileBtn").onclick=()=>$("pntFile").click();
+$("pntFile").onchange=()=>{ const f=$("pntFile").files[0]; $("pntFile").value=""; if(!f) return; f.text().then(t=>loadPaintText(t.replace(/^﻿/,""))); };
+$("pntPasteBtn").onclick=()=>{ const t=$("pntPaste"); t.style.display=t.style.display==="none"?"block":"none"; if(t.style.display==="block") t.focus(); };
+$("pntPaste").addEventListener("input",()=>{ const v=$("pntPaste").value.trim(); if(v.length>20&&/[\]}]\s*$/.test(v)) loadPaintText(v); });
+$("pntClose").onclick=()=>$("pntDlg").close();
+$("pntClose2").onclick=()=>$("pntDlg").close();
+$("pntAll").onchange=()=>{ $("pntTbl").querySelectorAll("input").forEach(c=>c.checked=$("pntAll").checked); pntCalc(); };
+["pntHouse","pntMode","pntStock"].forEach(id=>$(id).addEventListener("change",pntRender));
+$("pntCopies").addEventListener("input",pntCalc);
+$("pntAdd").onclick=()=>{
+  const sel=pntSelected(); if(!sel.length){ $("pntErr").textContent="Sélectionnez au moins une étiquette."; return; }
+  const copies=Math.max(1,Math.min(99,+$("pntCopies").value||1)), bt=BUILTIN.find(x=>x.id==="b:peinture"), sid=ensureStockSize(bt.stock,false);
+  const house=(pnt.houses.find(x=>x.id===$("pntHouse").value)||pnt.houses[0]).name;
+  tgtItems=sel.map(g=>({id:uid(),tplId:null,name:"Peinture — "+house,label:(g.colorName||g.colorCode)+(g.colorName&&g.colorCode?" · "+g.colorCode:""),stockId:sid,design:paintDesign(g,copies),copies}));
+  tgtCtx={what:"étiquettes de peinture",unit:"étiquette",listName:house+" — peinture",close:()=>$("pntDlg").close()};
+  openTarget();
+};
+$("pntUse").onclick=()=>{
+  const sel=pntSelected(); if(!sel.length){ $("pntErr").textContent="Sélectionnez au moins une étiquette."; return; }
+  const bt=BUILTIN.find(x=>x.id==="b:peinture");
+  guardDirty(()=>{
+    design=paintDesign(sel[0],Math.max(1,+$("pntCopies").value||1)); editItemId="";
+    ensureStockSize(bt.stock); syncForm(); autoZoom(); refresh();
+    $("pntDlg").close();
   });
 };
 

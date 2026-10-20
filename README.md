@@ -33,3 +33,9 @@ La fonction serveur est dans `api/data.js`. Aucune protection d'accès : toute p
   (3 sections ≈ 0,667 po, 4 sections = 0,5 po) ou en hauteurs personnalisées ; traits de coupe pour les ciseaux.
 - Chaque section : pastille d'ampérage, titre, ligne « pièce · usage · positions » et pastilles (tags).
 - Lecture d'un panneau depuis un fichier JSON (format `GestionPanneauSiemens`) ou depuis l'API : voir [docs/api-panneaux.md](docs/api-panneaux.md).
+
+## Étiquettes de gallons de peinture
+
+- Gabarit fourni **Peinture — identification de gallon** (papier 2 po × 3 po, créé au besoin) : nom de la couleur, code (et nom anglais), marque et produit, fini, base, code produit, date de mélange, format, formule de teinte, pièces et surfaces, code-barres Code 128 du code couleur.
+- Bouton **🎨 Registre de peinture (JSON)** de la liste d'impression : charge un registre exporté (`houses` → `rooms` → `surfaces`) depuis un fichier ou du texte collé.
+  Une étiquette par peinture distincte (pièces regroupées) ou par pièce et surface ; filtres par type de surface et « en stock » ; code produit, base, format, date de mélange, formule et nom anglais sont retrouvés dans les notes.
