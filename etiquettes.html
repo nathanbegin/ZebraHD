@@ -1518,8 +1518,27 @@ const BUILTIN=[
     lines:[
       {text:"NOM DE L'ÉQUIPEMENT",size:14,bold:true,align:"left"},
       {text:"IP : 192.168.0.1",size:12,bold:false,align:"left"}],
-    rot:"0",margin:1.5,copies:1,fill:true}}
+    rot:"0",margin:1.5,copies:1,fill:true}},
+  // stock : papier proposé (créé au besoin) quand on charge le gabarit
+  {id:"b:peinture",name:"Gabarit Peinture — identification de gallon (2″ × 3″)",stock:{name:'Peinture 2" × 3"',w:2,h:3,u:"in"},design:{
+    lines:[
+      {text:"NOM DE LA COULEUR",size:18,bold:true,align:"left"},
+      {text:"Code : SW 7067",size:13,bold:true,align:"left"},
+      {text:"Produit : Régal Select",size:10,bold:false,align:"left"},
+      {text:"Fini : Satin   ·   Base : 2",size:10,bold:false,align:"left"},
+      {text:"Pièce : Salon   ·   1 gal (3,78 L)",size:10,bold:false,align:"left"},
+      {text:"Mélangée le : 2026-10-20",size:10,bold:false,align:"left"}],
+    bc:{on:true,type:"code128",value:"SW7067",human:true,h:8,w:90,hSize:8},
+    rot:"0",margin:2,copies:1,fill:true,frameOn:true,frameT:0.5,frameIn:1,frameR:2}}
 ];
+// Retrouve (ou crée) le type de papier d'un gabarit fourni ; select=false pour ne pas changer le papier courant.
+function ensureStockSize(sp,select){
+  let st=stocks.find(x=>x.name===sp.name&&x.u===sp.u&&Math.abs(x.w-sp.w)<0.01&&Math.abs(x.h-sp.h)<0.01);
+  if(!st){ st={id:"s"+Date.now()+uid(),name:sp.name,w:sp.w,h:sp.h,u:sp.u,color:"#ffffff",adh:true}; stocks.push(st); }
+  if(select!==false) stockId=st.id;
+  fillStockSel();
+  return st.id;
+}
 const isBuiltin=id=>String(id||"").startsWith("b:");
 function builtinDesign(b){
   const d=JSON.parse(JSON.stringify(b.design));
@@ -1600,7 +1619,7 @@ $("tplUpd").onclick=()=>{
 };
 function doTplLoad(){
   const bt=BUILTIN.find(x=>x.id===$("tplSel").value);
-  if(bt){ design=builtinDesign(bt); if(sheetOn()) ensureSheetStock(design.sheet.len||3); syncForm(); autoZoom(); refresh(); return; }
+  if(bt){ design=builtinDesign(bt); if(bt.stock) ensureStockSize(bt.stock); if(sheetOn()) ensureSheetStock(design.sheet.len||3); syncForm(); autoZoom(); refresh(); return; }
   const t=templates.find(x=>x.id===$("tplSel").value); if(!t) return;
   const d=JSON.parse(JSON.stringify(t.design));
   d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); design=Object.assign({},DEF_DESIGN,d);
@@ -1875,7 +1894,7 @@ $("allApply").onclick=()=>{
 $("lstDlgClose").onclick=()=>{ $("lstDlg").close(); renderWork(); };
 $("lstAddTpl").onclick=()=>{
   const bt=BUILTIN.find(x=>x.id===$("tplSel").value);
-  if(bt){ const d=builtinDesign(bt); workItems.push({id:uid(),tplId:null,name:bt.name,stockId,design:d,copies:1}); renderWork(); save(); toast("Ligne ajoutée à la liste"); return; }
+  if(bt){ const d=builtinDesign(bt), sid=bt.stock?ensureStockSize(bt.stock,false):stockId; workItems.push({id:uid(),tplId:null,name:bt.name,stockId:sid,design:d,copies:1}); renderWork(); save(); toast("Ligne ajoutée à la liste"); return; }
   const t=templates.find(x=>x.id===$("tplSel").value);
   if(!t){ alert("Choisissez d'abord un modèle dans la carte « Modèles »."); return; }
   workItems.push({id:uid(),tplId:t.id,name:t.name,stockId:t.stockId,design:JSON.parse(JSON.stringify(t.design)),copies:t.design.copies||1});
@@ -2470,7 +2489,7 @@ function parseImport(){
 function impBase(){
   const v=$("impTpl").value;
   if(v==="__cur"){ return {kind:"cur",name:"Aperçu actuel",design:JSON.parse(JSON.stringify(design)),stockId}; }
-  const bt=BUILTIN.find(x=>x.id===v); if(bt) return {kind:"builtin",name:bt.name,design:builtinDesign(bt),stockId};
+  const bt=BUILTIN.find(x=>x.id===v); if(bt) return {kind:"builtin",name:bt.name,design:builtinDesign(bt),stockId:bt.stock?ensureStockSize(bt.stock,false):stockId};
   const t=templates.find(x=>x.id===v); if(t) return {kind:"tpl",name:t.name,tplId:t.id,design:t.design,stockId:t.stockId};
   return null;
 }
