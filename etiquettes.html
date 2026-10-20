@@ -4,6 +4,47 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Étiquettes Zebra</title>
+<script>
+/* Verrouillage par code PIN : protection légère, côté navigateur seulement (le code n'est pas stocké en clair). */
+(function(){
+  var SALT="zebrahd|", HASH=8019892308763790, KEY="zl_pin_ok", root=document.documentElement;
+  function h(str){var h1=0xdeadbeef,h2=0x41c6ce57;for(var i=0,c;i<str.length;i++){c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return 4294967296*(2097151&h2)+(h1>>>0);}
+  function stored(){ try{ return localStorage.getItem(KEY)===String(HASH)||sessionStorage.getItem(KEY)===String(HASH); }catch(e){ return false; } }
+  if(!stored()) root.classList.add("locked");
+  var fails=0, until=0;
+  document.addEventListener("DOMContentLoaded",function(){
+    var g=document.getElementById("pinGate"), inp=document.getElementById("pinIn"), err=document.getElementById("pinErr"), rem=document.getElementById("pinRemember");
+    if(!g||!inp) return;
+    function focusIn(){ setTimeout(function(){ try{ inp.focus(); }catch(e){} },30); }
+    function tryPin(){
+      var v=inp.value.replace(/\D/g,"");
+      if(Date.now()<until){ err.textContent="Trop d'essais : patientez "+Math.ceil((until-Date.now())/1000)+" s."; inp.value=""; return; }
+      if(v.length<4) return;
+      if(h(SALT+v)===HASH){
+        fails=0; err.textContent=""; inp.value="";
+        try{ (rem&&rem.checked?localStorage:sessionStorage).setItem(KEY,String(HASH)); }catch(e){}
+        root.classList.remove("locked");
+      } else {
+        fails++; inp.value="";
+        if(fails>=5){ fails=0; until=Date.now()+30000; err.textContent="Trop d'essais : patientez 30 s."; }
+        else err.textContent="Code incorrect.";
+        focusIn();
+      }
+    }
+    inp.addEventListener("input",function(){ inp.value=inp.value.replace(/\D/g,"").slice(0,4); if(inp.value.length===4) tryPin(); });
+    document.getElementById("pinGo").addEventListener("click",tryPin);
+    inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); tryPin(); } });
+    var lb=document.getElementById("lockBtn");
+    if(lb) lb.addEventListener("click",function(){
+      try{ localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); }catch(e){}
+      document.querySelectorAll("dialog[open]").forEach(function(d){ try{ d.close(); }catch(e){} });
+      var t=document.getElementById("toast"); try{ if(t&&t.matches(":popover-open")) t.hidePopover(); }catch(e){}
+      err.textContent=""; inp.value=""; root.classList.add("locked"); focusIn();
+    });
+    if(root.classList.contains("locked")) focusIn();
+  });
+})();
+</script>
 <style>
 :root{--hh:56px;--bg:#f3f4f6;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#d1d5db;--acc:#f96302;--accd:#d65402;--card2:#fafafa;--stage:#e5e7eb;--hint:#fff7ed;--hintb:#fdba74;--hover:#f3f4f6;--rule:#374151;color-scheme:light}
 :root[data-theme="dark"]{--bg:#0f172a;--card:#1e293b;--ink:#e5e7eb;--mute:#9ca3af;--line:#3b4a63;--card2:#243247;--stage:#0b1220;--hint:#3b2a18;--hintb:#a55a1c;--hover:#2b3a52;--rule:#cbd5e1;color-scheme:dark}
@@ -158,12 +199,34 @@ td,th{padding:5px;border-bottom:1px solid var(--line);text-align:left;font-size:
   #printArea .lbl:last-child{page-break-after:auto;break-after:auto}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+#pinGate{display:none;position:fixed;inset:0;z-index:2147483647;background:var(--bg);color:var(--ink);align-items:center;justify-content:center;padding:16px}
+html.locked #pinGate{display:flex}
+html.locked body>*:not(#pinGate){display:none!important}
+html.locked{overflow:hidden}
+#pinGate .pg{width:min(340px,100%);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 20px;text-align:center;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+#pinGate h1{margin:0 0 4px;font-size:20px;color:var(--acc)}
+#pinGate p{margin:0 0 14px;color:var(--mute);font-size:14px}
+#pinGate input[type=password]{width:100%;max-width:200px;font-size:30px;letter-spacing:.5em;text-align:center;padding:8px 8px 8px 20px;border:2px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+#pinGate .pe{min-height:20px;margin:8px 0 2px;color:#b91c1c;font-weight:bold;font-size:13px}
+#pinGate .chk{justify-content:center;margin:6px 0 12px}
+#pinGate button{width:100%;font-size:16px;padding:10px;background:var(--acc);border-color:var(--acc);color:#fff;font-weight:bold}
+@media print{#pinGate{display:none!important}}
 </style>
 </head>
 <body>
+<div id="pinGate" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+  <form class="pg" onsubmit="return false" autocomplete="off">
+    <h1 id="pinTitle">🏷️ Étiquettes Zebra</h1>
+    <p>Entrez le code PIN pour accéder à l'application.</p>
+    <input type="password" id="pinIn" name="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Code PIN à 4 chiffres" placeholder="••••">
+    <div class="pe" id="pinErr" role="alert" aria-live="assertive"></div>
+    <label class="chk"><input type="checkbox" id="pinRemember"> Se souvenir sur cet appareil</label>
+    <button type="button" id="pinGo">Déverrouiller</button>
+  </form>
+</div>
 <div id="toast" popover="manual" role="status" aria-live="polite" aria-atomic="true"><div class="t"></div></div>
 <a href="#side" class="sr">Aller à l'aperçu</a>
-<header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span><button class="gear" id="gear" title="Réglages">⚙</button></header>
+<header><img id="logo" alt="Home Depot"><span>🏷️ Étiquettes Zebra</span><button class="gear" id="lockBtn" title="Verrouiller l'application (le code PIN sera redemandé)" aria-label="Verrouiller">🔒</button><button class="gear" id="gear" title="Réglages" style="margin-left:0">⚙</button></header>
 <div class="app">
   <div id="colL">
     <div class="card">
