@@ -37,5 +37,6 @@ La fonction serveur est dans `api/data.js`. Aucune protection d'accès : toute p
 ## Étiquettes de gallons de peinture
 
 - Gabarit fourni **Peinture — identification de gallon** (papier 2 po × 3 po, créé au besoin) : la **pièce** en très gros en premier (la liste complète des pièces si la peinture sert à plusieurs), puis la **surface peinte** (MURS, PLAFOND, PORTES · MOULURES…), puis le nom de la couleur, le code (et nom anglais), la marque et le produit, le fini, la base, le code produit, la date de mélange, le format et la formule de teinte. Pas de code-barres.
+- Gabarit fourni **Peinture — vierge, à remplir à la main** (même papier 2 po × 3 po) : titres et traits imprimés (pièce, surface peinte avec cases à cocher, couleur / code, marque · produit · fini, date) ; on écrit à la main dans les espaces. Imprimer autant de copies que nécessaire.
 - Bouton **🎨 Registre de peinture (JSON)** de la liste d'impression : charge un registre exporté (`houses` → `rooms` → `surfaces`) depuis un fichier ou du texte collé.
   Une étiquette par peinture distincte (pièces regroupées) ou par pièce et surface ; filtres par type de surface et « en stock » ; code produit, base, format, date de mélange, formule et nom anglais sont retrouvés dans les notes.

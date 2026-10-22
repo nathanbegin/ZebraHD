@@ -1553,6 +1553,21 @@ const BUILTIN=[
       {text:"Fini : Satin/Perle · Base 1 · K5501X3",size:9,bold:false,align:"left"},
       {text:"Mélange : 2023-03-28 · 3,785 L",size:9,bold:false,align:"left"}],
     bc:{on:false},
+    rot:"0",margin:2,copies:1,fill:true,frameOn:true,frameT:0.5,frameIn:1,frameR:2}},
+  // Étiquette imprimée avec des titres et des traits : on écrit à la main dans les espaces
+  {id:"b:peinture-vierge",name:"Gabarit Peinture — vierge, à remplir à la main (2″ × 3″)",stock:{name:'Peinture 2" × 3"',w:2,h:3,u:"in"},design:{
+    lines:[
+      {text:"PIÈCE",size:7,bold:true,align:"left"},
+      {text:" ",size:12,bold:false,align:"left",sep:true},
+      {text:"SURFACE PEINTE",size:7,bold:true,align:"left"},
+      {text:"□ Murs  □ Plafond  □ Portes  □ Moulures",size:10,bold:false,align:"left",sep:true},
+      {text:"COULEUR  /  CODE",size:7,bold:true,align:"left"},
+      {text:" ",size:12,bold:false,align:"left",sep:true},
+      {text:"MARQUE  ·  PRODUIT  ·  FINI",size:7,bold:true,align:"left"},
+      {text:" ",size:12,bold:false,align:"left",sep:true},
+      {text:"DATE",size:7,bold:true,align:"left"},
+      {text:" ",size:12,bold:false,align:"left",sep:true}],
+    bc:{on:false},
     rot:"0",margin:2,copies:1,fill:true,frameOn:true,frameT:0.5,frameIn:1,frameR:2}}
 ];
 // Retrouve (ou crée) le type de papier d'un gabarit fourni ; select=false pour ne pas changer le papier courant.
