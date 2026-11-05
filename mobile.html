@@ -231,7 +231,7 @@ dialog h3{margin:0 0 8px}
         <div><label class="f">Décalage vertical (mm)</label><input type="number" inputmode="decimal" id="sOy" step="0.1"></div>
       </div>
       <label class="f">Taille des paquets Bluetooth (octets)</label>
-      <select id="sChunk"><option value="20">20 (le plus compatible)</option><option value="100">100</option><option value="180">180</option><option value="500">500 (rapide)</option></select>
+      <select id="sChunk"><option value="0">Automatique (recommandé)</option><option value="20">20 (le plus compatible)</option><option value="100">100</option><option value="180">180</option><option value="500">500 (rapide)</option></select>
       <label class="tog"><span>Avancer le papier après l'impression</span><input type="checkbox" id="sFeed"></label>
       <div id="apiBox" style="display:none"><label class="f">Adresse du serveur de synchronisation</label><input type="text" id="sApi" inputmode="url" autocapitalize="off" autocomplete="off"></div>
     </div>
@@ -280,7 +280,10 @@ const $=id=>document.getElementById(id);
 const MM=25.4, uid=()=>Math.random().toString(36).slice(2,9);
 const toMM=(v,u)=>u==="in"?v*MM:v;
 const dimTxt=s=>s.u==="in"?`${s.w}" × ${s.h}"`:`${s.w} × ${s.h} mm`;
+const errTxt=e=>(e&&(e.message||e.errorMessage))||String(e);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+window.addEventListener("error",e=>{ try{ toast("Erreur : "+e.message,"err"); }catch(x){} });
+window.addEventListener("unhandledrejection",e=>{ try{ toast("Erreur : "+errTxt(e.reason),"err"); }catch(x){} });
 let toastT=null;
 function toast(msg,kind){ const el=$("toast"); clearTimeout(toastT); el.className="show "+(kind||""); el.textContent=(kind==="err"?"⚠ ":kind==="info"?"ℹ ":"✔ ")+msg; toastT=setTimeout(()=>el.classList.remove("show"),kind==="err"?5500:2800); }
 
@@ -386,7 +389,7 @@ const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center
 const clone=o=>JSON.parse(JSON.stringify(o));
 function normDesign(d){ d=clone(d||{}); d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); d=Object.assign(clone(DEF_DESIGN),d); if(!Array.isArray(d.lines)||!d.lines.length) d.lines=clone(DEF_DESIGN.lines); return d; }
 let stocks=DEF_STOCKS, stockId="s1", design=clone(DEF_DESIGN), templates=[], lists=[], workItems=[], workListId="", editItemId="", serIdx=0;
-let mp={api:"https://zebra.nathanbegin.xyz",dpi:203,media:"gap",dark:20,speed:4,ox:0,oy:0,chunk:20,feed:false,btName:""};
+let mp={api:"https://zebra.nathanbegin.xyz",dpi:203,media:"gap",dark:20,speed:4,ox:0,oy:0,chunk:0,feed:false,btName:""};
 try{
   const g=k=>JSON.parse(localStorage.getItem(k)||"null");
   let v;
@@ -491,10 +494,10 @@ async function renderLabel(d,st,idx,dpi,view){   // view=true : aperçu avec le 
   else if(auto){
     const minD=mm2d(+d.minLen||0,dpi);
     if(sw){ built=buildOps(d,idx,1e6,nomD,dpi,m); cw=Math.ceil(Math.max(built.w+2*m,minD)); ch=Wd; }
-    else { built=buildOps(d,idx,Wd-2*m,undefined,dpi,m); ch=Math.ceil(Math.max(built.h+2*m,minD)); cw=Wd; }
+    else { built=buildOps(d,idx,Wd-2*m,Wd,dpi,m); ch=Math.ceil(Math.max(built.h+2*m,minD)); cw=Wd; }
   } else {
     cw=sw?nomD:Wd; ch=sw?Wd:nomD;
-    built=buildOps(d,idx,fill?1e6:cw-2*m,undefined,dpi,m);
+    built=buildOps(d,idx,fill?1e6:cw-2*m,cw,dpi,m);   // refW = largeur du contenu (le code-barres s'y réfère, même en mode « remplir »)
   }
   const outW=view?cw:Wd, outH=view?ch:(auto?(sw?cw:ch):nomD);
   const cv=document.createElement("canvas"); cv.width=outW; cv.height=outH;
@@ -587,8 +590,8 @@ function zplLabel(cv,copies){
 /* ---------- Bluetooth : natif (application Android / Capacitor) ou Web Bluetooth (navigateur) ---------- */
 const ZSVC="38eb4a80-c570-11e3-9507-0002a5d5c51b", ZWRITE="38eb4a82-c570-11e3-9507-0002a5d5c51b";
 const NATIVE=!!(window.Capacitor&&typeof Capacitor.isNativePlatform==="function"&&Capacitor.isNativePlatform());
-const BLE=NATIVE?Capacitor.registerPlugin("BluetoothLe"):null;
-let btDev=null, btChar=null, btNat=null, natConn=false, natInit=false, natLis=null;
+const BLE=()=>{ if(!window.BleClient) throw new Error("Module Bluetooth natif introuvable (réinstallez l'application)."); return window.BleClient; };
+let btDev=null, btChar=null, btNat=null, natConn=false, natInit=false, natChunk=20;
 const btOK=()=>NATIVE||!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
 const btUp=()=>NATIVE?natConn:!!(btChar&&btDev&&btDev.gatt&&btDev.gatt.connected);
 const btName=()=>(NATIVE?(btNat&&btNat.name):(btDev&&btDev.name))||"Imprimante";
@@ -600,10 +603,12 @@ function setPrnUI(){
   $("pmsg").textContent=on?"Prête à imprimer.":(mp.btName?"Dernière imprimante : "+mp.btName+".":"Touchez « Se connecter » et choisissez votre imprimante (Bluetooth activé).");
 }
 async function natOpen(id,name){
-  if(!natInit){ await BLE.initialize({androidNeverForLocation:true}); natInit=true; }
-  await BLE.connect({deviceId:id,timeout:15000});
+  const ble=BLE();
+  if(!natInit){ await ble.initialize({androidNeverForLocation:true}); natInit=true; }
+  await ble.connect(id,()=>{ natConn=false; setPrnUI(); },{timeout:15000});
   btNat={id,name:name||mp.btName||"Imprimante"}; natConn=true; mp.btName=btNat.name; mp.btId=id; saveMp();
-  try{ if(natLis) await natLis.remove(); natLis=await BLE.addListener("disconnected|"+id,()=>{ natConn=false; setPrnUI(); }); }catch(e){}
+  try{ natChunk=clamp((await ble.getMtu(id))-3,20,240); }catch(e){ natChunk=20; }   // paquets adaptés au MTU négocié
+  try{ await ble.requestConnectionPriority(id,1); }catch(e){}                        // liaison rapide
   setPrnUI();
 }
 async function openGatt(dev){
@@ -617,8 +622,9 @@ async function openGatt(dev){
 function onDisc(){ btChar=null; setPrnUI(); }
 async function btConnect(all){
   if(NATIVE){
-    if(!natInit){ await BLE.initialize({androidNeverForLocation:true}); natInit=true; }
-    const d=await BLE.requestDevice({optionalServices:[ZSVC]});      // fenêtre Android de choix de l'appareil
+    const ble=BLE();
+    if(!natInit){ await ble.initialize({androidNeverForLocation:true}); natInit=true; }
+    const d=await ble.requestDevice({optionalServices:[ZSVC]});      // fenêtre Android de choix de l'appareil
     await natOpen(d.deviceId,d.name); return;
   }
   if(!btOK()) throw new Error("Bluetooth Web non disponible sur ce navigateur (voir Compatibilité).");
@@ -634,19 +640,18 @@ async function btEnsure(){
   await btConnect(false);
 }
 function btDisconnect(){
-  if(NATIVE){ if(btNat) BLE.disconnect({deviceId:btNat.id}).catch(()=>{}); natConn=false; }
+  if(NATIVE){ if(btNat&&window.BleClient) window.BleClient.disconnect(btNat.id).catch(()=>{}); natConn=false; }
   else { if(btDev&&btDev.gatt.connected) btDev.gatt.disconnect(); btChar=null; }
   setPrnUI();
 }
-const toHex=u8=>{ let h=""; for(let i=0;i<u8.length;i++) h+=u8[i].toString(16).padStart(2,"0"); return h; };
 async function btSend(text,onProg){
   await btEnsure();
   const data=new TextEncoder().encode(text);
-  let size=clamp(+mp.chunk||20,20,512);
+  let size=+mp.chunk>0?clamp(+mp.chunk,20,512):(NATIVE?natChunk:20);
   for(let o=0;o<data.length;){
     const part=data.slice(o,o+size);
     try{
-      if(NATIVE) await BLE.write({deviceId:btNat.id,service:ZSVC,characteristic:ZWRITE,value:toHex(part),timeout:10000});
+      if(NATIVE) await BLE().write(btNat.id,ZSVC,ZWRITE,new DataView(part.buffer,part.byteOffset,part.byteLength),{timeout:10000});
       else if(btChar.writeValueWithResponse) await btChar.writeValueWithResponse(part);
       else await btChar.writeValue(part);
     }catch(e){
@@ -695,7 +700,7 @@ async function printJobs(jobs){
     await btSend(zpl,p=>showProgress("Envoi à l'imprimante… "+Math.round(p*100)+" %",0.3+p*0.7));
     toast(count+" étiquette"+(count>1?"s":"")+" envoyée"+(count>1?"s":"")+" à l'imprimante");
   }catch(e){
-    const msg=(e&&e.name==="NotFoundError")?"Aucune imprimante choisie.":(e&&e.message)||String(e);
+    const msg=(e&&e.name==="NotFoundError")?"Aucune imprimante choisie.":errTxt(e);
     toast(msg,"err");
   }finally{ hideProgress(); busy=false; }
 }
@@ -827,8 +832,11 @@ function bind(){
   $("listClear").onclick=async()=>{ if(!workItems.length) return; if(!await confirmDlg("Vider la liste","Retirer tous les éléments de la liste en cours ?","Vider")) return; workItems=[]; workListId=""; renderWork(); save(); };
   $("listPrint").onclick=()=>{
     const jobs=[], miss=[];
-    workItems.forEach(it=>{ const r=resolveItem(it); if(!r.design||!r.stock){ miss.push(r.name||it.name); return; } jobs.push({design:r.design,stock:r.stock,name:r.name,copies:clamp(+it.copies||1,1,500)}); });
+    const sheets=[];
+    workItems.forEach(it=>{ const r=resolveItem(it); if(!r.design||!r.stock){ miss.push(r.name||it.name); return; } if(isSheet(r.design)){ sheets.push(r.name||it.name); return; } jobs.push({design:r.design,stock:r.stock,name:r.name,copies:clamp(+it.copies||1,1,500)}); });
     if(miss.length) toast("Ignoré (papier introuvable) : "+miss.join(", "),"err");
+    else if(sheets.length) toast(sheets.length+" gabarit(s) « feuille » ignoré(s) : à imprimer depuis l'ordinateur","info");
+    if(!jobs.length){ if(!miss.length&&!sheets.length) toast("Rien à imprimer","err"); return; }
     printJobs(jobs);
   };
   $("work").addEventListener("click",e=>{
@@ -842,7 +850,7 @@ function bind(){
   });
   $("tplQ").oninput=renderTpl; $("tplSave").onclick=saveTemplate;
   $("prn").onclick=()=>showTab("printer");
-  $("pConnect").onclick=async()=>{ try{ await btConnect(false); toast("Imprimante connectée"); }catch(e){ if(e&&e.name!=="NotFoundError") toast(e.message||String(e),"err"); } };
+  $("pConnect").onclick=async()=>{ try{ await btConnect(false); toast("Imprimante connectée"); }catch(e){ if(e&&e.name!=="NotFoundError") toast(errTxt(e),"err"); } };
   $("pAll").onclick=async()=>{ try{ await btConnect(true); toast("Appareil connecté"); }catch(e){ if(e&&e.name!=="NotFoundError") toast("Service Zebra introuvable sur cet appareil.","err"); } };
   $("pDisc").onclick=btDisconnect;
   $("pTest").onclick=()=>printJobs([{design:clone(design),stock:stock(),name:"Étiquette",copies:+design.copies||1}]);

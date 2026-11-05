@@ -1,11 +1,23 @@
 // Prépare le dossier www/ de l'application Android à partir de la version mobile du dépôt.
-import { cpSync, mkdirSync, rmSync, copyFileSync } from "node:fs";
+import { mkdirSync, rmSync, copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const www = join(dirname(fileURLToPath(import.meta.url)), "..", "www");
+import { build } from "esbuild";
+const here = dirname(fileURLToPath(import.meta.url));
+const app = join(here, "..");
+const root = join(app, "..");
+const www = join(app, "www");
 rmSync(www, { recursive: true, force: true });
 mkdirSync(www, { recursive: true });
-copyFileSync(join(root, "mobile.html"), join(www, "index.html"));
+
+// Client Bluetooth natif (plugin Capacitor) empaqueté en un seul fichier.
+await build({ entryPoints: [join(app, "src", "native-ble.js")], bundle: true, format: "iife", minify: true, outfile: join(www, "native-ble.js"), logLevel: "warning" });
+
+// mobile.html : même page que le site, avec le client Bluetooth natif chargé avant le script principal.
+let html = readFileSync(join(root, "mobile.html"), "utf8");
+const marker = '<script>\n"use strict";';
+if (!html.includes(marker)) throw new Error("Point d'insertion introuvable dans mobile.html");
+html = html.replace(marker, '<script src="native-ble.js"></script>\n' + marker);
+writeFileSync(join(www, "index.html"), html);
 for (const f of ["logo.png", "icon-192.png", "icon-512.png", "manifest.webmanifest"]) copyFileSync(join(root, f), join(www, f));
 console.log("www/ prêt");
