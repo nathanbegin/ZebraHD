@@ -233,6 +233,7 @@ dialog h3{margin:0 0 8px}
       <label class="f">Taille des paquets Bluetooth (octets)</label>
       <select id="sChunk"><option value="20">20 (le plus compatible)</option><option value="100">100</option><option value="180">180</option><option value="500">500 (rapide)</option></select>
       <label class="tog"><span>Avancer le papier après l'impression</span><input type="checkbox" id="sFeed"></label>
+      <div id="apiBox" style="display:none"><label class="f">Adresse du serveur de synchronisation</label><input type="text" id="sApi" inputmode="url" autocapitalize="off" autocomplete="off"></div>
     </div>
     <div class="card">
       <h2>Autres façons d'imprimer</h2>
@@ -385,7 +386,7 @@ const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center
 const clone=o=>JSON.parse(JSON.stringify(o));
 function normDesign(d){ d=clone(d||{}); d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); d=Object.assign(clone(DEF_DESIGN),d); if(!Array.isArray(d.lines)||!d.lines.length) d.lines=clone(DEF_DESIGN.lines); return d; }
 let stocks=DEF_STOCKS, stockId="s1", design=clone(DEF_DESIGN), templates=[], lists=[], workItems=[], workListId="", editItemId="", serIdx=0;
-let mp={dpi:203,media:"gap",dark:20,speed:4,ox:0,oy:0,chunk:20,feed:false,btName:""};
+let mp={api:"https://zebra.nathanbegin.xyz",dpi:203,media:"gap",dark:20,speed:4,ox:0,oy:0,chunk:20,feed:false,btName:""};
 try{
   const g=k=>JSON.parse(localStorage.getItem(k)||"null");
   let v;
@@ -583,17 +584,27 @@ function zplLabel(cv,copies){
   return `^XA^CI28${mn}^PW${mono.w}^LL${mono.h}^MD${clamp(+mp.dark||0,0,30)}^PR${clamp(+mp.speed||4,1,12)}^LH0,0^PON^FO0,0${zplGraphic(mono)}^FS^PQ${clamp(copies,1,500)}^XZ`;
 }
 
-/* ---------- Bluetooth (Web Bluetooth, BLE Zebra Link-OS) ---------- */
+/* ---------- Bluetooth : natif (application Android / Capacitor) ou Web Bluetooth (navigateur) ---------- */
 const ZSVC="38eb4a80-c570-11e3-9507-0002a5d5c51b", ZWRITE="38eb4a82-c570-11e3-9507-0002a5d5c51b";
-let btDev=null, btChar=null;
-const btOK=()=>!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
-const btUp=()=>!!(btChar&&btDev&&btDev.gatt&&btDev.gatt.connected);
+const NATIVE=!!(window.Capacitor&&typeof Capacitor.isNativePlatform==="function"&&Capacitor.isNativePlatform());
+const BLE=NATIVE?Capacitor.registerPlugin("BluetoothLe"):null;
+let btDev=null, btChar=null, btNat=null, natConn=false, natInit=false, natLis=null;
+const btOK=()=>NATIVE||!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
+const btUp=()=>NATIVE?natConn:!!(btChar&&btDev&&btDev.gatt&&btDev.gatt.connected);
+const btName=()=>(NATIVE?(btNat&&btNat.name):(btDev&&btDev.name))||"Imprimante";
 function setPrnUI(){
   const on=btUp();
-  $("prn").textContent=(on?"🟢 ":"⚪ ")+(on?(btDev.name||"Imprimante"):"Imprimante");
+  $("prn").textContent=(on?"🟢 ":"⚪ ")+(on?btName():"Imprimante");
   $("pdot").className="dot"+(on?" on":"");
-  $("pname").textContent=on?(btDev.name||"Imprimante"):"Non connectée";
+  $("pname").textContent=on?btName():"Non connectée";
   $("pmsg").textContent=on?"Prête à imprimer.":(mp.btName?"Dernière imprimante : "+mp.btName+".":"Touchez « Se connecter » et choisissez votre imprimante (Bluetooth activé).");
+}
+async function natOpen(id,name){
+  if(!natInit){ await BLE.initialize({androidNeverForLocation:true}); natInit=true; }
+  await BLE.connect({deviceId:id,timeout:15000});
+  btNat={id,name:name||mp.btName||"Imprimante"}; natConn=true; mp.btName=btNat.name; mp.btId=id; saveMp();
+  try{ if(natLis) await natLis.remove(); natLis=await BLE.addListener("disconnected|"+id,()=>{ natConn=false; setPrnUI(); }); }catch(e){}
+  setPrnUI();
 }
 async function openGatt(dev){
   btDev=dev; btChar=null;
@@ -605,6 +616,11 @@ async function openGatt(dev){
 }
 function onDisc(){ btChar=null; setPrnUI(); }
 async function btConnect(all){
+  if(NATIVE){
+    if(!natInit){ await BLE.initialize({androidNeverForLocation:true}); natInit=true; }
+    const d=await BLE.requestDevice({optionalServices:[ZSVC]});      // fenêtre Android de choix de l'appareil
+    await natOpen(d.deviceId,d.name); return;
+  }
   if(!btOK()) throw new Error("Bluetooth Web non disponible sur ce navigateur (voir Compatibilité).");
   if(btDev&&!all){ try{ await openGatt(btDev); return; }catch(e){ /* nouveau choix ci-dessous */ } }
   const opts=all?{acceptAllDevices:true,optionalServices:[ZSVC]}
@@ -613,9 +629,16 @@ async function btConnect(all){
 }
 async function btEnsure(){
   if(btUp()) return;
+  if(NATIVE){ if(mp.btId){ try{ await natOpen(mp.btId,mp.btName); return; }catch(e){} } await btConnect(false); return; }
   if(btDev){ try{ await openGatt(btDev); return; }catch(e){} }
   await btConnect(false);
 }
+function btDisconnect(){
+  if(NATIVE){ if(btNat) BLE.disconnect({deviceId:btNat.id}).catch(()=>{}); natConn=false; }
+  else { if(btDev&&btDev.gatt.connected) btDev.gatt.disconnect(); btChar=null; }
+  setPrnUI();
+}
+const toHex=u8=>{ let h=""; for(let i=0;i<u8.length;i++) h+=u8[i].toString(16).padStart(2,"0"); return h; };
 async function btSend(text,onProg){
   await btEnsure();
   const data=new TextEncoder().encode(text);
@@ -623,7 +646,8 @@ async function btSend(text,onProg){
   for(let o=0;o<data.length;){
     const part=data.slice(o,o+size);
     try{
-      if(btChar.writeValueWithResponse) await btChar.writeValueWithResponse(part);
+      if(NATIVE) await BLE.write({deviceId:btNat.id,service:ZSVC,characteristic:ZWRITE,value:toHex(part),timeout:10000});
+      else if(btChar.writeValueWithResponse) await btChar.writeValueWithResponse(part);
       else await btChar.writeValue(part);
     }catch(e){
       if(size>20){ size=20; continue; }   // repli sur des paquets de 20 octets
@@ -820,13 +844,14 @@ function bind(){
   $("prn").onclick=()=>showTab("printer");
   $("pConnect").onclick=async()=>{ try{ await btConnect(false); toast("Imprimante connectée"); }catch(e){ if(e&&e.name!=="NotFoundError") toast(e.message||String(e),"err"); } };
   $("pAll").onclick=async()=>{ try{ await btConnect(true); toast("Appareil connecté"); }catch(e){ if(e&&e.name!=="NotFoundError") toast("Service Zebra introuvable sur cet appareil.","err"); } };
-  $("pDisc").onclick=()=>{ if(btDev&&btDev.gatt.connected) btDev.gatt.disconnect(); btChar=null; setPrnUI(); };
+  $("pDisc").onclick=btDisconnect;
   $("pTest").onclick=()=>printJobs([{design:clone(design),stock:stock(),name:"Étiquette",copies:+design.copies||1}]);
   const mpBind=(id,k,isNum)=>{ const el=$(id); el.value=mp[k]; if(el.type==="checkbox") el.checked=!!mp[k]; el.onchange=()=>{ mp[k]=el.type==="checkbox"?el.checked:isNum?(parseFloat(el.value)||0):el.value; saveMp(); schedulePreview(); }; };
   mpBind("sDpi","dpi",true); mpBind("sMedia","media"); mpBind("sDark","dark",true); mpBind("sSpeed","speed",true); mpBind("sOx","ox",true); mpBind("sOy","oy",true); mpBind("sChunk","chunk",true); mpBind("sFeed","feed");
+  if(NATIVE){ $("apiBox").style.display="block"; $("sApi").value=mp.api; $("sApi").onchange=()=>{ mp.api=$("sApi").value.trim()||"https://zebra.nathanbegin.xyz"; saveMp(); cloudLoad(true); }; ["pAll","zplShare","sysPrint","inst"].forEach(i=>$(i).style.display="none"); document.querySelector("#t-printer a").style.display="none"; }
   $("zplShare").onclick=shareZpl; $("sysPrint").onclick=systemPrint;
   $("syncNow").onclick=()=>cloudLoad(true);
-  $("compat").innerHTML=btOK()?"✔ Bluetooth Web disponible sur ce navigateur.":"⚠ Ce navigateur ne gère pas le Bluetooth Web (iPhone/iPad : Safari ne le permet pas). Sur iPhone, installez le navigateur <b>Bluefy</b> ; sur Android, utilisez <b>Chrome</b>. Vous pouvez quand même créer vos étiquettes, les synchroniser et exporter le ZPL.";
+  $("compat").innerHTML=NATIVE?"✔ Application Android : Bluetooth natif (Zebra BLE).":btOK()?"✔ Bluetooth Web disponible sur ce navigateur.":"⚠ Ce navigateur ne gère pas le Bluetooth Web (iPhone/iPad : Safari ne le permet pas). Sur iPhone, installez le navigateur <b>Bluefy</b> ; sur Android, utilisez <b>Chrome</b>. Vous pouvez quand même créer vos étiquettes, les synchroniser et exporter le ZPL.";
 }
 function showTab(t){
   document.querySelectorAll(".tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+t));
@@ -955,6 +980,7 @@ async function systemPrint(){
 }
 
 /* ---------- Synchronisation (même API que la version ordinateur) ---------- */
+const apiUrl=()=>NATIVE?String(mp.api||"https://zebra.nathanbegin.xyz").replace(/\/+$/,"")+"/api/data":"api/data";
 const cs={lastPull:0,lastPush:0,err:""};
 function setCloud(st){ $("cloud").textContent={off:"💾 Local",ok:"☁ Synchronisé",sync:"☁ Envoi…",err:"⚠ Synchro"}[st]; renderSync(); }
 function renderSync(){
@@ -964,12 +990,12 @@ function renderSync(){
 function cloudSchedule(){ if(!cloudOn||snap()===lastSync) return; setCloud("sync"); clearTimeout(pushT); pushT=setTimeout(cloudPush,700); }
 async function cloudPush(){
   const cur=snap();
-  try{ const r=await fetch("api/data",{method:"PUT",headers:{"Content-Type":"application/json"},body:cur}); if(!r.ok){ cs.err="Envoi refusé (HTTP "+r.status+")"; throw 0; } lastSync=cur; cs.lastPush=Date.now(); cs.err=""; setCloud(snap()===cur?"ok":"sync"); }
+  try{ const r=await fetch(apiUrl(),{method:"PUT",headers:{"Content-Type":"application/json"},body:cur}); if(!r.ok){ cs.err="Envoi refusé (HTTP "+r.status+")"; throw 0; } lastSync=cur; cs.lastPush=Date.now(); cs.err=""; setCloud(snap()===cur?"ok":"sync"); }
   catch(e){ if(!cs.err) cs.err="Envoi impossible (réseau)"; setCloud("err"); }
 }
 async function cloudLoad(manual){
   try{
-    const r=await fetch("api/data",{cache:"no-store"});
+    const r=await fetch(apiUrl(),{cache:"no-store"});
     if(!r.ok){ cs.err=r.status===503?"Base non configurée sur le serveur":"Lecture refusée (HTTP "+r.status+")"; throw 0; }
     const d=await r.json(); if(!d||typeof d!=="object"){ cs.err="Réponse invalide"; throw 0; }
     cs.lastPull=Date.now(); cs.err="";
@@ -994,8 +1020,8 @@ document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&cloudOn)
 let deferred=null;
 window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("inst").style.display="inline-block"; });
 $("inst").onclick=()=>{ if(deferred){ deferred.prompt(); deferred=null; $("inst").style.display="none"; } };
-if("serviceWorker" in navigator&&location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(()=>{});
-if(btOK()&&navigator.bluetooth.getDevices) navigator.bluetooth.getDevices().then(ds=>{ const d=ds.find(x=>x.name===mp.btName); if(d){ btDev=d; setPrnUI(); } }).catch(()=>{});
+if(!NATIVE&&"serviceWorker" in navigator&&location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(()=>{});
+if(!NATIVE&&btOK()&&navigator.bluetooth.getDevices) navigator.bluetooth.getDevices().then(ds=>{ const d=ds.find(x=>x.name===mp.btName); if(d){ btDev=d; setPrnUI(); } }).catch(()=>{});
 </script>
 </body>
 </html>

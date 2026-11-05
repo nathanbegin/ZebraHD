@@ -1,0 +1,10 @@
+{
+  "appId": "xyz.nathanbegin.zebrahd",
+  "appName": "Étiquettes Zebra",
+  "webDir": "www",
+  "backgroundColor": "#f96302",
+  "android": { "allowMixedContent": false },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
