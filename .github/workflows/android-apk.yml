@@ -41,6 +41,15 @@ jobs:
         working-directory: app/android
       - name: Nommer l'APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk ZebraHD-mobile-debug.apk
+      - name: Lire la version (version.json)
+        id: ver
+        run: echo "version=$(jq -r .version ../version.json)" >> "$GITHUB_OUTPUT"
+      - name: Vérifier la version de l'APK
+        run: |
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          FOUND=$("$AAPT" dump badging ZebraHD-mobile-debug.apk | grep -o "versionName='[^']*'" | head -1)
+          echo "APK : $FOUND — attendu : versionName='${{ steps.ver.outputs.version }}'"
+          test "$FOUND" = "versionName='${{ steps.ver.outputs.version }}'"
       - uses: actions/upload-artifact@v4
         with:
           name: ZebraHD-mobile-debug-apk
@@ -51,7 +60,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mobile-latest
-          name: Application Android (APK) — dernière version
-          body: "APK de débogage construit automatiquement depuis la branche `mobile`. Installer : télécharger le fichier .apk, autoriser les sources inconnues, ouvrir."
+          name: Application Android (APK) v${{ steps.ver.outputs.version }}
+          body: "Version ${{ steps.ver.outputs.version }} — APK de débogage construit automatiquement depuis la branche `mobile` (commit ${{ github.sha }}). La version installée s'affiche dans l'application : onglet Imprimante > À propos. Installer : télécharger le fichier .apk, autoriser les sources inconnues, ouvrir."
           prerelease: true
           files: app/ZebraHD-mobile-debug.apk

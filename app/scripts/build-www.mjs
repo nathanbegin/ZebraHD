@@ -1,5 +1,6 @@
 // Prépare le dossier www/ de l'application Android à partir de la version mobile du dépôt.
 import { mkdirSync, rmSync, copyFileSync, readFileSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -20,4 +21,9 @@ if (!html.includes(marker)) throw new Error("Point d'insertion introuvable dans 
 html = html.replace(marker, '<script src="native-ble.js"></script>\n' + marker);
 writeFileSync(join(www, "index.html"), html);
 for (const f of ["logo.png", "icon-192.png", "icon-512.png", "manifest.webmanifest"]) copyFileSync(join(root, f), join(www, f));
-console.log("www/ prêt");
+// version.json : numéro de version + date de construction + commit (affichés dans Imprimante > À propos).
+const ver = JSON.parse(readFileSync(join(root, "version.json"), "utf8"));
+let commit = (process.env.GITHUB_SHA || "").slice(0, 7);
+if (!commit) { try { commit = execSync("git rev-parse --short HEAD", { cwd: root }).toString().trim(); } catch { commit = ""; } }
+writeFileSync(join(www, "version.json"), JSON.stringify({ ...ver, build: new Date().toISOString(), commit }, null, 2));
+console.log("www/ prêt — version " + ver.version + " (" + ver.code + ")" + (commit ? " · " + commit : ""));

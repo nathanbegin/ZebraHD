@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+// Numéro de version unique : version.json à la racine du dépôt (voir README).
+def appVersion = new groovy.json.JsonSlurper().parse(file('../../../version.json'))
+
 android {
     namespace = "xyz.nathanbegin.zebrahd"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +10,8 @@ android {
         applicationId "xyz.nathanbegin.zebrahd"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersion.code as int
+        versionName appVersion.version as String
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

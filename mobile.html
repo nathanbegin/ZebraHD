@@ -258,6 +258,10 @@ dialog h3{margin:0 0 8px}
       <div id="syncMsg" class="note" style="margin:0"></div>
     </div>
     <div class="card">
+      <h2>À propos</h2>
+      <div id="about" style="font-size:14px;line-height:1.6"></div>
+    </div>
+    <div class="card">
       <h2>Compatibilité</h2>
       <div id="compat" class="note" style="margin:0"></div>
       <div class="acts"><button id="inst" style="display:none">📲 Installer l'application</button><a href="etiquettes.html?desktop=1" style="align-self:center;font-size:14px;color:var(--acc)">Version ordinateur</a></div>
@@ -879,7 +883,7 @@ function showTab(t){
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
   $("bar").style.display=t==="create"?"flex":"none"; $("barList").style.display=t==="list"?"flex":"none"; $("barTpl").style.display=t==="tpl"?"flex":"none";
   $("title").textContent={create:"Étiquettes",list:"Liste",tpl:"Modèles",printer:"Imprimante"}[t];
-  if(t==="list") renderWork(); if(t==="tpl") renderTpl(); if(t==="printer"){ setPrnUI(); renderSync(); }
+  if(t==="list") renderWork(); if(t==="tpl") renderTpl(); if(t==="printer"){ setPrnUI(); renderSync(); renderAbout(); }
   window.scrollTo(0,0);
 }
 
@@ -1035,8 +1039,27 @@ async function cloudLoad(manual){
   }catch(e){ if(!cs.err) cs.err="Serveur injoignable (hors ligne ?)"; setCloud(cloudOn?"err":"off"); if(manual) toast(cs.err,"err"); }
 }
 
+/* ---------- Version de l'application ---------- */
+let VER=null, NATVER=null;
+async function loadVersion(){
+  try{ const r=await fetch("version.json",{cache:"no-store"}); if(r.ok) VER=await r.json(); }catch(e){}
+  try{ if(NATIVE&&window.CapApp) NATVER=await window.CapApp.getInfo(); }catch(e){}
+  renderAbout();
+}
+function renderAbout(){
+  const el=$("about"); if(!el) return;
+  const d=VER&&VER.build?new Date(VER.build):null;
+  const when=d&&!isNaN(d)?d.toLocaleString("fr-CA",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+  const rows=[["Version",VER?`<b>${E(VER.version)}</b> (build ${E(VER.code)})`:"<b>inconnue</b> (hors ligne)"]];
+  if(when||(VER&&VER.commit)) rows.push(["Construite",[when,VER&&VER.commit?"commit "+E(VER.commit):""].filter(Boolean).join(" · ")]);
+  rows.push(["Type",NATIVE?"Application Android (APK)":"Navigateur / site web"]);
+  if(NATVER) rows.push(["Paquet installé",`${E(NATVER.version)} (${E(NATVER.build)}) · ${E(NATVER.id)}`]);
+  const mismatch=NATVER&&VER&&String(NATVER.version)!==String(VER.version);
+  el.innerHTML=rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:var(--mute)">${r[0]}</span><span style="text-align:right">${r[1]}</span></div>`).join("")+(mismatch?'<div class="warn">⚠ La version du contenu ne correspond pas au paquet Android : réinstallez l\'application.</div>':"");
+}
+
 /* ---------- Démarrage ---------- */
-bind(); fillLstSel(); setPrnUI(); renderWork(); syncForm(); renderSync(); cloudLoad();
+bind(); fillLstSel(); setPrnUI(); renderWork(); syncForm(); renderSync(); cloudLoad(); loadVersion();
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&cloudOn) cloudLoad(); });
 let deferred=null;
 window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("inst").style.display="inline-block"; });
