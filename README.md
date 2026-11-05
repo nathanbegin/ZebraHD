@@ -1,6 +1,6 @@
 # ZebraHD
 
-Application web (un seul fichier, fonctionne hors ligne) pour imprimer des étiquettes de prix et des codes-barres sur imprimante Zebra.
+Application web (un seul fichier, fonctionne hors ligne ; version téléphone : `mobile.html`) pour imprimer des étiquettes de prix et des codes-barres sur imprimante Zebra.
 
 - Ouvrir `etiquettes.html` dans Chrome ou Edge.
 - Gestion de types d'étiquettes (dimensions, couleur).
@@ -40,3 +40,25 @@ La fonction serveur est dans `api/data.js`. Aucune protection d'accès : toute p
 - Gabarit fourni **Peinture — vierge, à remplir à la main** (même papier 2 po × 3 po) : titres et traits imprimés (pièce, surface peinte avec cases à cocher, couleur / code, marque · produit · fini, date) ; on écrit à la main dans les espaces. Imprimer autant de copies que nécessaire.
 - Bouton **🎨 Registre de peinture (JSON)** de la liste d'impression : charge un registre exporté (`houses` → `rooms` → `surfaces`) depuis un fichier ou du texte collé.
   Une étiquette par peinture distincte (pièces regroupées) ou par pièce et surface ; filtres par type de surface et « en stock » ; code produit, base, format, date de mélange, formule et nom anglais sont retrouvés dans les notes.
+
+## Version mobile (`mobile.html`) — branche `mobile`
+
+Application optimisée pour téléphone (installable comme une appli : « Ajouter à l'écran d'accueil »), qui utilise **les mêmes données** que la version ordinateur (papiers, modèles, listes, synchronisation `api/data`, même code PIN).
+
+- Onglets **Créer** (aperçu fixe, texte, code-barres, séries, orientation, marges, longueur auto, cadre), **Liste** (copies, modifier, dupliquer, imprimer tout), **Modèles** (recherche, dossiers) et **Imprimante**.
+- **Impression Bluetooth directe** (Web Bluetooth, imprimantes Zebra BLE : ZQ110/ZQ210/ZQ220/ZQ320, ZD421, ZQ630…) : l'étiquette est dessinée à la résolution de l'imprimante (203/300 dpi), convertie en ZPL (`^GFA` compressé) et envoyée par Bluetooth. Réglages : résolution, type de papier (espaces/continu/marque), noirceur, vitesse, décalages, taille des paquets.
+- **Compatibilité** : Chrome/Edge sur Android. iPhone/iPad : Safari ne gère pas le Bluetooth Web → utiliser le navigateur **Bluefy**, ou exporter le fichier ZPL / impression du système.
+- Les gabarits « feuille » (disjoncteurs) restent à imprimer depuis la version ordinateur.
+- `index.html` redirige automatiquement les téléphones vers `mobile.html` (`?desktop=1` force la version ordinateur).
+
+## Application Android (APK)
+
+L'APK embarque `mobile.html` dans une application Android native (Capacitor) avec un **plugin Bluetooth LE natif** (le Web Bluetooth n'existe pas dans une WebView). Elle imprime directement sur une imprimante Zebra Bluetooth LE.
+
+- **APK prêt à installer** : [`app/dist/ZebraHD-mobile-debug.apk`](app/dist/ZebraHD-mobile-debug.apk) (signé en mode débogage). Sur Android : télécharger le fichier, autoriser « Installer des applications inconnues » pour le navigateur, puis l'ouvrir. Au premier lancement, autoriser le Bluetooth (« Appareils à proximité »).
+- Première utilisation : onglet **Imprimante → Se connecter**, choisir l'imprimante dans la fenêtre Android. La synchronisation utilise l'adresse du serveur (par défaut `https://zebra.nathanbegin.xyz`, modifiable dans l'onglet Imprimante).
+- **Reconstruire l'APK** (Node 22, JDK 21, SDK Android 36) : `cd app && npm ci && npm run apk` → `app/android/app/build/outputs/apk/debug/app-debug.apk`. Le workflow GitHub Actions `Android APK` le reconstruit à chaque modification et le publie comme artefact.
+
+### Numéro de version
+
+Le numéro de version est dans **`version.json`** (racine du dépôt), source unique : `version` (ex. `1.1.0`) et `code` (entier, à augmenter à chaque nouvelle version : Android l'exige pour une mise à jour). Il alimente le `versionName` / `versionCode` de l'APK et le fichier `version.json` embarqué dans l'application (avec la date de construction et le commit). Il s'affiche dans l'application : **onglet Imprimante → À propos** (version du contenu, type, et version du paquet Android réellement installé ; un avertissement apparaît si les deux diffèrent). Pour publier une nouvelle version : modifier `version.json`, commiter ; le workflow publie l'APK dans la Release `mobile-latest` (nom de la Release : « Application Android (APK) v… »).

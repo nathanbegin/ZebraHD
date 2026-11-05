@@ -2,11 +2,14 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url=etiquettes.html">
 <title>Étiquettes Zebra</title>
-<script>location.replace("etiquettes.html");</script>
+<script>
+// Téléphone / tablette : version mobile (ajoutez ?desktop=1 pour forcer la version ordinateur).
+var mob=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)&&!/[?&]desktop=1/.test(location.search);
+location.replace(mob?"mobile.html":"etiquettes.html");
+</script>
 </head>
 <body>
-<p>Redirection… <a href="etiquettes.html">Cliquez ici si rien ne se passe.</a></p>
+<p>Redirection… <a href="mobile.html">Version mobile</a> · <a href="etiquettes.html">Version ordinateur</a></p>
 </body>
 </html>

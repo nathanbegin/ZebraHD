@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f96302">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Étiquettes">
+<script>try{ if(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()) document.documentElement.classList.add("native"); }catch(e){}</script>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Étiquettes Zebra mobile</title>
+<script>
+/* Verrou PIN : même code et même mémoire que la version ordinateur (protection légère, côté navigateur). */
+(function(){
+  var SALT="zebrahd|", HASH=8019892308763790, KEY="zl_pin_ok", root=document.documentElement;
+  function h(str){var h1=0xdeadbeef,h2=0x41c6ce57;for(var i=0,c;i<str.length;i++){c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return 4294967296*(2097151&h2)+(h1>>>0);}
+  function stored(){ try{ return localStorage.getItem(KEY)===String(HASH)||sessionStorage.getItem(KEY)===String(HASH); }catch(e){ return false; } }
+  if(!stored()) root.classList.add("locked");
+  var fails=0, until=0;
+  document.addEventListener("DOMContentLoaded",function(){
+    var inp=document.getElementById("pinIn"), err=document.getElementById("pinErr"), rem=document.getElementById("pinRemember");
+    function tryPin(){
+      var v=inp.value.replace(/\D/g,"");
+      if(Date.now()<until){ err.textContent="Trop d'essais : patientez "+Math.ceil((until-Date.now())/1000)+" s."; inp.value=""; return; }
+      if(v.length<4) return;
+      if(h(SALT+v)===HASH){ fails=0; err.textContent=""; inp.value="";
+        try{ (rem.checked?localStorage:sessionStorage).setItem(KEY,String(HASH)); }catch(e){}
+        root.classList.remove("locked");
+      } else { fails++; inp.value=""; if(fails>=5){ fails=0; until=Date.now()+30000; err.textContent="Trop d'essais : patientez 30 s."; } else err.textContent="Code incorrect."; }
+    }
+    inp.addEventListener("input",function(){ inp.value=inp.value.replace(/\D/g,"").slice(0,4); if(inp.value.length===4) tryPin(); });
+    document.getElementById("pinGo").addEventListener("click",tryPin);
+    document.getElementById("lockBtn").addEventListener("click",function(){
+      try{ localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); }catch(e){}
+      err.textContent=""; inp.value=""; root.classList.add("locked");
+    });
+  });
+})();
+</script>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#d1d5db;--acc:#f96302;--accd:#d65402;--card2:#f9fafb;--stage:#e5e7eb;--ok:#15803d;--bad:#b91c1c;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--bg:#0f172a;--card:#1e293b;--ink:#e5e7eb;--mute:#9ca3af;--line:#3b4a63;--card2:#243247;--stage:#0b1220;--ok:#4ade80;--bad:#f87171;color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,Roboto,Arial,sans-serif;overscroll-behavior-y:contain}
+html.locked body>*:not(#pinGate){display:none!important}
+#pinGate{display:none;position:fixed;inset:0;z-index:99999;background:var(--bg);align-items:center;justify-content:center;padding:16px}
+html.locked #pinGate{display:flex}
+.pg{width:min(340px,100%);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 20px;text-align:center}
+.pg h1{margin:0 0 6px;font-size:22px;color:var(--acc)}
+.pg input[type=password]{width:100%;max-width:220px;font-size:32px;letter-spacing:.5em;text-align:center;padding:8px 8px 8px 22px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+#pinErr{min-height:22px;margin:8px 0;color:var(--bad);font-weight:bold;font-size:14px}
+header{position:sticky;top:0;z-index:20;background:var(--acc);color:#fff;min-height:46px;padding:env(safe-area-inset-top,0px) calc(10px + env(safe-area-inset-right,0px)) 0 calc(10px + env(safe-area-inset-left,0px));display:flex;align-items:center;gap:6px}
+header h1{font-size:18px;margin:0;white-space:nowrap}
+header .l{display:flex;align-items:center;gap:8px;min-width:0}
+header .r{display:flex;align-items:center;gap:6px;margin-left:auto}
+header .cam{flex:none;width:0}
+header img{height:30px;width:30px;object-fit:contain;background:#fff;border-radius:7px;padding:2px}
+.chip{font-size:18px;line-height:1;background:rgba(0,0,0,.22);color:#fff;border-radius:999px;padding:0 11px;border:0;min-height:36px;min-width:40px;white-space:nowrap}
+/* Application Android : plein écran, l'en-tête passe autour de la caméra (espace réservé au centre) */
+.native header{padding-top:0;height:46px;display:grid;grid-template-columns:1fr 62px 1fr;gap:0}   /* colonne centrale = caméra frontale */
+.native header .cam{width:62px}
+.native header .l{justify-self:start}
+.native header .r{margin-left:0;justify-self:end}
+.native .pvcard{top:46px}
+.native #toast{top:52px}
+main{padding:12px 12px calc(150px + env(safe-area-inset-bottom))}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+label.f{display:block;font-size:13px;color:var(--mute);margin:8px 0 4px}
+input[type=text],input[type=number],input[type=search],select,textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;min-height:46px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+textarea{min-height:76px;resize:vertical}
+input[type=color]{width:100%;height:46px;border:1px solid var(--line);border-radius:10px;background:var(--card);padding:3px}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1;min-width:0}.row>.fix{flex:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{font:inherit;font-size:15px;min-height:46px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;touch-action:manipulation}
+button:active{filter:brightness(.92)}
+button.pri{background:var(--acc);border-color:var(--accd);color:#fff;font-weight:bold}
+button.dng{color:var(--bad)}
+button.sm{min-height:40px;padding:0 10px;font-size:14px}
+button:disabled{opacity:.45}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;border-right:1px solid var(--line);min-height:44px;padding:0 4px;background:var(--card2)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--acc);color:#fff;font-weight:bold}
+.step{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.step button{border:0;border-radius:0;width:46px;flex:none;font-size:22px;background:var(--card2)}
+.step input{border:0;border-radius:0;text-align:center;min-width:0;padding:0}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px}
+.tog input{width:26px;height:26px;accent-color:var(--acc);flex:none}
+.pvcard{position:sticky;top:calc(46px + env(safe-area-inset-top,0px));z-index:10;box-shadow:0 4px 10px rgba(0,0,0,.15)}
+.stage{background:var(--stage);border-radius:12px;padding:8px;display:flex;align-items:center;justify-content:center;min-height:120px}
+.stage canvas{max-width:100%;max-height:26vh;box-shadow:0 2px 8px rgba(0,0,0,.35);background:#fff}
+.note{font-size:13px;color:var(--mute);margin:8px 0 0}.warn{font-size:13px;color:var(--bad);margin:8px 0 0}
+.lncard{border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px;background:var(--card2)}
+.lncard .row+.row{margin-top:8px}
+.item{display:flex;gap:10px}
+.item canvas{width:96px;max-height:80px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:6px;flex:none;align-self:center}
+.item .meta{flex:1;min-width:0}
+.item .nm{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .sub{font-size:12px;color:var(--mute)}
+.acts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.fh{font-size:12px;font-weight:bold;color:var(--acc);margin:14px 2px 6px;text-transform:uppercase;letter-spacing:.05em}
+.bar{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom));z-index:15;background:var(--card);border-top:1px solid var(--line);padding:8px 12px;display:flex;gap:8px}
+.bar button{flex:1}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:16;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;border-radius:0;background:none;min-height:58px;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--mute);position:relative}
+nav button b{font-size:22px;line-height:1}
+nav button.on{color:var(--acc);font-weight:bold}
+nav .bd{position:absolute;top:5px;left:calc(50% + 6px);background:var(--acc);color:#fff;border-radius:999px;font-size:10px;min-width:18px;height:18px;line-height:18px;padding:0 4px}
+dialog{border:0;border-radius:18px 18px 0 0;background:var(--card);color:var(--ink);padding:16px;width:100%;max-width:560px;margin:auto auto 0;max-height:88vh;overflow:auto}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog h3{margin:0 0 8px}
+#toast{position:fixed;left:12px;right:12px;top:calc(60px + env(safe-area-inset-top));z-index:9999;background:#166534;color:#fff;border-radius:12px;padding:12px 14px;font-weight:bold;opacity:0;transform:translateY(-12px);pointer-events:none;transition:.25s}
+#toast.show{opacity:1;transform:none}#toast.err{background:#991b1b}#toast.info{background:#1e3a8a}
+.empty{text-align:center;color:var(--mute);padding:28px 10px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--mute);margin-right:6px}.dot.on{background:var(--ok)}
+.pbar{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:10px}.pbar>i{display:block;height:100%;background:var(--acc);width:0;transition:width .2s}
+#printArea{display:none}
+@media print{body>*:not(#printArea){display:none!important}#printArea{display:block}#printArea img{display:block;page-break-after:always;break-after:page}}
+</style>
+</head>
+<body>
+<div id="pinGate" role="dialog" aria-modal="true">
+  <form class="pg" onsubmit="return false" autocomplete="off">
+    <h1>🏷️ Étiquettes Zebra</h1>
+    <p style="color:var(--mute);margin:0 0 14px">Entrez le code PIN.</p>
+    <input type="password" id="pinIn" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" aria-label="Code PIN">
+    <div id="pinErr" role="alert"></div>
+    <label style="display:flex;gap:8px;justify-content:center;margin-bottom:12px"><input type="checkbox" id="pinRemember"> Se souvenir sur cet appareil</label>
+    <button type="button" id="pinGo" class="pri" style="width:100%">Déverrouiller</button>
+  </form>
+</div>
+
+<header>
+  <div class="l"><img src="logo.png" alt=""><h1 id="title">Étiquettes</h1></div>
+  <span class="cam" aria-hidden="true"></span>
+  <div class="r">
+    <button class="chip" id="cloud" aria-label="Synchronisation">💾</button>
+    <button class="chip" id="prn" aria-label="Imprimante">⚪</button>
+    <button class="chip" id="lockBtn" aria-label="Verrouiller">🔒</button>
+  </div>
+</header>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<main>
+  <!-- CRÉER -->
+  <section class="tab on" id="t-create">
+    <div id="editBanner" class="card" style="display:none;border-color:var(--acc)">
+      <div class="row"><div>✏️ Modification d'un élément de la liste</div><button class="sm fix" id="editCancel">Annuler</button></div>
+    </div>
+    <div class="card pvcard">
+      <div class="stage"><canvas id="pv" width="2" height="2"></canvas></div>
+      <div id="pvInfo" class="note" style="font-size:12px"></div><div id="pvErr" class="warn"></div>
+      <div id="serNav" class="row" style="display:none;margin-top:8px">
+        <button class="sm fix" id="serPrev" style="width:56px">‹</button><div id="serTxt" style="text-align:center;font-size:14px"></div><button class="sm fix" id="serNext" style="width:56px">›</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Papier <button class="sm fix" id="stockMgr">Gérer…</button></h2>
+      <select id="stockSel"></select>
+      <div id="stockInfo" class="note"></div>
+    </div>
+    <div class="card">
+      <h2>Texte <button class="sm fix" id="addLine">＋ Ligne</button></h2>
+      <div id="lines"></div>
+    </div>
+    <div class="card">
+      <h2>Code-barres</h2>
+      <label class="tog"><span>Ajouter un code-barres</span><input type="checkbox" id="bcOn"></label>
+      <div id="bcBox" style="display:none">
+        <label class="f">Type</label>
+        <select id="bcType"><option value="code128">Code 128</option><option value="code39">Code 39</option><option value="ean13">EAN-13</option><option value="upca">UPC-A</option></select>
+        <div id="bcHint" class="note"></div>
+        <div id="bcSingle"><label class="f">Valeur</label><input type="text" id="bcValue" autocapitalize="off" autocomplete="off"></div>
+        <label class="tog"><span>Série séquentielle</span><input type="checkbox" id="bcBatch"></label>
+        <div id="bcSeries" style="display:none">
+          <div class="g2"><div><label class="f">Préfixe</label><input type="text" id="bcPre"></div><div><label class="f">Suffixe</label><input type="text" id="bcSuf"></div></div>
+          <div class="g2"><div><label class="f">Premier numéro</label><input type="number" inputmode="numeric" id="bcStart"></div><div><label class="f">Nombre d'étiquettes</label><input type="number" inputmode="numeric" id="bcCount" min="1" max="1000"></div></div>
+          <div class="g2"><div><label class="f">Pas</label><input type="number" inputmode="numeric" id="bcStep"></div><div><label class="f">Chiffres (zéros à gauche)</label><input type="number" inputmode="numeric" id="bcPad"></div></div>
+        </div>
+        <div class="g2"><div><label class="f">Hauteur (mm)</label><input type="number" inputmode="decimal" id="bcH" step="0.5"></div><div><label class="f">Largeur (% de l'étiquette)</label><input type="number" inputmode="numeric" id="bcW" min="20" max="100"></div></div>
+        <label class="tog"><span>Texte lisible sous le code</span><input type="checkbox" id="bcHuman"></label>
+        <div id="bcHumanBox" class="g2"><div><label class="f">Taille (pt)</label><input type="number" inputmode="decimal" id="bcHSize" step="0.5"></div><div><label class="f">Texte (défaut : le code)</label><input type="text" id="bcHText" placeholder="{code}"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Mise en page</h2>
+      <label class="f" style="margin-top:0">Orientation du texte sur l'étiquette</label>
+      <div class="seg" id="rotSeg"><button data-v="0">0°</button><button data-v="90">90°</button><button data-v="180">180°</button><button data-v="270">270°</button></div>
+      <div class="g2"><div><label class="f">Marge (mm)</label><input type="number" inputmode="decimal" id="margin" step="0.5" min="0"></div>
+      <div><label class="f">Copies</label><div class="step"><button data-st="-1" data-for="copies">−</button><input type="number" inputmode="numeric" id="copies" min="1" max="500"><button data-st="1" data-for="copies">＋</button></div></div></div>
+      <label class="tog"><span>Longueur automatique</span><input type="checkbox" id="auto"></label>
+      <div id="autoBox" style="display:none"><label class="f">Longueur minimale (mm)</label><input type="number" inputmode="decimal" id="minLen" step="1"></div>
+      <label class="tog"><span>Agrandir le contenu pour remplir</span><input type="checkbox" id="fill"></label>
+      <label class="tog"><span>Cadre autour de l'étiquette</span><input type="checkbox" id="frameOn"></label>
+    </div>
+    <div id="sheetWarn" class="warn" style="display:none"></div>
+  </section>
+
+  <!-- LISTE -->
+  <section class="tab" id="t-list">
+    <div class="card">
+      <h2>Listes enregistrées</h2>
+      <div class="row"><select id="lstSel"></select><button class="sm fix" id="lstLoad">Ouvrir</button></div>
+      <div class="acts"><button class="sm" id="lstSave">💾 Enregistrer</button><button class="sm" id="lstSaveAs">Enregistrer sous…</button><button class="sm dng" id="lstDel">Supprimer</button></div>
+    </div>
+    <div id="work"></div>
+  </section>
+
+  <!-- MODÈLES -->
+  <section class="tab" id="t-tpl">
+    <input type="search" id="tplQ" placeholder="🔎 Rechercher un modèle…">
+    <div id="tplList" style="margin-top:10px"></div>
+  </section>
+
+  <!-- IMPRIMANTE -->
+  <section class="tab" id="t-printer">
+    <div class="card">
+      <h2>Imprimante Bluetooth</h2>
+      <div><span class="dot" id="pdot"></span><b id="pname">Non connectée</b></div>
+      <div id="pmsg" class="note"></div>
+      <div class="acts" style="margin-top:10px">
+        <button class="pri" id="pConnect">🔗 Se connecter / jumeler</button>
+        <button id="pDisc">Déconnecter</button>
+      </div>
+      <div class="acts"><button id="pTest">🖨 Imprimer l'étiquette en cours</button><button id="pAll">Tous les appareils…</button></div>
+    </div>
+    <div class="card">
+      <h2>Réglages d'impression</h2>
+      <div class="g2">
+        <div><label class="f">Résolution</label><select id="sDpi"><option value="203">203 dpi (ZQ110/210/220…)</option><option value="300">300 dpi (ZD421, ZQ630 HD…)</option><option value="152">152 dpi</option></select></div>
+        <div><label class="f">Papier</label><select id="sMedia"><option value="gap">Étiquettes à espaces</option><option value="cont">Continu</option><option value="mark">Marque noire</option></select></div>
+      </div>
+      <div class="g2">
+        <div><label class="f">Noirceur (0–30)</label><input type="number" inputmode="numeric" id="sDark" min="0" max="30"></div>
+        <div><label class="f">Vitesse (2–6)</label><input type="number" inputmode="numeric" id="sSpeed" min="1" max="12"></div>
+      </div>
+      <div class="g2">
+        <div><label class="f">Décalage horizontal (mm)</label><input type="number" inputmode="decimal" id="sOx" step="0.1"></div>
+        <div><label class="f">Décalage vertical (mm)</label><input type="number" inputmode="decimal" id="sOy" step="0.1"></div>
+      </div>
+      <label class="f">Taille des paquets Bluetooth (octets)</label>
+      <select id="sChunk"><option value="0">Automatique (recommandé)</option><option value="20">20 (le plus compatible)</option><option value="100">100</option><option value="180">180</option><option value="500">500 (rapide)</option></select>
+      <label class="tog"><span>Avancer le papier après l'impression</span><input type="checkbox" id="sFeed"></label>
+      <div id="apiBox" style="display:none"><label class="f">Adresse du serveur de synchronisation</label><input type="text" id="sApi" inputmode="url" autocapitalize="off" autocomplete="off"></div>
+    </div>
+    <div class="card">
+      <h2>Autres façons d'imprimer</h2>
+      <div class="acts"><button id="zplShare">📤 Partager le fichier ZPL</button><button id="sysPrint">🖨 Impression du système</button></div>
+      <div class="note">« Impression du système » passe par Zebra Print Service (Android) ou AirPrint ; le fichier ZPL peut être envoyé à Zebra Printer Setup.</div>
+    </div>
+    <div class="card">
+      <h2>Synchronisation <button class="sm fix" id="syncNow">Actualiser</button></h2>
+      <div id="syncMsg" class="note" style="margin:0"></div>
+    </div>
+    <div class="card">
+      <h2>À propos</h2>
+      <div id="about" style="font-size:14px;line-height:1.6"></div>
+    </div>
+    <div class="card">
+      <h2>Compatibilité</h2>
+      <div id="compat" class="note" style="margin:0"></div>
+      <div class="acts"><button id="inst" style="display:none">📲 Installer l'application</button><a href="etiquettes.html?desktop=1" style="align-self:center;font-size:14px;color:var(--acc)">Version ordinateur</a></div>
+    </div>
+  </section>
+</main>
+
+<div class="bar" id="bar">
+  <button id="addList">＋ Liste</button>
+  <button class="pri" id="printNow">🖨 Imprimer</button>
+</div>
+<div class="bar" id="barList" style="display:none">
+  <button id="listClear" class="dng">Vider</button>
+  <button class="pri" id="listPrint">🖨 Imprimer la liste</button>
+</div>
+<div class="bar" id="barTpl" style="display:none">
+  <button id="tplSave" class="pri">💾 Enregistrer le design comme modèle</button>
+</div>
+
+<nav>
+  <button data-tab="create" class="on"><b>✏️</b>Créer</button>
+  <button data-tab="list"><b>📋</b>Liste<span class="bd" id="bdList" style="display:none">0</span></button>
+  <button data-tab="tpl"><b>🗂️</b>Modèles</button>
+  <button data-tab="printer"><b>🖨️</b>Imprimante</button>
+</nav>
+
+<dialog id="dlg"></dialog>
+<div id="printArea"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const MM=25.4, uid=()=>Math.random().toString(36).slice(2,9);
+const toMM=(v,u)=>u==="in"?v*MM:v;
+const dimTxt=s=>s.u==="in"?`${s.w}" × ${s.h}"`:`${s.w} × ${s.h} mm`;
+const errTxt=e=>(e&&(e.message||e.errorMessage))||String(e);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+window.addEventListener("error",e=>{ try{ toast("Erreur : "+e.message,"err"); }catch(x){} });
+window.addEventListener("unhandledrejection",e=>{ try{ toast("Erreur : "+errTxt(e.reason),"err"); }catch(x){} });
+let toastT=null;
+function toast(msg,kind){ const el=$("toast"); clearTimeout(toastT); el.className="show "+(kind||""); el.textContent=(kind==="err"?"⚠ ":kind==="info"?"ℹ ":"✔ ")+msg; toastT=setTimeout(()=>el.classList.remove("show"),kind==="err"?5500:2800); }
+
+/* ---------- Code-barres (identique à la version ordinateur) ---------- */
+/* ---------- Code-barres ---------- */
+const C128 = ["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+const C39 = {"0":"nnnwwnwnn","1":"wnnwnnnnw","2":"nnwwnnnnw","3":"wnwwnnnnn","4":"nnnwwnnnw","5":"wnnwwnnnn","6":"nnwwwnnnn","7":"nnnwnnwnw","8":"wnnwnnwnn","9":"nnwwnnwnn","A":"wnnnnwnnw","B":"nnwnnwnnw","C":"wnwnnwnnn","D":"nnnnwwnnw","E":"wnnnwwnnn","F":"nnwnwwnnn","G":"nnnnnwwnw","H":"wnnnnwwnn","I":"nnwnnwwnn","J":"nnnnwwwnn","K":"wnnnnnnww","L":"nnwnnnnww","M":"wnwnnnnwn","N":"nnnnwnnww","O":"wnnnwnnwn","P":"nnwnwnnwn","Q":"nnnnnnwww","R":"wnnnnnwwn","S":"nnwnnnwwn","T":"nnnnwnwwn","U":"wwnnnnnnw","V":"nwwnnnnnw","W":"wwwnnnnnn","X":"nwnnwnnnw","Y":"wwnnwnnnn","Z":"nwwnwnnnn","-":"nwnnnnwnw",".":"wwnnnnwnn"," ":"nwwnnnwnn","*":"nwnnwnwnn","$":"nwnwnwnnn","/":"nwnwnnnwn","+":"nwnnnwnwn","%":"nnnwnwnwn"};
+const EAN_L = ["0001101","0011001","0010011","0111101","0100011","0110001","0101111","0111011","0110111","0001011"];
+const EAN_R = EAN_L.map(s => s.replace(/./g, c => c === "0" ? "1" : "0"));
+const EAN_G = EAN_R.map(s => [...s].reverse().join(""));
+const EAN_P = ["LLLLLL","LLGLGG","LLGGLG","LLGGGL","LGLLGG","LGGLLG","LGGGLL","LGLGLG","LGLGGL","LGGLGL"];
+
+function widthsToBits(widths){ let b="", bar=true; for(const w of widths){ b += (bar?"1":"0").repeat(w); bar=!bar; } return b; }
+
+function enc128(text){
+  if(!text) throw "Entrez une valeur.";
+  const vals=[]; let start;
+  if(/^\d{4,}$/.test(text) && text.length%2===0){
+    start=105; for(let i=0;i<text.length;i+=2) vals.push(+text.slice(i,i+2));
+  } else {
+    start=104;
+    for(const ch of text){ const c=ch.charCodeAt(0); if(c<32||c>126) throw "Caractère non supporté : « "+ch+" » (pas d'accents en Code 128)."; vals.push(c-32); }
+  }
+  let sum=start; vals.forEach((v,i)=>sum+=v*(i+1));
+  const seq=[start,...vals,sum%103,106];
+  const w=[]; seq.forEach(v=>[...C128[v]].forEach(d=>w.push(+d)));
+  return {bits:widthsToBits(w), human:text};
+}
+function enc39(text){
+  text=text.toUpperCase(); if(!text) throw "Entrez une valeur.";
+  const full="*"+text+"*", w=[];
+  for(let i=0;i<full.length;i++){
+    const p=C39[full[i]]; if(!p) throw "Caractère non supporté en Code 39 : « "+full[i]+" ».";
+    [...p].forEach(c=>w.push(c==="w"?3:1));
+    if(i<full.length-1) w.push(1);
+  }
+  return {bits:widthsToBits(w), human:text};
+}
+function ean13bits(d){
+  const par=EAN_P[d[0]]; let b="101";
+  for(let i=1;i<=6;i++) b+=(par[i-1]==="L"?EAN_L:EAN_G)[d[i]];
+  b+="01010";
+  for(let i=7;i<=12;i++) b+=EAN_R[d[i]];
+  return b+"101";
+}
+function checkDigit(d12){ let s=0; d12.forEach((v,i)=>s+=v*(i%2?3:1)); return (10-s%10)%10; }
+function encEAN(text, upc){
+  const t=text.replace(/\s/g,"");
+  if(!/^\d+$/.test(t)) throw "Chiffres seulement.";
+  const need = upc ? [11,12] : [12,13];
+  if(!need.includes(t.length)) throw (upc?"UPC-A : 11 ou 12 chiffres.":"EAN-13 : 12 ou 13 chiffres.");
+  let digits=[...t].map(Number); if(upc) digits=[0,...digits];
+  const cd=checkDigit(digits.slice(0,12));
+  if(digits.length===13 && digits[12]!==cd) throw "Chiffre de contrôle invalide (attendu : "+cd+").";
+  digits=digits.slice(0,12).concat(cd);
+  const s=digits.join("");
+  return {bits:ean13bits(digits), human: upc ? s.slice(1) : s};
+}
+function encode(type,text){
+  return type==="code128"?enc128(text):type==="code39"?enc39(text):type==="ean13"?encEAN(text,false):encEAN(text,true);
+}
+const BC_TARGET={ean13:12,upca:11};
+const BC_HINT={
+  code128:"Texte libre (lettres, chiffres, symboles). Les accents sont remplacés et les caractères non supportés retirés.",
+  code39:"Majuscules, chiffres et - . espace $ / + %. Mis en majuscules automatiquement ; le reste est retiré.",
+  ean13:"12 chiffres : le 13e (contrôle) est calculé. Les lettres sont retirées et des zéros sont ajoutés à gauche si c'est trop court.",
+  upca:"11 chiffres : le 12e (contrôle) est calculé. Les lettres sont retirées et des zéros sont ajoutés à gauche si c'est trop court."
+};
+function normalizeBC(type,text){
+  const notes=[]; let v=String(text||"");
+  if(type==="code128"){
+    const o=v; v=v.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^ -~]/g,"");
+    if(v!==o) notes.push("accents/caractères non supportés ajustés");
+  } else if(type==="code39"){
+    const o=v; v=v.toUpperCase().replace(/[^0-9A-Z\-. $\/+%]/g,"");
+    if(v!==o.toUpperCase()) notes.push("caractères non supportés retirés"); else if(v!==o) notes.push("mis en majuscules");
+  } else {
+    const n=BC_TARGET[type], d=v.replace(/\D/g,"");
+    if(d!==v.trim()&&d) notes.push("caractères non numériques retirés");
+    v=d;
+    if(v.length>n){ v=v.slice(0,n); notes.push("tronqué à "+n+" chiffres (+ contrôle calculé)"); }
+    else if(v.length&&v.length<n){ v=v.padStart(n,"0"); notes.push("complété avec des zéros à gauche ("+n+" chiffres)"); }
+  }
+  return {value:v,note:notes.join(", ")};
+}
+function codeValue(d,i){
+  const b=d.bc;
+  if(!b.batch) return b.value;
+  let pre=b.pre||"", suf=b.suf||"", pad=+b.pad||1;
+  const n=BC_TARGET[b.type];
+  if(n){ pre=pre.replace(/\D/g,""); suf=suf.replace(/\D/g,""); pad=Math.max(1,n-pre.length-suf.length); }
+  return pre+String((+b.start||0)+i*(+b.step||1)).padStart(pad,"0")+suf;
+}
+const totalOf=d=>d.bc.on&&d.bc.batch?clamp(+d.bc.count||1,1,1000):1;
+
+/* ---------- État (mêmes clés de stockage que la version ordinateur) ---------- */
+const DEF_STOCKS=[
+  {id:"s1",name:'Prix 2" × 1" blanc',w:2,h:1,u:"in",color:"#ffffff",adh:true},
+  {id:"s2",name:'Tablette 3" × 2" blanc',w:3,h:2,u:"in",color:"#ffffff",adh:true},
+  {id:"s3",name:'Liquidation 2.25" × 1.25" jaune',w:2.25,h:1.25,u:"in",color:"#fff176",adh:true}
+];
+const DEF_DESIGN={lines:[{text:"Votre texte ici",size:16,bold:true,align:"center"}],bc:{on:false,type:"code128",value:"123456789012",human:true,h:10,w:90,hText:"",hSize:8,hSp:12,hAlign:"center",hBold:false,hItal:false,hUnd:false,batch:false,pre:"",suf:"",start:1,count:10,step:1,pad:6},rot:"0",margin:1.5,copies:1,auto:false,minLen:10,off:false,ox:0,oy:0,arrow:"",arrowH:5,fill:false,frameOn:false,frameT:0.4,frameIn:0.5,frameR:0};
+const clone=o=>JSON.parse(JSON.stringify(o));
+function normDesign(d){ d=clone(d||{}); d.bc=Object.assign({},DEF_DESIGN.bc,d.bc); d=Object.assign(clone(DEF_DESIGN),d); if(!Array.isArray(d.lines)||!d.lines.length) d.lines=clone(DEF_DESIGN.lines); return d; }
+let stocks=DEF_STOCKS, stockId="s1", design=clone(DEF_DESIGN), templates=[], lists=[], workItems=[], workListId="", editItemId="", serIdx=0;
+let mp={api:"https://zebra.nathanbegin.xyz",dpi:203,media:"gap",dark:20,speed:4,ox:0,oy:0,chunk:0,feed:false,btName:""};
+try{
+  const g=k=>JSON.parse(localStorage.getItem(k)||"null");
+  let v;
+  if(Array.isArray(v=g("zl_stocks"))&&v.length) stocks=v;
+  if((v=g("zl_design"))&&v.lines) design=normDesign(v);
+  v=localStorage.getItem("zl_stockId"); if(v) stockId=v;
+  if(Array.isArray(v=g("zl_templates"))) templates=v;
+  if(Array.isArray(v=g("zl_lists"))) lists=v;
+  if((v=g("zl_work"))&&Array.isArray(v.items)){ workItems=v.items; workListId=v.id||""; }
+  if((v=g("zm_prefs"))&&typeof v==="object") Object.assign(mp,v);
+}catch(e){}
+if(!stocks.some(s=>s.id===stockId)) stockId=stocks[0].id;
+const stock=()=>stocks.find(s=>s.id===stockId)||stocks[0];
+let cloudOn=false, lastSync="", pushT=null;
+const snap=()=>JSON.stringify({stocks,templates,lists});
+function save(){
+  cloudSchedule();
+  try{ localStorage.setItem("zl_templates",JSON.stringify(templates)); localStorage.setItem("zl_lists",JSON.stringify(lists)); localStorage.setItem("zl_work",JSON.stringify({id:workListId,items:workItems})); localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_design",JSON.stringify(design)); localStorage.setItem("zl_stockId",stockId); }catch(e){}
+}
+function saveMp(){ try{ localStorage.setItem("zm_prefs",JSON.stringify(mp)); }catch(e){} }
+
+/* ---------- Rendu canvas (même géométrie que l'aperçu de la version ordinateur) ---------- */
+const mm2d=(mm,dpi)=>mm*dpi/MM;
+const _mc=document.createElement("canvas").getContext("2d");
+const imgCache={};
+function loadImg(src){
+  if(!/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(String(src||""))) return Promise.resolve(null);
+  if(imgCache[src]) return imgCache[src];
+  return imgCache[src]=new Promise(res=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src; });
+}
+const FF="Arial, Helvetica, sans-serif";
+const fnt=(bold,ital,px)=>`${ital?"italic ":""}${bold?"bold ":""}${Math.max(1,px).toFixed(2)}px ${FF}`;
+function wrapText(txt,font,maxW){
+  _mc.font=font; const out=[];
+  String(txt).split("\n").forEach(par=>{
+    if(maxW>=1e5){ out.push(par); return; }
+    let cur="";
+    par.split(/(\s+)/).forEach(tok=>{
+      const t=cur+tok;
+      if(_mc.measureText(t).width<=maxW||!cur.trim()){ cur=t; }
+      else { out.push(cur.replace(/\s+$/,"")); cur=tok.replace(/^\s+/,""); }
+      while(_mc.measureText(cur).width>maxW&&cur.length>1){ // mot trop long : coupe par caractères
+        let k=cur.length-1; while(k>1&&_mc.measureText(cur.slice(0,k)).width>maxW) k--;
+        out.push(cur.slice(0,k)); cur=cur.slice(k);
+      }
+    });
+    out.push(cur);
+  });
+  return out;
+}
+const isSheet=d=>!!(d.sheet&&d.sheet.on);
+
+/* Construit les opérations de dessin pour une largeur disponible (en points imprimante). */
+function buildOps(d,idx,availW,refW,dpi,m){
+  const ops=[]; let y=0, maxw=0, info="", err="";
+  const B=d.bc; let e=null, code="";
+  if(B.on){
+    const nb=normalizeBC(B.type,codeValue(d,idx)); code=nb.value;
+    try{ e=encode(B.type,code); code=e.human; }catch(x){ err=String(x); }
+    if(nb.note&&e) info="Valeur ajustée : "+nb.note+" → "+e.human+". ";
+  }
+  d.lines.forEach(l=>{
+    const px=(+l.size||12)*dpi/72, font=fnt(l.bold,false,px);
+    const text=String(l.text||"").replace(/\{code\}/g,code);
+    wrapText(text,font,availW).forEach(row=>{
+      _mc.font=font; const w=_mc.measureText(row).width;
+      ops.push({t:"text",s:row,font,y:y+px*0.9,w,al:l.align||"left"}); maxw=Math.max(maxw,w); y+=px*1.1;
+    });
+    if(l.sep){ y+=mm2d(0.8,dpi); ops.push({t:"rule",y,th:Math.max(1,mm2d(0.3,dpi))}); y+=mm2d(0.3,dpi)+mm2d(0.8,dpi); }
+  });
+  if(e){
+    let bw=Math.max(mm2d(5,dpi),((refW||availW+2*m)-2*m)*(+B.w||90)/100);
+    const NM=e.bits.length+20, mod=Math.max(1,Math.floor(bw/NM)); bw=NM*mod;
+    y+=mm2d(1.5,dpi);
+    const hh=mm2d(+B.h||10,dpi);
+    ops.push({t:"bars",bits:e.bits,mod,y,h:hh,w:bw}); maxw=Math.max(maxw,bw); y+=hh;
+    if(B.human){
+      let px=(+B.hSize||8)*dpi/72; const txt=B.hText?B.hText.replace(/\{code\}/g,e.human):e.human, sp=(+B.hSp||0)/100;
+      y+=mm2d(0.5,dpi);
+      let font=fnt(B.hBold,B.hItal,px); _mc.font=font;
+      let w=[...txt].reduce((a,c)=>a+_mc.measureText(c).width+sp*px,0);
+      if(w>bw){ const k=bw/w; px*=k; font=fnt(B.hBold,B.hItal,px); _mc.font=font; w=[...txt].reduce((a,c)=>a+_mc.measureText(c).width+sp*px,0); }
+      ops.push({t:"human",s:txt,font,px,sp:sp*px,y:y+px*0.9,w,bw,al:B.hAlign||"center",und:!!B.hUnd});
+      y+=px*1.1;
+    }
+    info+=`Barre fine : ${mod} point${mod>1?"s":""} à ${dpi} dpi.`;
+    if(mod<2) err="Barres très fines (1 point) : risque de lecture difficile. Augmentez la largeur ou raccourcissez la valeur.";
+  }
+  return {ops,w:maxw,h:y,info,err};
+}
+
+async function renderLabel(d,st,idx,dpi,view){   // view=true : aperçu avec le texte à l'horizontale (sans la rotation d'impression)
+  const W=toMM(st.w,st.u), nomH=toMM(st.h,st.u);
+  const sheet=isSheet(d);
+  const rot=sheet?0:(+d.rot||0), R=(rot+270)%360, sw=R===90||R===270;
+  const m=sheet?0:mm2d(+d.margin||0,dpi);
+  const Wd=Math.round(mm2d(W,dpi)), nomD=Math.round(mm2d(nomH,dpi));
+  const auto=!!d.auto&&!sheet, fill=!!d.fill&&!auto;
+  let cw, ch, built;
+  const res={info:"",err:""};
+  if(sheet){ cw=sw?nomD:Wd; ch=sw?Wd:nomD; built={ops:[],w:0,h:0,info:"",err:""}; res.err="Gabarit « feuille » (disjoncteurs) : utilisez la version ordinateur pour l'imprimer."; }
+  else if(auto){
+    const minD=mm2d(+d.minLen||0,dpi);
+    if(sw){ built=buildOps(d,idx,1e6,nomD,dpi,m); cw=Math.ceil(Math.max(built.w+2*m,minD)); ch=Wd; }
+    else { built=buildOps(d,idx,Wd-2*m,Wd,dpi,m); ch=Math.ceil(Math.max(built.h+2*m,minD)); cw=Wd; }
+  } else {
+    cw=sw?nomD:Wd; ch=sw?Wd:nomD;
+    built=buildOps(d,idx,fill?1e6:cw-2*m,cw,dpi,m);   // refW = largeur du contenu (le code-barres s'y réfère, même en mode « remplir »)
+  }
+  const outW=view?cw:Wd, outH=view?ch:(auto?(sw?cw:ch):nomD);
+  const cv=document.createElement("canvas"); cv.width=outW; cv.height=outH;
+  const ctx=cv.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,outW,outH);
+  ctx.save();
+  if(!view){
+    ctx.translate(mm2d(+mp.ox||0,dpi),mm2d(+mp.oy||0,dpi));
+    if(R===90) ctx.transform(0,1,-1,0,outW,0);          // translate(W,0) rotate(90°)
+    else if(R===180) ctx.transform(-1,0,0,-1,outW,outH);
+    else if(R===270) ctx.transform(0,-1,1,0,0,outH);     // translate(0,H) rotate(-90°)
+  }
+  let k=1; const colW=fill?Math.max(1,built.w):Math.max(1,cw-2*m);
+  if(!sheet){
+    const kh=(ch-2*m)/Math.max(1,built.h), kw=(cw-2*m)/Math.max(1,built.w);
+    k=Math.min(fill?8:1,kh,kw); if(!fill&&k>0.985) k=1;
+  }
+  ctx.save();
+  ctx.translate(cw/2,ch/2); ctx.scale(k,k); ctx.translate(-colW/2,-built.h/2);
+  ctx.fillStyle="#000"; ctx.strokeStyle="#000"; ctx.textBaseline="alphabetic";
+  built.ops.forEach(o=>{
+    if(o.t==="text"){ ctx.font=o.font; ctx.fillText(o.s,o.al==="center"?(colW-o.w)/2:o.al==="right"?colW-o.w:0,o.y); }
+    else if(o.t==="rule"){ ctx.fillRect(0,o.y,colW,o.th); }
+    else if(o.t==="bars"){
+      const x0=(colW-o.w)/2, q=10*o.mod, b=o.bits;
+      for(let i=0;i<b.length;){ if(b[i]==="1"){ let j=i; while(b[j]==="1") j++; ctx.fillRect(x0+q+i*o.mod,o.y,(j-i)*o.mod,o.h); i=j; } else i++; }
+    }
+    else if(o.t==="human"){
+      ctx.font=o.font; const x0=(colW-o.bw)/2; let x=o.al==="left"?x0:o.al==="right"?x0+o.bw-o.w:x0+(o.bw-o.w)/2; const sx=x;
+      [...o.s].forEach(c=>{ ctx.fillText(c,x,o.y); x+=ctx.measureText(c).width+o.sp; });
+      if(o.und) ctx.fillRect(sx,o.y+o.px*0.12,o.w,Math.max(1,o.px*0.06));
+    }
+  });
+  ctx.restore();
+  if(d.frameOn){
+    const t=Math.max(1,mm2d(Math.max(0.1,+d.frameT||0.4),dpi)), i=mm2d(Math.max(0,+d.frameIn||0),dpi), r=mm2d(Math.max(0,+d.frameR||0),dpi);
+    ctx.lineWidth=t; ctx.beginPath();
+    const x=i+t/2, y=i+t/2, w=cw-2*i-t, h=ch-2*i-t;
+    if(ctx.roundRect&&r>0) ctx.roundRect(x,y,w,h,Math.max(0,r-t/2)); else ctx.rect(x,y,w,h);
+    ctx.stroke();
+  }
+  for(const im of (d.images||[])){
+    const img=await loadImg(im.src); if(!img) continue;
+    const w=mm2d(+im.w||10,dpi), h=w*(im.ih||img.naturalHeight||1)/(im.iw||img.naturalWidth||1);
+    ctx.save(); ctx.translate(mm2d(+im.x||0,dpi)+w/2,mm2d(+im.y||0,dpi)+h/2); ctx.rotate((+im.rot||0)*Math.PI/180);
+    ctx.imageSmoothingEnabled=!im.bw; ctx.drawImage(img,-w/2,-h/2,w,h); ctx.restore();
+  }
+  ctx.restore();
+  res.canvas=cv; res.info=built.info; if(built.err) res.err=built.err; res.lenMM=outH*MM/dpi;
+  return res;
+}
+
+/* ---------- ZPL ---------- */
+function toMono(cv){
+  const {width:w,height:h}=cv, data=cv.getContext("2d").getImageData(0,0,w,h).data;
+  const rb=Math.ceil(w/8), out=new Uint8Array(rb*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const p=(y*w+x)*4, lum=0.299*data[p]+0.587*data[p+1]+0.114*data[p+2];
+    if(lum<150) out[y*rb+(x>>3)]|=0x80>>(x&7);
+  }
+  return {bytes:out,rb,w,h};
+}
+function runStr(ch,n){   // compression ASCII ZPL : G–Y = 1–19, g–z = 20–400
+  if(n===1) return ch;
+  let s="z".repeat(Math.floor(n/400)); n%=400;
+  if(n>=20){ s+=String.fromCharCode(0x67+Math.floor(n/20)-1); n%=20; }
+  if(n>0) s+=String.fromCharCode(0x47+n-1);
+  return s+ch;
+}
+function zplGraphic(mono){
+  const {bytes,rb,h}=mono, rows=[]; let prev=null;
+  for(let y=0;y<h;y++){
+    let hex=""; for(let i=0;i<rb;i++) hex+=bytes[y*rb+i].toString(16).toUpperCase().padStart(2,"0");
+    if(hex===prev){ rows.push(":"); continue; }
+    prev=hex;
+    let tail="";
+    const mz=/0+$/.exec(hex), mf=/F+$/.exec(hex);
+    if(mz&&mz[0].length>=2){ hex=hex.slice(0,hex.length-mz[0].length); tail=","; }
+    else if(mf&&mf[0].length>=2){ hex=hex.slice(0,hex.length-mf[0].length); tail="!"; }
+    let s="";
+    for(let i=0;i<hex.length;){ let j=i; while(j<hex.length&&hex[j]===hex[i]) j++; s+=runStr(hex[i],j-i); i=j; }
+    rows.push(s+tail);
+  }
+  return `^GFA,${rb*h},${rb*h},${rb},${rows.join("")}`;
+}
+function zplLabel(cv,copies){
+  const mono=toMono(cv), mn={gap:"^MNY",cont:"^MNN",mark:"^MNM"}[mp.media]||"^MNY";
+  return `^XA^CI28${mn}^PW${mono.w}^LL${mono.h}^MD${clamp(+mp.dark||0,0,30)}^PR${clamp(+mp.speed||4,1,12)}^LH0,0^PON^FO0,0${zplGraphic(mono)}^FS^PQ${clamp(copies,1,500)}^XZ`;
+}
+
+/* ---------- Bluetooth : natif (application Android / Capacitor) ou Web Bluetooth (navigateur) ---------- */
+const ZSVC="38eb4a80-c570-11e3-9507-0002a5d5c51b", ZWRITE="38eb4a82-c570-11e3-9507-0002a5d5c51b";
+const NATIVE=!!(window.Capacitor&&typeof Capacitor.isNativePlatform==="function"&&Capacitor.isNativePlatform());
+const BLE=()=>{ if(!window.BleClient) throw new Error("Module Bluetooth natif introuvable (réinstallez l'application)."); return window.BleClient; };
+let btDev=null, btChar=null, btNat=null, natConn=false, natInit=false, natChunk=20;
+const btOK=()=>NATIVE||!!(navigator.bluetooth&&navigator.bluetooth.requestDevice);
+const btUp=()=>NATIVE?natConn:!!(btChar&&btDev&&btDev.gatt&&btDev.gatt.connected);
+const btName=()=>(NATIVE?(btNat&&btNat.name):(btDev&&btDev.name))||"Imprimante";
+function setPrnUI(){
+  const on=btUp();
+  $("prn").textContent=on?"🟢":"⚪"; $("prn").title=on?"Connectée : "+btName():"Imprimante non connectée";
+  $("pdot").className="dot"+(on?" on":"");
+  $("pname").textContent=on?btName():"Non connectée";
+  $("pmsg").textContent=on?"Prête à imprimer.":(mp.btName?"Dernière imprimante : "+mp.btName+".":"Touchez « Se connecter » et choisissez votre imprimante (Bluetooth activé).");
+}
+async function natOpen(id,name){
+  const ble=BLE();
+  if(!natInit){ await ble.initialize({androidNeverForLocation:true}); natInit=true; }
+  await ble.connect(id,()=>{ natConn=false; setPrnUI(); },{timeout:15000});
+  btNat={id,name:name||mp.btName||"Imprimante"}; natConn=true; mp.btName=btNat.name; mp.btId=id; saveMp();
+  try{ natChunk=clamp((await ble.getMtu(id))-3,20,240); }catch(e){ natChunk=20; }   // paquets adaptés au MTU négocié
+  try{ await ble.requestConnectionPriority(id,1); }catch(e){}                        // liaison rapide
+  setPrnUI();
+}
+async function openGatt(dev){
+  btDev=dev; btChar=null;
+  dev.removeEventListener("gattserverdisconnected",onDisc); dev.addEventListener("gattserverdisconnected",onDisc);
+  const srv=await dev.gatt.connect();
+  const svc=await srv.getPrimaryService(ZSVC);
+  btChar=await svc.getCharacteristic(ZWRITE);
+  mp.btName=dev.name||mp.btName; saveMp(); setPrnUI();
+}
+function onDisc(){ btChar=null; setPrnUI(); }
+async function btConnect(all){
+  if(NATIVE){
+    const ble=BLE();
+    if(!natInit){ await ble.initialize({androidNeverForLocation:true}); natInit=true; }
+    const d=await ble.requestDevice({optionalServices:[ZSVC]});      // fenêtre Android de choix de l'appareil
+    await natOpen(d.deviceId,d.name); return;
+  }
+  if(!btOK()) throw new Error("Bluetooth Web non disponible sur ce navigateur (voir Compatibilité).");
+  if(btDev&&!all){ try{ await openGatt(btDev); return; }catch(e){ /* nouveau choix ci-dessous */ } }
+  const opts=all?{acceptAllDevices:true,optionalServices:[ZSVC]}
+    :{filters:[{services:[ZSVC]},{namePrefix:"ZQ"},{namePrefix:"ZD"},{namePrefix:"ZR"},{namePrefix:"ZT"},{namePrefix:"XXZ"},{namePrefix:"QLn"},{namePrefix:"iMZ"},{namePrefix:"Zebra"}],optionalServices:[ZSVC]};
+  await openGatt(await navigator.bluetooth.requestDevice(opts));
+}
+async function btEnsure(){
+  if(btUp()) return;
+  if(NATIVE){ if(mp.btId){ try{ await natOpen(mp.btId,mp.btName); return; }catch(e){} } await btConnect(false); return; }
+  if(btDev){ try{ await openGatt(btDev); return; }catch(e){} }
+  await btConnect(false);
+}
+function btDisconnect(){
+  if(NATIVE){ if(btNat&&window.BleClient) window.BleClient.disconnect(btNat.id).catch(()=>{}); natConn=false; }
+  else { if(btDev&&btDev.gatt.connected) btDev.gatt.disconnect(); btChar=null; }
+  setPrnUI();
+}
+async function btSend(text,onProg){
+  await btEnsure();
+  const data=new TextEncoder().encode(text);
+  let size=+mp.chunk>0?clamp(+mp.chunk,20,512):(NATIVE?natChunk:20);
+  for(let o=0;o<data.length;){
+    const part=data.slice(o,o+size);
+    try{
+      if(NATIVE) await BLE().write(btNat.id,ZSVC,ZWRITE,new DataView(part.buffer,part.byteOffset,part.byteLength),{timeout:10000});
+      else if(btChar.writeValueWithResponse) await btChar.writeValueWithResponse(part);
+      else await btChar.writeValue(part);
+    }catch(e){
+      if(size>20){ size=20; continue; }   // repli sur des paquets de 20 octets
+      throw e;
+    }
+    o+=part.length; if(onProg) onProg(o/data.length);
+  }
+}
+
+/* ---------- Jobs d'impression ---------- */
+function resolveItem(it){
+  const t=it.tplId&&templates.find(x=>x.id===it.tplId), src=t||it, ov=it.ov||{};
+  const label=it.label||(t?t.name:it.name);
+  if(!src.design||!Array.isArray(src.design.lines)) return {missing:true,name:label};
+  const st=stocks.find(x=>x.id===(ov.stockId||src.stockId))||null;
+  const dd=normDesign(src.design), B=dd.bc;
+  if(Array.isArray(ov.lines)){ const base=dd.lines.length?dd.lines:[{text:"",size:12,bold:false,align:"left"}]; dd.lines=ov.lines.map((tx,i)=>Object.assign({},base[Math.min(i,base.length-1)],{text:tx})); }
+  else if(ov.text!==undefined&&dd.lines[0]) dd.lines[0].text=ov.text;
+  if(ov.rot!==undefined) dd.rot=String(ov.rot);
+  if(ov.value!==undefined) B.value=ov.value;
+  ["pre","suf","start","count"].forEach(k=>{ if(ov[k]!==undefined) B[k]=ov[k]; });
+  return {design:dd,stock:st,name:label};
+}
+let busy=false, lastZpl="";
+async function printJobs(jobs){
+  if(busy) return; if(!jobs.length){ toast("Rien à imprimer","err"); return; }
+  busy=true; showProgress("Préparation…",0);
+  try{
+    let done=0, count=0, zpl="", errs=[];
+    const totalLabels=jobs.reduce((a,j)=>a+totalOf(j.design),0);
+    for(const j of jobs){
+      const tot=totalOf(j.design);
+      for(let i=0;i<tot;i++){
+        const r=await renderLabel(j.design,j.stock,i,+mp.dpi||203);
+        if(isSheet(j.design)) throw new Error(r.err);
+        if(r.err&&j.design.bc.on) errs.push("« "+j.name+" » : "+r.err);
+        zpl+=zplLabel(r.canvas,j.copies||1); count+=(j.copies||1);
+        showProgress("Préparation… "+(++done)+"/"+totalLabels,done/totalLabels*0.3);
+      }
+    }
+    errs=[...new Set(errs)];
+    if(errs.length){ hideProgress(); const ok=await confirmDlg("Problèmes détectés",errs.join("\n")+"\n\nImprimer quand même ?","Imprimer"); if(!ok){ busy=false; return; } showProgress("Envoi…",0.3); }
+    if(mp.feed) zpl+="^XA^FO0,0^FS^XZ";
+    lastZpl=zpl;
+    await btSend(zpl,p=>showProgress("Envoi à l'imprimante… "+Math.round(p*100)+" %",0.3+p*0.7));
+    toast(count+" étiquette"+(count>1?"s":"")+" envoyée"+(count>1?"s":"")+" à l'imprimante");
+  }catch(e){
+    const msg=(e&&e.name==="NotFoundError")?"Aucune imprimante choisie.":errTxt(e);
+    toast(msg,"err");
+  }finally{ hideProgress(); busy=false; }
+}
+function showProgress(t,p){ const d=$("dlg"); if(!d.open||d.dataset.kind!=="prog"){ d.innerHTML='<h3>🖨 Impression</h3><div id="pgT"></div><div class="pbar"><i id="pgB"></i></div>'; d.dataset.kind="prog"; if(!d.open) d.showModal(); } $("pgT").textContent=t; $("pgB").style.width=Math.round(p*100)+"%"; }
+function hideProgress(){ const d=$("dlg"); if(d.open&&d.dataset.kind==="prog") d.close(); }
+
+/* ---------- Boîtes de dialogue ---------- */
+function openDlg(html,kind){ const d=$("dlg"); d.onclose=null; if(d.open) d.close(); d.innerHTML=html; d.dataset.kind=kind||""; d.showModal(); return d; }
+const E=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function confirmDlg(title,msg,okLabel){
+  return new Promise(res=>{
+    const d=openDlg(`<h3></h3><div style="white-space:pre-wrap" id="cMsg"></div><div class="row" style="margin-top:14px"><button id="dNo">Annuler</button><button id="dOk" class="pri">${E(okLabel||"OK")}</button></div>`,"confirm");
+    d.querySelector("h3").textContent=title; d.querySelector("#cMsg").textContent=msg;
+    let r=false; d.querySelector("#dOk").onclick=()=>{ r=true; d.close(); }; d.querySelector("#dNo").onclick=()=>d.close();
+    d.onclose=()=>res(r);
+  });
+}
+function askDlg(title,fields,okLabel){
+  return new Promise(res=>{
+    const d=openDlg(`<h3></h3>${fields.map((f,i)=>`<label class="f">${E(f.label)}</label><input type="text" id="af${i}" ${f.list?`list="afl${i}"`:""}>${f.list?`<datalist id="afl${i}">${f.list.map(x=>`<option value="${E(x)}">`).join("")}</datalist>`:""}`).join("")}<div class="row" style="margin-top:14px"><button id="dNo">Annuler</button><button id="dOk" class="pri">${E(okLabel||"OK")}</button></div>`,"ask");
+    d.querySelector("h3").textContent=title; fields.forEach((f,i)=>d.querySelector("#af"+i).value=f.value||"");
+    let r=null; d.querySelector("#dOk").onclick=()=>{ r=fields.map((f,i)=>d.querySelector("#af"+i).value.trim()); d.close(); }; d.querySelector("#dNo").onclick=()=>d.close();
+    d.onclose=()=>res(r);
+  });
+}
+
+/* ---------- Éditeur ---------- */
+let pvT=null;
+function sync(){ save(); schedulePreview(); }
+function schedulePreview(){ clearTimeout(pvT); pvT=setTimeout(refreshPreview,60); }
+async function refreshPreview(){
+  const st=stock(); if(!st) return;
+  const tot=totalOf(design); serIdx=clamp(serIdx,0,tot-1);
+  const dpi=+mp.dpi||203, r=await renderLabel(design,st,serIdx,dpi,true);
+  const pv=$("pv"); pv.width=r.canvas.width; pv.height=r.canvas.height;
+  pv.getContext("2d").drawImage(r.canvas,0,0);
+  pv.style.background=st.color||"#fff";
+  const lenTxt=design.auto?` · longueur auto ${r.lenMM.toFixed(1)} mm`:"";
+  $("pvInfo").textContent=`${dimTxt(st)}${lenTxt} · ${r.canvas.width}×${r.canvas.height} points (${dpi} dpi), aperçu dans le sens de lecture. `+(r.info||"");
+  $("pvErr").textContent=r.err?"⚠ "+r.err:"";
+  $("serNav").style.display=tot>1?"flex":"none"; $("serTxt").textContent=`Étiquette ${serIdx+1} / ${tot} — ${codeValue(design,serIdx)}`;
+  const n=tot*(+design.copies||1);
+  $("printNow").textContent="🖨 Imprimer"+(n>1?` (${n})`:"");
+  $("sheetWarn").style.display=isSheet(design)?"block":"none"; if(isSheet(design)) $("sheetWarn").textContent="Ce gabarit est une feuille de disjoncteurs : utilisez la version ordinateur pour l'imprimer.";
+}
+function fillStockSel(){
+  $("stockSel").innerHTML=stocks.map(s=>`<option value="${E(s.id)}">${E(s.name)} — ${dimTxt(s)}</option>`).join("");
+  $("stockSel").value=stockId;
+  const s=stock(); $("stockInfo").textContent=s?`${dimTxt(s)} · ${s.adh!==false?"autocollant":"papier"}`:"";
+}
+function renderLines(){
+  $("lines").innerHTML=design.lines.map((l,i)=>`<div class="lncard" data-i="${i}">
+    <textarea data-k="text" rows="2" placeholder="Texte de la ligne ({code} = valeur du code-barres)">${E(l.text)}</textarea>
+    <div class="row"><div class="step"><button data-a="sz-">−</button><input type="number" inputmode="decimal" data-k="size" value="${l.size}" step="1" min="3" aria-label="Taille en points"><button data-a="sz+">＋</button></div>
+    <div class="seg"><button data-a="al" data-v="left" class="${l.align==="left"?"on":""}">⇤</button><button data-a="al" data-v="center" class="${l.align==="center"?"on":""}">↔</button><button data-a="al" data-v="right" class="${l.align==="right"?"on":""}">⇥</button></div></div>
+    <div class="row"><button data-a="bold" class="${l.bold?"pri":""}"><b>G</b> Gras</button><button data-a="sep" class="${l.sep?"pri":""}">― Trait</button><button data-a="up" ${i?"":"disabled"}>↑</button><button data-a="del" class="dng" ${design.lines.length>1?"":"disabled"}>🗑</button></div>
+  </div>`).join("");
+}
+function syncForm(){
+  const B=design.bc;
+  fillStockSel(); renderLines();
+  $("bcOn").checked=!!B.on; $("bcBox").style.display=B.on?"block":"none";
+  $("bcType").value=B.type; $("bcHint").textContent=BC_HINT[B.type]||"";
+  $("bcValue").value=B.value; $("bcBatch").checked=!!B.batch;
+  $("bcSingle").style.display=B.batch?"none":"block"; $("bcSeries").style.display=B.batch?"block":"none";
+  $("bcPre").value=B.pre; $("bcSuf").value=B.suf; $("bcStart").value=B.start; $("bcCount").value=B.count; $("bcStep").value=B.step; $("bcPad").value=B.pad;
+  $("bcH").value=B.h; $("bcW").value=B.w; $("bcHuman").checked=!!B.human; $("bcHumanBox").style.display=B.human?"grid":"none"; $("bcHSize").value=B.hSize; $("bcHText").value=B.hText;
+  document.querySelectorAll("#rotSeg button").forEach(b=>b.classList.toggle("on",b.dataset.v===String(design.rot)));
+  $("margin").value=design.margin; $("copies").value=design.copies||1;
+  $("auto").checked=!!design.auto; $("autoBox").style.display=design.auto?"block":"none"; $("minLen").value=design.minLen;
+  $("fill").checked=!!design.fill; $("frameOn").checked=!!design.frameOn;
+  $("editBanner").style.display=editItemId?"block":"none";
+  $("addList").textContent=editItemId?"✔ Mettre à jour":"＋ Liste";
+  serIdx=0; refreshPreview();
+}
+const num=(id,def)=>{ const v=parseFloat($(id).value); return isFinite(v)?v:def; };
+function itemTitle(d){ const t=(d.lines.find(l=>String(l.text||"").trim())||{}).text||(d.bc.on?d.bc.value:"Étiquette"); return String(t).replace(/\s+/g," ").slice(0,60); }
+function bind(){
+  $("stockSel").onchange=()=>{ stockId=$("stockSel").value; fillStockSel(); sync(); };
+  $("addLine").onclick=()=>{ const l=design.lines[design.lines.length-1]||{}; design.lines.push({text:"",size:l.size||12,bold:false,align:l.align||"center"}); renderLines(); sync(); const t=document.querySelectorAll("#lines textarea"); t[t.length-1].focus(); };
+  $("lines").addEventListener("input",e=>{ const c=e.target.closest(".lncard"); if(!c) return; const l=design.lines[+c.dataset.i], k=e.target.dataset.k; if(k==="text") l.text=e.target.value; else if(k==="size") l.size=Math.max(1,parseFloat(e.target.value)||12); sync(); });
+  $("lines").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return; const c=b.closest(".lncard"), i=+c.dataset.i, l=design.lines[i], a=b.dataset.a;
+    if(a==="sz-") l.size=Math.max(3,(+l.size||12)-1); else if(a==="sz+") l.size=(+l.size||12)+1;
+    else if(a==="al") l.align=b.dataset.v; else if(a==="bold") l.bold=!l.bold; else if(a==="sep") l.sep=!l.sep;
+    else if(a==="up"&&i>0){ [design.lines[i-1],design.lines[i]]=[design.lines[i],design.lines[i-1]]; }
+    else if(a==="del"&&design.lines.length>1) design.lines.splice(i,1);
+    renderLines(); sync();
+  });
+  const B=()=>design.bc;
+  $("bcOn").onchange=()=>{ B().on=$("bcOn").checked; $("bcBox").style.display=B().on?"block":"none"; sync(); };
+  $("bcType").onchange=()=>{ B().type=$("bcType").value; $("bcHint").textContent=BC_HINT[B().type]; sync(); };
+  $("bcValue").oninput=()=>{ B().value=$("bcValue").value; sync(); };
+  $("bcBatch").onchange=()=>{ B().batch=$("bcBatch").checked; $("bcSingle").style.display=B().batch?"none":"block"; $("bcSeries").style.display=B().batch?"block":"none"; serIdx=0; sync(); };
+  [["bcPre","pre"],["bcSuf","suf"]].forEach(([id,k])=>$(id).oninput=()=>{ B()[k]=$(id).value; sync(); });
+  [["bcStart","start",0],["bcCount","count",1],["bcStep","step",1],["bcPad","pad",1],["bcH","h",10],["bcW","w",90],["bcHSize","hSize",8]].forEach(([id,k,def])=>$(id).oninput=()=>{ B()[k]=num(id,def); sync(); });
+  $("bcHuman").onchange=()=>{ B().human=$("bcHuman").checked; $("bcHumanBox").style.display=B().human?"grid":"none"; sync(); };
+  $("bcHText").oninput=()=>{ B().hText=$("bcHText").value; sync(); };
+  $("rotSeg").onclick=e=>{ const b=e.target.closest("button"); if(!b) return; design.rot=b.dataset.v; document.querySelectorAll("#rotSeg button").forEach(x=>x.classList.toggle("on",x===b)); sync(); };
+  $("margin").oninput=()=>{ design.margin=Math.max(0,num("margin",1.5)); sync(); };
+  $("copies").oninput=()=>{ design.copies=clamp(Math.round(num("copies",1)),1,500); sync(); };
+  document.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{ const el=$(b.dataset.for); el.value=clamp((+el.value||1)+ +b.dataset.st,1,500); el.oninput(); });
+  $("auto").onchange=()=>{ design.auto=$("auto").checked; $("autoBox").style.display=design.auto?"block":"none"; sync(); };
+  $("minLen").oninput=()=>{ design.minLen=Math.max(0,num("minLen",10)); sync(); };
+  $("fill").onchange=()=>{ design.fill=$("fill").checked; sync(); };
+  $("frameOn").onchange=()=>{ design.frameOn=$("frameOn").checked; sync(); };
+  $("serPrev").onclick=()=>{ serIdx=Math.max(0,serIdx-1); refreshPreview(); };
+  $("serNext").onclick=()=>{ serIdx=Math.min(totalOf(design)-1,serIdx+1); refreshPreview(); };
+  $("editCancel").onclick=()=>{ editItemId=""; $("editBanner").style.display="none"; $("addList").textContent="＋ Liste"; };
+
+  $("printNow").onclick=()=>printJobs([{design:clone(design),stock:stock(),name:"Étiquette",copies:+design.copies||1}]);
+  $("addList").onclick=()=>{
+    if(isSheet(design)){ toast("Gabarit feuille : version ordinateur","err"); return; }
+    if(editItemId){
+      const it=workItems.find(x=>x.id===editItemId);
+      if(it){ it.design=clone(design); it.stockId=stockId; it.tplId=null; it.ov={}; it.copies=+design.copies||1; it.name=itemTitle(design); it.label=""; }
+      editItemId=""; $("editBanner").style.display="none"; $("addList").textContent="＋ Liste";
+      renderWork(); save(); toast("Élément mis à jour"); return;
+    }
+    workItems.push({id:"i"+uid(),tplId:null,name:itemTitle(design),stockId,design:clone(design),copies:+design.copies||1,label:"",blk:"",ov:{}});
+    renderWork(); save(); toast("Ajouté à la liste ("+workItems.length+")");
+  };
+  $("stockMgr").onclick=stockManager;
+
+  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+  $("lstLoad").onclick=()=>{ const l=lists.find(x=>x.id===$("lstSel").value); if(!l){ toast("Choisissez une liste","info"); return; } workItems=clone(l.items); workListId=l.id; renderWork(); save(); toast("Liste « "+l.name+" » ouverte"); };
+  $("lstSave").onclick=()=>saveList(false); $("lstSaveAs").onclick=()=>saveList(true);
+  $("lstDel").onclick=async()=>{ const l=lists.find(x=>x.id===$("lstSel").value); if(!l){ toast("Choisissez une liste","info"); return; } if(!await confirmDlg("Supprimer la liste",`« ${l.name} » sera supprimée.`,"Supprimer")) return; lists=lists.filter(x=>x!==l); if(workListId===l.id) workListId=""; fillLstSel(); save(); toast("Liste supprimée","info"); };
+  $("listClear").onclick=async()=>{ if(!workItems.length) return; if(!await confirmDlg("Vider la liste","Retirer tous les éléments de la liste en cours ?","Vider")) return; workItems=[]; workListId=""; renderWork(); save(); };
+  $("listPrint").onclick=()=>{
+    const jobs=[], miss=[];
+    const sheets=[];
+    workItems.forEach(it=>{ const r=resolveItem(it); if(!r.design||!r.stock){ miss.push(r.name||it.name); return; } if(isSheet(r.design)){ sheets.push(r.name||it.name); return; } jobs.push({design:r.design,stock:r.stock,name:r.name,copies:clamp(+it.copies||1,1,500)}); });
+    if(miss.length) toast("Ignoré (papier introuvable) : "+miss.join(", "),"err");
+    else if(sheets.length) toast(sheets.length+" gabarit(s) « feuille » ignoré(s) : à imprimer depuis l'ordinateur","info");
+    if(!jobs.length){ if(!miss.length&&!sheets.length) toast("Rien à imprimer","err"); return; }
+    printJobs(jobs);
+  };
+  $("work").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return; const c=b.closest("[data-id]"), i=workItems.findIndex(x=>x.id===c.dataset.id); if(i<0) return; const it=workItems[i], a=b.dataset.a;
+    if(a==="cp-"||a==="cp+"){ it.copies=clamp((+it.copies||1)+(a==="cp+"?1:-1),1,500); renderWork(); save(); }
+    else if(a==="del"){ workItems.splice(i,1); renderWork(); save(); }
+    else if(a==="dup"){ const n=clone(it); n.id="i"+uid(); workItems.splice(i+1,0,n); renderWork(); save(); }
+    else if(a==="up"&&i>0){ [workItems[i-1],workItems[i]]=[workItems[i],workItems[i-1]]; renderWork(); save(); }
+    else if(a==="edit"){ const r=resolveItem(it); if(!r.design||!r.stock){ toast("Papier introuvable","err"); return; } design=r.design; stockId=r.stock.id; editItemId=it.id; showTab("create"); syncForm(); save(); }
+    else if(a==="print"){ const r=resolveItem(it); if(!r.design||!r.stock){ toast("Papier introuvable","err"); return; } printJobs([{design:r.design,stock:r.stock,name:r.name,copies:clamp(+it.copies||1,1,500)}]); }
+  });
+  $("tplQ").oninput=renderTpl; $("tplSave").onclick=saveTemplate;
+  $("prn").onclick=()=>showTab("printer");
+  $("pConnect").onclick=async()=>{ try{ await btConnect(false); toast("Imprimante connectée"); }catch(e){ if(e&&e.name!=="NotFoundError") toast(errTxt(e),"err"); } };
+  $("pAll").onclick=async()=>{ try{ await btConnect(true); toast("Appareil connecté"); }catch(e){ if(e&&e.name!=="NotFoundError") toast("Service Zebra introuvable sur cet appareil.","err"); } };
+  $("pDisc").onclick=btDisconnect;
+  $("pTest").onclick=()=>printJobs([{design:clone(design),stock:stock(),name:"Étiquette",copies:+design.copies||1}]);
+  const mpBind=(id,k,isNum)=>{ const el=$(id); el.value=mp[k]; if(el.type==="checkbox") el.checked=!!mp[k]; el.onchange=()=>{ mp[k]=el.type==="checkbox"?el.checked:isNum?(parseFloat(el.value)||0):el.value; saveMp(); schedulePreview(); }; };
+  mpBind("sDpi","dpi",true); mpBind("sMedia","media"); mpBind("sDark","dark",true); mpBind("sSpeed","speed",true); mpBind("sOx","ox",true); mpBind("sOy","oy",true); mpBind("sChunk","chunk",true); mpBind("sFeed","feed");
+  if(NATIVE){ $("apiBox").style.display="block"; $("sApi").value=mp.api; $("sApi").onchange=()=>{ mp.api=$("sApi").value.trim()||"https://zebra.nathanbegin.xyz"; saveMp(); cloudLoad(true); }; ["pAll","zplShare","sysPrint","inst"].forEach(i=>$(i).style.display="none"); document.querySelector("#t-printer a").style.display="none"; }
+  $("zplShare").onclick=shareZpl; $("sysPrint").onclick=systemPrint;
+  $("syncNow").onclick=()=>cloudLoad(true);
+  $("compat").innerHTML=NATIVE?"✔ Application Android : Bluetooth natif (Zebra BLE).":btOK()?"✔ Bluetooth Web disponible sur ce navigateur.":"⚠ Ce navigateur ne gère pas le Bluetooth Web (iPhone/iPad : Safari ne le permet pas). Sur iPhone, installez le navigateur <b>Bluefy</b> ; sur Android, utilisez <b>Chrome</b>. Vous pouvez quand même créer vos étiquettes, les synchroniser et exporter le ZPL.";
+}
+function showTab(t){
+  document.querySelectorAll(".tab").forEach(s=>s.classList.toggle("on",s.id==="t-"+t));
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
+  $("bar").style.display=t==="create"?"flex":"none"; $("barList").style.display=t==="list"?"flex":"none"; $("barTpl").style.display=t==="tpl"?"flex":"none";
+  $("title").textContent={create:"Étiquettes",list:"Liste",tpl:"Modèles",printer:"Imprimante"}[t];
+  if(t==="list") renderWork(); if(t==="tpl") renderTpl(); if(t==="printer"){ setPrnUI(); renderSync(); renderAbout(); }
+  window.scrollTo(0,0);
+}
+
+/* ---------- Gestion des papiers ---------- */
+function stockManager(){
+  const d=openDlg(`<h3>Papiers</h3><div id="skL"></div><div class="acts"><button class="pri" id="skNew">＋ Nouveau papier</button><button id="skClose">Fermer</button></div>`,"stocks");
+  d.querySelector("#skL").innerHTML=stocks.map(s=>`<div class="row" style="margin-bottom:8px"><div><b>${E(s.name)}</b><div style="font-size:12px;color:var(--mute)">${dimTxt(s)} · ${s.adh!==false?"autocollant":"papier"}</div></div><button class="sm fix" data-e="${E(s.id)}">Modifier</button></div>`).join("");
+  d.querySelector("#skClose").onclick=()=>d.close();
+  d.querySelector("#skNew").onclick=()=>stockForm(null);
+  d.querySelector("#skL").onclick=e=>{ const b=e.target.closest("[data-e]"); if(b) stockForm(stocks.find(s=>s.id===b.dataset.e)); };
+}
+function stockForm(s){
+  const n=!s; s=s||{name:"",w:2,h:1,u:"in",color:"#ffffff",adh:true};
+  const d=openDlg(`<h3>${n?"Nouveau papier":"Modifier le papier"}</h3>
+   <label class="f">Nom</label><input type="text" id="skN" value="${E(s.name)}" placeholder='ex. Prix 2" × 1" blanc'>
+   <div class="g2"><div><label class="f">Largeur</label><input type="number" inputmode="decimal" id="skW" step="0.01" value="${s.w}"></div><div><label class="f">Longueur</label><input type="number" inputmode="decimal" id="skH" step="0.01" value="${s.h}"></div></div>
+   <div class="g2"><div><label class="f">Unité</label><select id="skU"><option value="in">pouces</option><option value="mm">mm</option></select></div><div><label class="f">Couleur (aperçu)</label><input type="color" id="skC" value="${s.color||"#ffffff"}"></div></div>
+   <label class="tog"><span>Autocollant</span><input type="checkbox" id="skA" ${s.adh!==false?"checked":""}></label>
+   <div id="skE" class="warn"></div>
+   <div class="row" style="margin-top:10px">${n?"":'<button class="dng" id="skD">Supprimer</button>'}<button id="skX">Annuler</button><button class="pri" id="skS">Enregistrer</button></div>`,"stockform");
+  d.querySelector("#skU").value=s.u;
+  d.querySelector("#skX").onclick=()=>stockManager();
+  const del=d.querySelector("#skD"); if(del) del.onclick=()=>{ if(stocks.length<2){ d.querySelector("#skE").textContent="Il faut au moins un papier."; return; } stocks=stocks.filter(x=>x.id!==s.id); if(stockId===s.id) stockId=stocks[0].id; fillStockSel(); sync(); stockManager(); };
+  d.querySelector("#skS").onclick=()=>{
+    const o={name:d.querySelector("#skN").value.trim(),w:parseFloat(d.querySelector("#skW").value),h:parseFloat(d.querySelector("#skH").value),u:d.querySelector("#skU").value,color:d.querySelector("#skC").value,adh:d.querySelector("#skA").checked};
+    if(!o.name||!(o.w>0)||!(o.h>0)){ d.querySelector("#skE").textContent="Nom, largeur et longueur sont requis."; return; }
+    if(n){ const id="s"+Date.now(); stocks.push({id,...o}); stockId=id; } else Object.assign(s,o);
+    fillStockSel(); sync(); stockManager();
+  };
+}
+
+/* ---------- Liste ---------- */
+function fillLstSel(){ $("lstSel").innerHTML='<option value="">— Aucune —</option>'+lists.map(l=>`<option value="${E(l.id)}">${E(l.name)} (${l.items.length})</option>`).join(""); $("lstSel").value=workListId||""; }
+async function saveList(asNew){
+  if(!workItems.length){ toast("La liste est vide","err"); return; }
+  let l=asNew?null:lists.find(x=>x.id===workListId);
+  if(!l){
+    const r=await askDlg("Nom de la liste",[{label:"Nom",value:""}],"Enregistrer"); const name=r&&r[0]; if(!name) return;
+    const ex=lists.find(x=>x.name===name);
+    if(ex){ if(!await confirmDlg("Remplacer ?",`Une liste « ${name} » existe déjà.`,"Remplacer")) return; l=ex; }
+    else { l={id:"l"+uid(),name,items:[]}; lists.push(l); }
+  }
+  l.items=clone(workItems); workListId=l.id; fillLstSel(); save(); toast("Liste « "+l.name+" » enregistrée");
+}
+async function thumb(cv,d,st,idx){ try{ const r=await renderLabel(d,st,idx,100,true); cv.width=r.canvas.width; cv.height=r.canvas.height; cv.getContext("2d").drawImage(r.canvas,0,0); }catch(e){} }
+function renderWork(){
+  $("bdList").style.display=workItems.length?"block":"none"; $("bdList").textContent=workItems.length;
+  fillLstSel();
+  const n=workItems.reduce((a,it)=>{ const r=resolveItem(it); return a+(r.design?totalOf(r.design)*(+it.copies||1):0); },0);
+  $("listPrint").textContent=workItems.length?`🖨 Imprimer (${n})`:"🖨 Imprimer la liste";
+  if(!workItems.length){ $("work").innerHTML='<div class="empty">La liste est vide.<br>Créez une étiquette puis touchez « ＋ Liste ».</div>'; return; }
+  $("work").innerHTML=workItems.map((it,i)=>{
+    const r=resolveItem(it), tot=r.design?totalOf(r.design):1;
+    return `<div class="card" data-id="${E(it.id)}"><div class="item"><canvas data-th="${E(it.id)}" width="2" height="2"></canvas><div class="meta"><div class="nm">${E(r.name||it.name||"Étiquette")}</div><div class="sub">${r.stock?dimTxt(r.stock):"⚠ papier introuvable"}${tot>1?` · série de ${tot}`:""}${r.design&&isSheet(r.design)?" · feuille (ordinateur)":""}</div>
+    <div class="row" style="margin-top:6px"><div class="step"><button data-a="cp-">−</button><input type="number" value="${it.copies||1}" readonly aria-label="Copies"><button data-a="cp+">＋</button></div></div></div></div>
+    <div class="acts"><button class="sm" data-a="edit">✏️ Modifier</button><button class="sm" data-a="print">🖨</button><button class="sm" data-a="dup">⧉</button><button class="sm" data-a="up" ${i?"":"disabled"}>↑</button><button class="sm dng" data-a="del">🗑</button></div></div>`;
+  }).join("");
+  workItems.forEach(it=>{ const r=resolveItem(it); const cv=$("work").querySelector(`[data-th="${CSS.escape(it.id)}"]`); if(cv&&r.design&&r.stock) thumb(cv,r.design,r.stock,0); });
+}
+
+/* ---------- Modèles ---------- */
+let tplIO=null;
+function renderTpl(){
+  const q=$("tplQ").value.trim().toLowerCase();
+  const arr=templates.filter(t=>!q||(t.name+" "+(t.folder||"")).toLowerCase().includes(q));
+  if(!arr.length){ $("tplList").innerHTML='<div class="empty">'+(templates.length?"Aucun résultat.":"Aucun modèle. Créez une étiquette puis touchez « Enregistrer le design comme modèle ».")+"</div>"; return; }
+  const groups={}; arr.forEach(t=>{ (groups[t.folder||""]=groups[t.folder||""]||[]).push(t); });
+  const names=Object.keys(groups).sort((a,b)=>a.localeCompare(b,"fr"));
+  $("tplList").innerHTML=names.map(f=>`<div class="fh">${E(f||"Sans dossier")}</div>`+groups[f].sort((a,b)=>a.name.localeCompare(b.name,"fr")).map(t=>{
+    const st=stocks.find(s=>s.id===t.stockId);
+    return `<div class="card" data-t="${E(t.id)}"><div class="item"><canvas data-tt="${E(t.id)}" width="2" height="2"></canvas><div class="meta"><div class="nm">${E(t.name)}</div><div class="sub">${st?dimTxt(st):"papier introuvable"}</div>
+      <div class="acts"><button class="sm pri" data-a="use">Utiliser</button><button class="sm" data-a="add">＋ Liste</button><button class="sm" data-a="ren">✎</button><button class="sm dng" data-a="del">🗑</button></div></div></div></div>`;
+  }).join("")).join("");
+  if(tplIO) tplIO.disconnect();
+  tplIO=new IntersectionObserver(es=>es.forEach(en=>{ if(!en.isIntersecting) return; tplIO.unobserve(en.target); const t=templates.find(x=>x.id===en.target.dataset.tt); const st=t&&stocks.find(s=>s.id===t.stockId); if(t&&st&&t.design&&Array.isArray(t.design.lines)) thumb(en.target,normDesign(t.design),st,0); }),{rootMargin:"200px"});
+  $("tplList").querySelectorAll("canvas").forEach(c=>tplIO.observe(c));
+}
+$("tplList").addEventListener("click",async e=>{
+  const b=e.target.closest("button"); if(!b) return; const t=templates.find(x=>x.id===b.closest("[data-t]").dataset.t); if(!t) return; const a=b.dataset.a;
+  if(a==="use"){ if(!t.design||!Array.isArray(t.design.lines)){ toast("Modèle illisible","err"); return; } design=normDesign(t.design); if(stocks.some(s=>s.id===t.stockId)) stockId=t.stockId; editItemId=""; showTab("create"); syncForm(); save(); toast("Modèle « "+t.name+" » chargé","info"); }
+  else if(a==="add"){ if(!stocks.some(s=>s.id===t.stockId)){ toast("Papier introuvable","err"); return; } workItems.push({id:"i"+uid(),tplId:t.id,name:t.name,stockId:t.stockId,design:normDesign(t.design),copies:1,label:"",blk:"",ov:{}}); renderWork(); save(); toast("Ajouté à la liste"); }
+  else if(a==="ren"){ const r=await askDlg("Modifier le modèle",[{label:"Nom",value:t.name},{label:"Dossier",value:t.folder||"",list:[...new Set(templates.map(x=>x.folder).filter(Boolean))]}],"Enregistrer"); if(r&&r[0]){ t.name=r[0]; t.folder=r[1]; renderTpl(); save(); } }
+  else if(a==="del"){ if(!await confirmDlg("Supprimer le modèle",`« ${t.name} » sera supprimé (aussi sur l'ordinateur).`,"Supprimer")) return; templates=templates.filter(x=>x!==t); renderTpl(); save(); }
+});
+async function saveTemplate(){
+  if(isSheet(design)){ toast("Gabarit feuille : version ordinateur","err"); return; }
+  const folders=[...new Set(templates.map(x=>x.folder).filter(Boolean))];
+  const r=await askDlg("Enregistrer comme modèle",[{label:"Nom du modèle",value:itemTitle(design)},{label:"Dossier (optionnel)",value:"",list:folders}],"Enregistrer"); if(!r||!r[0]) return;
+  const ex=templates.find(t=>t.name===r[0]&&(t.folder||"")===r[1]);
+  if(ex){ if(!await confirmDlg("Remplacer ?",`Le modèle « ${ex.name} » existe déjà.`,"Remplacer")) return; ex.design=clone(design); ex.stockId=stockId; }
+  else templates.push({id:"t"+uid(),name:r[0],folder:r[1],stockId,design:clone(design)});
+  renderTpl(); save(); toast("Modèle enregistré");
+}
+
+/* ---------- Autres sorties ---------- */
+async function currentZpl(){
+  const copies=+design.copies||1; let z="";
+  for(let i=0;i<totalOf(design);i++){ const r=await renderLabel(design,stock(),i,+mp.dpi||203); z+=zplLabel(r.canvas,copies); }
+  return z;
+}
+async function shareZpl(){
+  try{
+    const z=await currentZpl(), f=new File([z],"etiquette.zpl",{type:"text/plain"});
+    if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],title:"Étiquette ZPL"});
+    else { const a=document.createElement("a"); a.href=URL.createObjectURL(f); a.download="etiquette.zpl"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
+  }catch(e){ if(e&&e.name!=="AbortError") toast(e.message||String(e),"err"); }
+}
+async function systemPrint(){
+  try{
+    const st=stock(), W=toMM(st.w,st.u); let html="", Hmax=0;
+    for(let i=0;i<totalOf(design);i++){
+      const r=await renderLabel(design,st,i,+mp.dpi||203), H=r.lenMM; Hmax=Math.max(Hmax,H);
+      for(let c=0;c<(+design.copies||1);c++) html+=`<img src="${r.canvas.toDataURL("image/png")}" style="width:${W}mm;height:${H}mm">`;
+    }
+    let sty=$("pgSty"); if(!sty){ sty=document.createElement("style"); sty.id="pgSty"; document.head.appendChild(sty); }
+    sty.textContent=`@page{size:${W}mm ${Hmax}mm;margin:0}@media print{html,body{margin:0}}`;
+    $("printArea").innerHTML=html; setTimeout(()=>window.print(),150);
+  }catch(e){ toast(e.message||String(e),"err"); }
+}
+
+/* ---------- Synchronisation (même API que la version ordinateur) ---------- */
+const apiUrl=()=>NATIVE?String(mp.api||"https://zebra.nathanbegin.xyz").replace(/\/+$/,"")+"/api/data":"api/data";
+const cs={lastPull:0,lastPush:0,err:""};
+function setCloud(st){ $("cloud").textContent={off:"💾",ok:"☁️",sync:"⏳",err:"⚠️"}[st]; $("cloud").title={off:"Mode local",ok:"Synchronisé",sync:"Envoi en cours…",err:"Erreur de synchronisation"}[st]; renderSync(); }
+function renderSync(){
+  const t=x=>x?new Date(x).toLocaleTimeString("fr-CA",{hour:"2-digit",minute:"2-digit"}):"—";
+  $("syncMsg").innerHTML=cloudOn?`☁ Connecté à la base partagée.<br>Dernière lecture : ${t(cs.lastPull)} · dernier envoi : ${t(cs.lastPush)}<br>${stocks.length} papiers · ${templates.length} modèles · ${lists.length} listes`+(cs.err?`<br><span style="color:var(--bad)">${E(cs.err)}</span>`:""):"💾 Mode local : "+E(cs.err||"les données restent sur cet appareil.");
+}
+function cloudSchedule(){ if(!cloudOn||snap()===lastSync) return; setCloud("sync"); clearTimeout(pushT); pushT=setTimeout(cloudPush,700); }
+async function cloudPush(){
+  const cur=snap();
+  try{ const r=await fetch(apiUrl(),{method:"PUT",headers:{"Content-Type":"application/json"},body:cur}); if(!r.ok){ cs.err="Envoi refusé (HTTP "+r.status+")"; throw 0; } lastSync=cur; cs.lastPush=Date.now(); cs.err=""; setCloud(snap()===cur?"ok":"sync"); }
+  catch(e){ if(!cs.err) cs.err="Envoi impossible (réseau)"; setCloud("err"); }
+}
+async function cloudLoad(manual){
+  try{
+    const r=await fetch(apiUrl(),{cache:"no-store"});
+    if(!r.ok){ cs.err=r.status===503?"Base non configurée sur le serveur":"Lecture refusée (HTTP "+r.status+")"; throw 0; }
+    const d=await r.json(); if(!d||typeof d!=="object"){ cs.err="Réponse invalide"; throw 0; }
+    cs.lastPull=Date.now(); cs.err="";
+    const first=!cloudOn; cloudOn=true;
+    if(!first&&snap()!==lastSync&&!manual) return;     // modifications locales en attente : ne pas écraser
+    if(first&&snap()!==lastSync&&pushT) return;
+    const sv=Array.isArray(d.stocks)?d.stocks:[], tv=Array.isArray(d.templates)?d.templates:[];
+    if(sv.length){ stocks=sv; if(!stocks.some(x=>x.id===stockId)) stockId=stocks[0].id; }
+    if(tv.length||sv.length) templates=tv;
+    if(Array.isArray(d.lists)&&(d.lists.length||sv.length)) lists=d.lists;
+    lastSync=JSON.stringify({stocks:sv,templates:tv,lists:Array.isArray(d.lists)?d.lists:[]});
+    try{ localStorage.setItem("zl_templates",JSON.stringify(templates)); localStorage.setItem("zl_lists",JSON.stringify(lists)); localStorage.setItem("zl_stocks",JSON.stringify(stocks)); localStorage.setItem("zl_stockId",stockId); }catch(e){}
+    fillStockSel(); fillLstSel(); renderWork(); renderTpl(); refreshPreview();
+    if(!sv.length){ lastSync=""; cloudSchedule(); } else setCloud("ok");
+    if(manual) toast("Données actualisées");
+  }catch(e){ if(!cs.err) cs.err="Serveur injoignable (hors ligne ?)"; setCloud(cloudOn?"err":"off"); if(manual) toast(cs.err,"err"); }
+}
+
+/* ---------- Version de l'application ---------- */
+let VER=null, NATVER=null;
+async function loadVersion(){
+  try{ const r=await fetch("version.json",{cache:"no-store"}); if(r.ok) VER=await r.json(); }catch(e){}
+  try{ if(NATIVE&&window.CapApp) NATVER=await window.CapApp.getInfo(); }catch(e){}
+  renderAbout();
+}
+function renderAbout(){
+  const el=$("about"); if(!el) return;
+  const d=VER&&VER.build?new Date(VER.build):null;
+  const when=d&&!isNaN(d)?d.toLocaleString("fr-CA",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+  const rows=[["Version",VER?`<b>${E(VER.version)}</b> (build ${E(VER.code)})`:"<b>inconnue</b> (hors ligne)"]];
+  if(when||(VER&&VER.commit)) rows.push(["Construite",[when,VER&&VER.commit?"commit "+E(VER.commit):""].filter(Boolean).join(" · ")]);
+  rows.push(["Type",NATIVE?"Application Android (APK)":"Navigateur / site web"]);
+  if(NATVER) rows.push(["Paquet installé",`${E(NATVER.version)} (${E(NATVER.build)}) · ${E(NATVER.id)}`]);
+  const mismatch=NATVER&&VER&&String(NATVER.version)!==String(VER.version);
+  el.innerHTML=rows.map(r=>`<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:var(--mute)">${r[0]}</span><span style="text-align:right">${r[1]}</span></div>`).join("")+(mismatch?'<div class="warn">⚠ La version du contenu ne correspond pas au paquet Android : réinstallez l\'application.</div>':"");
+}
+
+/* ---------- Démarrage ---------- */
+bind(); fillLstSel(); setPrnUI(); renderWork(); syncForm(); renderSync(); cloudLoad(); loadVersion();
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&cloudOn) cloudLoad(); });
+let deferred=null;
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("inst").style.display="inline-block"; });
+$("inst").onclick=()=>{ if(deferred){ deferred.prompt(); deferred=null; $("inst").style.display="none"; } };
+if(!NATIVE&&"serviceWorker" in navigator&&location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(()=>{});
+if(!NATIVE&&btOK()&&navigator.bluetooth.getDevices) navigator.bluetooth.getDevices().then(ds=>{ const d=ds.find(x=>x.name===mp.btName); if(d){ btDev=d; setPrnUI(); } }).catch(()=>{});
+</script>
+</body>
+</html>

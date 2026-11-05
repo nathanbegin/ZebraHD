@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Étiquettes Zebra</string>
+    <string name="title_activity_main">Étiquettes Zebra</string>
+    <string name="package_name">xyz.nathanbegin.zebrahd</string>
+    <string name="custom_url_scheme">xyz.nathanbegin.zebrahd</string>
+</resources>
