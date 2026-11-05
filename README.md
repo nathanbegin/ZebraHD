@@ -50,3 +50,11 @@ Application optimisée pour téléphone (installable comme une appli : « Ajoute
 - **Compatibilité** : Chrome/Edge sur Android. iPhone/iPad : Safari ne gère pas le Bluetooth Web → utiliser le navigateur **Bluefy**, ou exporter le fichier ZPL / impression du système.
 - Les gabarits « feuille » (disjoncteurs) restent à imprimer depuis la version ordinateur.
 - `index.html` redirige automatiquement les téléphones vers `mobile.html` (`?desktop=1` force la version ordinateur).
+
+## Application Android (APK)
+
+L'APK embarque `mobile.html` dans une application Android native (Capacitor) avec un **plugin Bluetooth LE natif** (le Web Bluetooth n'existe pas dans une WebView). Elle imprime directement sur une imprimante Zebra Bluetooth LE.
+
+- **APK prêt à installer** : [`app/dist/ZebraHD-mobile-debug.apk`](app/dist/ZebraHD-mobile-debug.apk) (signé en mode débogage). Sur Android : télécharger le fichier, autoriser « Installer des applications inconnues » pour le navigateur, puis l'ouvrir. Au premier lancement, autoriser le Bluetooth (« Appareils à proximité »).
+- Première utilisation : onglet **Imprimante → Se connecter**, choisir l'imprimante dans la fenêtre Android. La synchronisation utilise l'adresse du serveur (par défaut `https://zebra.nathanbegin.xyz`, modifiable dans l'onglet Imprimante).
+- **Reconstruire l'APK** (Node 22, JDK 21, SDK Android 36) : `cd app && npm ci && npm run apk` → `app/android/app/build/outputs/apk/debug/app-debug.apk`. Le workflow GitHub Actions `Android APK` le reconstruit à chaque modification et le publie comme artefact.
