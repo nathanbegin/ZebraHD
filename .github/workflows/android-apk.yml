@@ -8,6 +8,9 @@ on:
     paths: ["mobile.html", "app/**", "manifest.webmanifest", "logo.png", "icon-*.png", ".github/workflows/android-apk.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write   # nécessaire pour publier l'APK dans une Release (branche mobile)
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -25,12 +28,30 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      # Le SDK Android est déjà présent sur les runners GitHub : on installe seulement la plateforme et les outils requis.
+      - name: SDK Android (API 36)
+        run: |
+          SDKM=$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0"
       - run: npm ci
       - run: npm run sync
-      - run: ./gradlew assembleDebug
+      - name: Compiler l'APK
+        run: ./gradlew assembleDebug --no-daemon
         working-directory: app/android
+      - name: Nommer l'APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk ZebraHD-mobile-debug.apk
       - uses: actions/upload-artifact@v4
         with:
           name: ZebraHD-mobile-debug-apk
-          path: app/android/app/build/outputs/apk/debug/app-debug.apk
+          path: app/ZebraHD-mobile-debug.apk
+      # Sur la branche mobile : APK téléchargeable depuis la page « Releases » du dépôt.
+      - name: Publier dans une Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/mobile'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mobile-latest
+          name: Application Android (APK) — dernière version
+          body: "APK de débogage construit automatiquement depuis la branche `mobile`. Installer : télécharger le fichier .apk, autoriser les sources inconnues, ouvrir."
+          prerelease: true
+          files: app/ZebraHD-mobile-debug.apk
